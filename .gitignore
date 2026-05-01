@@ -1,0 +1,15 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backups created by sed/configure_forms.sh
+*.bak
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Local notes
+DEPLOY_GUIDE.md
+configure_forms.sh
