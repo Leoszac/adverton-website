@@ -1,7 +1,8 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home2/advertonnet/public_html/
-    - /bin/rsync -av --exclude='.git' --exclude='.gitignore' --exclude='.cpanel.yml' --exclude='*.md' --exclude='*.bak' --exclude='configure_forms.sh' ./ $DEPLOYPATH
-    - /bin/find $DEPLOYPATH -type f -exec /bin/chmod 644 {} \;
-    - /bin/find $DEPLOYPATH -type d -exec /bin/chmod 755 {} \;
+    - export DEPLOYPATH=/home2/advertonnet/public_html
+    - /bin/rm -f $DEPLOYPATH/index.php $DEPLOYPATH/index.htm
+    - /bin/rm -rf $DEPLOYPATH/sp-content $DEPLOYPATH/sp-data $DEPLOYPATH/sp-includes $DEPLOYPATH/sp-admin
+    - /bin/cp -Rf index.html about.html hvac.html plumbing.html roofing.html electrical.html pest-control.html landscaping.html privacy.html terms.html thank-you.html send.php styles.css favicon.svg _redirects $DEPLOYPATH/
+    - /bin/cp -Rf assets $DEPLOYPATH/
