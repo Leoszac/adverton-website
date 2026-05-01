@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home2/advertonnet/public_html/
+    - /bin/rsync -av --exclude='.git' --exclude='.gitignore' --exclude='.cpanel.yml' --exclude='*.md' --exclude='*.bak' --exclude='configure_forms.sh' ./ $DEPLOYPATH
+    - /bin/find $DEPLOYPATH -type f -exec /bin/chmod 644 {} \;
+    - /bin/find $DEPLOYPATH -type d -exec /bin/chmod 755 {} \;
