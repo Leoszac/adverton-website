@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /thank-you
+Disallow: /thank-you.html
+Disallow: /send.php
+
+Sitemap: https://adverton.net/sitemap.xml
