@@ -295,5 +295,30 @@
 </footer>
 
 <script src="https://www.google.com/recaptcha/api.js?render=6LdFktQsAAAAAJ6Ve9ZUJstntjVkRcAlbjFW-RIC"></script>
+<div id="cookie-banner" class="cookie-banner">
+  <p>We use cookies to improve your experience and measure site traffic. See our <a href="privacy">Privacy Policy</a>.</p>
+  <div class="cookie-banner-actions">
+    <button class="cookie-banner-btn secondary" onclick="ckDecline()">Decline</button>
+    <button class="cookie-banner-btn" onclick="ckAccept()">Accept</button>
+  </div>
+</div>
+<script>
+(function(){
+  if (localStorage.getItem('ck_consent')) return;
+  setTimeout(function(){
+    var b = document.getElementById('cookie-banner');
+    if (b) b.classList.add('show');
+  }, 800);
+  window.ckAccept = function(){
+    localStorage.setItem('ck_consent', 'accepted');
+    var b = document.getElementById('cookie-banner'); if (b) b.classList.remove('show');
+  };
+  window.ckDecline = function(){
+    localStorage.setItem('ck_consent', 'declined');
+    var b = document.getElementById('cookie-banner'); if (b) b.classList.remove('show');
+    window['ga-disable-G-SDEBS959S1'] = true;
+  };
+})();
+</script>
 </body>
 </html>

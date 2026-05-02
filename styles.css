@@ -495,3 +495,32 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 
 /* Tradio brand color (for the in-text logo) */
 .tool-tradio { color: #16a34a; }
+
+/* Cookie consent banner */
+.cookie-banner {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+  background: #0e0d12; color: #e5e7eb;
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
+  font-size: 14px; line-height: 1.5;
+  transform: translateY(100%);
+  transition: transform .3s ease;
+}
+.cookie-banner.show { transform: translateY(0); }
+.cookie-banner p { flex: 1; min-width: 280px; margin: 0; }
+.cookie-banner a { color: var(--purple-light); text-decoration: underline; }
+.cookie-banner-actions { display: flex; gap: 8px; }
+.cookie-banner-btn {
+  background: var(--purple); color: #fff;
+  padding: 10px 20px; border-radius: 6px;
+  font-weight: 600; font-size: 13px; cursor: pointer; border: 0;
+  transition: background .15s;
+}
+.cookie-banner-btn:hover { background: var(--purple-dark); }
+.cookie-banner-btn.secondary { background: transparent; color: #c8c5d3; border: 1px solid #383640; }
+.cookie-banner-btn.secondary:hover { border-color: #c8c5d3; }
+@media (max-width: 600px) {
+  .cookie-banner { flex-direction: column; align-items: stretch; padding: 14px; }
+  .cookie-banner-actions { justify-content: flex-end; }
+}
