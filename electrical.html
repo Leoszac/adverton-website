@@ -83,7 +83,7 @@
     </div>
     <div>
       <div class="hero-image-wrap">
-        <img src="assets/heroes/electrical.jpg" alt="Electrical contractor at work">
+        <picture><source srcset="assets/heroes/electrical.webp" type="image/webp"><img src="assets/heroes/electrical.jpg" alt="Electrical contractor at work" fetchpriority="high"></picture>
         <div class="hero-badge">
           <div class="hero-badge-icon">$</div>
           <div class="hero-badge-text">
@@ -182,6 +182,27 @@
   </div>
 </section>
 
+
+<section class="section verticals" id="cities">
+  <div class="wrap">
+    <div class="center" style="max-width: 700px; margin: 0 auto 32px;">
+      <div class="eyebrow">Electrical marketing by city</div>
+      <h2>Where Adverton works for electrical contractors.</h2>
+      <p class="lede" style="margin-top: 12px;">Each metro has unique market dynamics — see local context for your area.</p>
+    </div>
+    <div class="verticals-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px;">
+      <a href="electrical-phoenix" class="vertical-card compact"><h3>Electrical in Phoenix</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">AZ</p></a>
+      <a href="electrical-dallas" class="vertical-card compact"><h3>Electrical in Dallas</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">TX</p></a>
+      <a href="electrical-houston" class="vertical-card compact"><h3>Electrical in Houston</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">TX</p></a>
+      <a href="electrical-tampa" class="vertical-card compact"><h3>Electrical in Tampa</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">FL</p></a>
+      <a href="electrical-orlando" class="vertical-card compact"><h3>Electrical in Orlando</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">FL</p></a>
+      <a href="electrical-san-antonio" class="vertical-card compact"><h3>Electrical in San Antonio</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">TX</p></a>
+      <a href="electrical-las-vegas" class="vertical-card compact"><h3>Electrical in Las Vegas</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">NV</p></a>
+      <a href="electrical-atlanta" class="vertical-card compact"><h3>Electrical in Atlanta</h3><p style="font-size:13px;color:var(--ink-3);margin:4px 0 0;">GA</p></a>
+    </div>
+  </div>
+</section>
+
 <section class="section contact" id="contact">
   <div class="wrap contact-grid">
     <div class="contact-copy">
@@ -254,7 +275,7 @@
 <footer class="footer">
   <div class="wrap footer-inner">
     <div class="footer-brand">
-      <img src="assets/adverton-logo-white.png" alt="Adverton">
+      <img src="assets/adverton-logo-white.png" alt="Adverton" loading="lazy">
       <p>The marketing team for U.S. home service contractors. Vertical specialists in HVAC, plumbing, roofing, electrical, pest control, and landscaping. $799/month, flat — one bill, one team. Built on Tradio.</p>
     </div>
     <div class="footer-links">
