@@ -93,5 +93,22 @@ if (!$ok) {
     bail(500, 'mail() returned false');
 }
 
+// Auto-responder to the prospect (best-effort — don't bail if it fails)
+$ar_subject = "We got your message — Adverton";
+$ar_body  = "Hi {$d['first_name']},\n\n";
+$ar_body .= "Thanks for reaching out to Adverton. We received your message and one of our team will get back to you within 24 business hours with next steps.\n\n";
+$ar_body .= "What happens next:\n";
+$ar_body .= "  1. We review your business and current marketing\n";
+$ar_body .= "  2. We send a custom proposal if there's a fit\n";
+$ar_body .= "  3. We schedule a 15-minute call at a time that works for you\n\n";
+$ar_body .= "If your situation is urgent, reply to this email or call us directly.\n\n";
+$ar_body .= "— The Adverton team\n";
+$ar_body .= "hello@adverton.net  ·  https://adverton.net\n";
+$ar_headers  = "From: Adverton <hello@" . SENDER_DOMAIN . ">\r\n";
+$ar_headers .= "Reply-To: hello@" . SENDER_DOMAIN . "\r\n";
+$ar_headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+$ar_headers .= "X-Mailer: Adverton/1.0\r\n";
+@mail($d['email'], $ar_subject, $ar_body, $ar_headers);
+
 header('Location: ' . REDIRECT_OK);
 exit;
