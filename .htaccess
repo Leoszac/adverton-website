@@ -31,10 +31,18 @@ RewriteRule ^([^.]+)$ $1.html [L]
   AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json text/xml image/svg+xml
 </IfModule>
 
-# Block direct access to dotfiles
+# Block direct access to dotfiles — return 404 (not 403) so Google doesn't flag them
 <FilesMatch "^\.">
   Require all denied
+  ErrorDocument 403 /404.html
 </FilesMatch>
 
-# Custom error page (optional — falls back to default if file missing)
-ErrorDocument 404 /index.html
+# Real 404 page (returns proper 404 status, no soft-404 redirect to /)
+ErrorDocument 404 /404.html
+
+# Set canonical via header for query-stringed homepage requests (helps GSC)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html)$">
+    Header set X-Robots-Tag "index, follow"
+  </FilesMatch>
+</IfModule>

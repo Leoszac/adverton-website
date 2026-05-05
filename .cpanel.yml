@@ -4,5 +4,5 @@ deployment:
     - export DEPLOYPATH=/home2/advertonnet/public_html
     - /bin/rm -f $DEPLOYPATH/index.php $DEPLOYPATH/index.htm
     - /bin/rm -rf $DEPLOYPATH/sp-content $DEPLOYPATH/sp-data $DEPLOYPATH/sp-includes $DEPLOYPATH/sp-admin
-    - /bin/sh -c "/bin/cp -Rf *.html *.php *.css *.svg sitemap.xml robots.txt .htaccess $DEPLOYPATH/"
+    - /bin/sh -c "/bin/cp -Rf *.html *.php *.css *.svg *.ico *.png sitemap.xml robots.txt .htaccess $DEPLOYPATH/"
     - /bin/cp -Rf assets $DEPLOYPATH/
