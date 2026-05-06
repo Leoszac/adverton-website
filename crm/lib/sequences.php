@@ -9,6 +9,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 require_once __DIR__ . '/db.php';
 
 const CRM_SEQ_TRIGGERS = [
+    'lead_created',
     'status_change_to_new',
     'status_change_to_contacted',
     'status_change_to_qualified',
@@ -107,14 +108,21 @@ function crm_listEnrollmentsForLead(int $leadId): array {
 }
 
 // Trigger dispatcher: called from leads.php when status changes (or from cron).
-// Auto-enrolls matching active sequences.
-function crm_dispatchSequenceTrigger(string $event, int $leadId): void {
+// Auto-enrolls matching active sequences. If $contextValue is provided, only
+// sequences whose trigger_value is empty OR matches will enroll. This lets
+// `lead_created` sequences filter by source (e.g. trigger_value='audit_auto'
+// only enrolls audit leads, not ebook leads).
+function crm_dispatchSequenceTrigger(string $event, int $leadId, ?string $contextValue = null): void {
     try {
         $stmt = crm_db()->prepare(
-            'SELECT id FROM sequences WHERE active = TRUE AND trigger_event = ?'
+            'SELECT id, trigger_value FROM sequences WHERE active = TRUE AND trigger_event = ?'
         );
         $stmt->execute([$event]);
         foreach ($stmt->fetchAll() as $row) {
+            $tv = trim((string)($row['trigger_value'] ?? ''));
+            if ($tv !== '' && $contextValue !== null && $tv !== $contextValue) {
+                continue; // sequence is scoped to a different value (e.g. different source)
+            }
             crm_enrollLeadInSequence((int)$row['id'], $leadId);
         }
     } catch (Throwable $e) { error_log('[crm_dispatchSequenceTrigger] ' . $e->getMessage()); }

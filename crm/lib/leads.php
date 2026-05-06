@@ -120,6 +120,13 @@ function crm_insertLead(array $data): ?int {
         // Best-effort webhook notification (Slack-compatible, Telegram via bot, etc.)
         crm_fireNewLeadWebhook($id, $values);
 
+        // Auto-enroll in active sequences scoped to this source
+        // (audit_auto, audit_manual, ebook_growth_engine, contact_form, ...)
+        if (file_exists(__DIR__ . '/sequences.php')) {
+            require_once __DIR__ . '/sequences.php';
+            crm_dispatchSequenceTrigger('lead_created', $id, (string)($values['source'] ?? ''));
+        }
+
         return $id;
     } catch (Throwable $e) {
         error_log('[crm_insertLead] ' . $e->getMessage());
