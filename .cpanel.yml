@@ -11,3 +11,4 @@ deployment:
     - /bin/cp -Rf crm $DEPLOYPATH/
     - /bin/rm -f $DEPLOYPATH/audit-config.example.php
     - /bin/rm -f $DEPLOYPATH/crm-config.example.php
+    - /bin/rm -f $DEPLOYPATH/crm/run-migration-v9.php
