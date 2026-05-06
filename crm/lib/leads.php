@@ -9,7 +9,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/activities.php';
 
-const CRM_LEAD_SOURCES  = ['audit_auto', 'audit_manual', 'contact_form'];
+const CRM_LEAD_SOURCES  = ['audit_auto', 'audit_manual', 'contact_form', 'ebook_growth_engine'];
 const CRM_LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'];
 
 // Auto-classify temperature for audit_auto leads. Mirrors the heuristic in
