@@ -277,16 +277,86 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 
 .how { background: #fff; }
 .how-header { max-width: 680px; margin: 0 auto 48px; text-align: center; }
-.how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-@media (max-width: 800px) { .how-grid { grid-template-columns: 1fr; } }
+
+/* Wheel layout: engine in the center, 3 steps around it */
+.how-wheel {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding-top: 80px;
+  margin-top: 20px;
+}
+.how-engine {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+  color: #fff;
+  border-radius: 100px;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 12px 32px rgba(109, 40, 217, 0.28);
+  max-width: 520px;
+  width: calc(100% - 32px);
+  z-index: 2;
+}
+.how-engine-icon {
+  font-size: 26px; line-height: 1;
+  background: rgba(255,255,255,.18);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.how-engine-name {
+  font-weight: 800; font-size: 16px; letter-spacing: -0.01em;
+}
+.how-engine-desc {
+  font-size: 13px; opacity: .92; line-height: 1.45;
+  margin-top: 2px;
+}
+.how-engine > div:not(.how-engine-icon) { flex: 1; }
+
 .how-step {
-  border-left: 3px solid var(--purple); padding: 8px 0 8px 24px;
+  background: var(--purple-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 28px 24px 24px;
+  position: relative;
+  margin-top: 24px;
+}
+.how-step-num {
+  position: absolute;
+  top: -18px;
+  left: 24px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--purple);
+  color: #fff;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 16px;
+  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.32);
 }
 .how-step .week {
-  font-size: 13px; font-weight: 700; color: var(--purple);
-  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+  font-size: 12px; font-weight: 700; color: var(--purple);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 6px; padding-left: 28px;
 }
-.how-step p { color: var(--ink-2); font-size: 15px; }
+.how-step h3 { margin-top: 4px; font-size: 18px; }
+.how-step p { color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+
+@media (max-width: 800px) {
+  .how-wheel { grid-template-columns: 1fr; padding-top: 0; gap: 32px; }
+  .how-engine {
+    position: relative; top: 0; left: 0; transform: none;
+    width: 100%; max-width: none; margin-bottom: 8px;
+  }
+  .how-step { margin-top: 18px; }
+}
 
 .verticals { background: var(--purple-bg); }
 .verticals-grid {
