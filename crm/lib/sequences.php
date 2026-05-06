@@ -162,12 +162,58 @@ function crm_unenrollLead(int $leadId, string $reason): int {
 
 function crm_listEnrollmentsForLead(int $leadId): array {
     $stmt = crm_db()->prepare(
-        'SELECT e.*, s.name AS sequence_name, s.active AS sequence_active
+        'SELECT e.*, s.name AS sequence_name, s.active AS sequence_active,
+                (SELECT COUNT(*) FROM sequence_steps ss WHERE ss.sequence_id = e.sequence_id) AS total_steps
          FROM sequence_enrollments e JOIN sequences s ON s.id = e.sequence_id
          WHERE e.lead_id = ? ORDER BY e.created_at DESC'
     );
     $stmt->execute([$leadId]);
     return $stmt->fetchAll();
+}
+
+function crm_deleteSequence(int $sequenceId): bool {
+    try {
+        $stmt = crm_db()->prepare('DELETE FROM sequences WHERE id = ?');
+        return $stmt->execute([$sequenceId]);
+    } catch (Throwable $e) { error_log('[crm_deleteSequence] ' . $e->getMessage()); return false; }
+}
+
+// Clone an existing sequence (with its steps) under a new name. Created copy
+// is INACTIVE so it can be edited safely before turning it on.
+function crm_duplicateSequence(int $sourceId, ?int $userId): ?int {
+    $src = crm_getSequence($sourceId);
+    if (!$src) return null;
+    $newId = crm_saveSequence(0, [
+        'name'          => mb_substr('Copy of ' . $src['name'], 0, 120),
+        'trigger_event' => $src['trigger_event'],
+        'trigger_value' => $src['trigger_value'] ?? '',
+        'active'        => false,
+    ], $userId);
+    if ($newId <= 0) return null;
+    $steps = [];
+    foreach ($src['steps'] as $st) {
+        $steps[] = [
+            'delay_days' => (int)$st['delay_days'],
+            'action'     => (string)$st['action'],
+            'payload'    => json_decode((string)$st['payload'], true) ?: [],
+        ];
+    }
+    crm_replaceSequenceSteps($newId, $steps);
+    return $newId;
+}
+
+// Unenroll one specific enrollment row (single sequence × lead pair) — used
+// when the operator clicks "Unenroll" on a lead's sequence card.
+function crm_unenrollEnrollment(int $enrollmentId, string $reason = 'manual'): bool {
+    try {
+        $stmt = crm_db()->prepare(
+            'UPDATE sequence_enrollments
+             SET completed_at = NOW(), unenrolled_reason = ?
+             WHERE id = ? AND completed_at IS NULL'
+        );
+        $stmt->execute([$reason, $enrollmentId]);
+        return $stmt->rowCount() > 0;
+    } catch (Throwable $e) { return false; }
 }
 
 // Trigger dispatcher: called from leads.php when status changes (or from cron).

@@ -87,6 +87,11 @@ crm_renderHeader($user, '');
   table.enr td a:hover{color:#6d28d9}
   table.enr .reason{font-size:11px;color:#6b6877;font-style:italic}
   .empty-enr{padding:18px;text-align:center;color:#6b6877;font-size:13px}
+
+  .row-btn{background:#fff;border:1px solid #e7e4ee;color:#6b6877;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+  .row-btn:hover{background:#f3f1f8;color:#0e0d12}
+  .row-btn.danger{color:#dc2626;border-color:#fecaca}
+  .row-btn.danger:hover{background:#fef2f2;color:#991b1b}
 </style>
 <main>
   <?php if ($saved): ?><div class="saved">Saved.</div><?php endif; ?>
@@ -126,7 +131,17 @@ crm_renderHeader($user, '');
         <?php endif; ?>
 
         <form class="card" method="post" action="/crm/update.php" id="seqForm">
-          <h2><?= $editing ? 'Edit sequence' : 'New sequence' ?></h2>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px">
+            <h2 style="margin:0"><?= $editing ? 'Edit sequence' : 'New sequence' ?></h2>
+            <?php if ($editing): ?>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="row-btn" onclick="document.getElementById('dupForm').submit()">Duplicate</button>
+                <?php if (($user['role'] ?? '') === 'founder'): ?>
+                <button type="button" class="row-btn danger" onclick="if(confirm('Delete this sequence?\n\nAll enrollments (active or finished) will be cascade-removed. This cannot be undone.')) document.getElementById('delForm').submit()">Delete</button>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
+          </div>
           <input type="hidden" name="mode" value="sequence_save">
           <input type="hidden" name="id" value="<?= $editing ? (int)$editing['id'] : 0 ?>">
           <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
@@ -167,6 +182,21 @@ crm_renderHeader($user, '');
 
           <button type="submit" class="primary">Save sequence</button>
         </form>
+
+        <?php if ($editing): ?>
+          <form id="dupForm" method="post" action="/crm/update.php" style="display:none">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <input type="hidden" name="mode" value="sequence_duplicate">
+            <input type="hidden" name="id" value="<?= (int)$editing['id'] ?>">
+          </form>
+          <?php if (($user['role'] ?? '') === 'founder'): ?>
+          <form id="delForm" method="post" action="/crm/update.php" style="display:none">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <input type="hidden" name="mode" value="sequence_delete">
+            <input type="hidden" name="id" value="<?= (int)$editing['id'] ?>">
+          </form>
+          <?php endif; ?>
+        <?php endif; ?>
 
         <?php if ($editing): ?>
           <div class="card">
@@ -249,15 +279,15 @@ crm_renderHeader($user, '');
       const opts = ['<option value="">— pick a template —</option>']
         .concat(TEMPLATES.map(t => `<option value="${t.id}" ${t.id===cur?'selected':''}>${escapeHtml(t.name)}</option>`))
         .join('');
-      return `<select data-pkey="template_id">${opts}</select>`;
+      return `<select data-pkey="template_id" required>${opts}</select>`;
     }
     if (action === 'create_task'){
       const title = escapeHtml(payload.title || '');
-      return `<input type="text" data-pkey="title" placeholder="Task title (e.g. Call {first_name})" value="${title}">`;
+      return `<input type="text" data-pkey="title" placeholder="Task title (e.g. Call {first_name})" value="${title}" required>`;
     }
     if (action === 'add_tag' || action === 'remove_tag'){
       const tag = escapeHtml(payload.tag || '');
-      return `<input type="text" data-pkey="tag" placeholder="Tag name" value="${tag}">`;
+      return `<input type="text" data-pkey="tag" placeholder="Tag name" value="${tag}" required>`;
     }
     return '';
   }

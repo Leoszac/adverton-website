@@ -24,6 +24,84 @@ function crm_autoTemperature(array $data): ?string {
     return 'cold';
 }
 
+// Numeric lead score (0-100) — combines source quality, audit signal,
+// engagement and freshness. Higher = more deserving of immediate attention.
+//
+// Components:
+//   Source base       0–35  pts   audit_auto > ebook > contact > other
+//   Audit need        0–25  pts   inverse of audit_score (low = high need)
+//   Core-trade bonus  0–10  pts   HVAC / Plumbing / Roofing / Electrical
+//   Phone present     0–5   pts   valid 10+ digits
+//   Engagement        0–25  pts   opens × 3 + clicks × 10  (capped)
+//   Recency penalty   0–-10 pts   stale leads lose score over 30+ days
+//
+// $row keys expected (best-effort, missing = 0): source, audit_score, trade,
+// phone, opens, clicks, days_old.
+function crm_computeLeadScore(array $row): int {
+    $score = 0;
+
+    // Source base
+    $sourceBase = [
+        'audit_auto'           => 35,  // ran the audit, gave us their profile — highest intent
+        'audit_manual'         => 30,
+        'ebook_growth_engine'  => 18,  // longer top-of-funnel
+        'contact_form'         => 22,
+        'inbound_call'         => 35,
+        'manual'               => 15,
+    ];
+    $score += $sourceBase[(string)($row['source'] ?? '')] ?? 10;
+
+    // Audit need (inverse of audit_score: 100 → 0 pts, 0 → 25 pts)
+    if (isset($row['audit_score']) && $row['audit_score'] !== null) {
+        $audit = (int)$row['audit_score'];
+        $score += (int) round(max(0, min(25, (100 - $audit) * 0.25)));
+    }
+
+    // Core-trade bonus (the four trades we know convert best)
+    $coreTrades = ['HVAC', 'Plumbing', 'Roofing', 'Electrical'];
+    if (in_array((string)($row['trade'] ?? ''), $coreTrades, true)) $score += 10;
+
+    // Valid phone
+    $phoneDigits = preg_replace('/\D/', '', (string)($row['phone'] ?? ''));
+    if (strlen($phoneDigits) >= 10) $score += 5;
+
+    // Engagement (opens × 3 + clicks × 10, cap at 25)
+    $opens  = (int)($row['opens']  ?? 0);
+    $clicks = (int)($row['clicks'] ?? 0);
+    $score += min(25, $opens * 3 + $clicks * 10);
+
+    // Recency penalty: > 30 days since creation, lose 1 pt per 5 days, max -10
+    if (isset($row['days_old']) && $row['days_old'] !== null) {
+        $daysOld = (int)$row['days_old'];
+        if ($daysOld > 30) {
+            $score -= (int) min(10, floor(($daysOld - 30) / 5));
+        }
+    }
+
+    return max(0, min(100, $score));
+}
+
+// Pull lead + engagement aggregates and compute a fresh score for one lead.
+// Useful when you have just a lead_id and want the current numeric score.
+function crm_getLeadScore(int $leadId): int {
+    try {
+        $stmt = crm_db()->prepare(
+            'SELECT l.source, l.audit_score, l.trade, l.phone,
+                    DATEDIFF(NOW(), l.created_at) AS days_old,
+                    COALESCE(SUM(es.open_count), 0)  AS opens,
+                    COALESCE(SUM(es.click_count), 0) AS clicks
+               FROM leads l
+               LEFT JOIN email_sends es ON es.lead_id = l.id
+              WHERE l.id = ?
+              GROUP BY l.id'
+        );
+        $stmt->execute([$leadId]);
+        $row = $stmt->fetch();
+        if (!$row) return 0;
+        return crm_computeLeadScore($row);
+    } catch (Throwable $e) { return 0; }
+}
+
 // Insert from public forms. Best-effort: silently swallows DB errors so
 // a misconfigured DB never breaks lead capture.
 //
@@ -240,18 +318,48 @@ function crm_findDuplicateLead(string $emailLc, string $phoneDigits): ?int {
 }
 
 // Filtered list. $filters keys: source, status, q (search), temperature, owner, mine.
+// Returns each lead with an extra computed `lead_score` (0-100) baked in.
 function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0): array {
     [$where, $params] = crm_buildWhere($filters);
-    $sql = "SELECT id, source, source_page, first_name, last_name, email, phone,
-                   business_name, trade, audit_score, status, owner_user_id,
-                   temperature, monthly_fee, ad_budget, mgmt_fee_pct, expected_close_at,
-                   created_at, updated_at
-            FROM leads {$where}
-            ORDER BY created_at DESC
+
+    // Aliased query so we can LEFT JOIN engagement totals from email_sends.
+    // `crm_buildWhere` returns column refs without table aliases, so re-prefix
+    // the ones that exist on `leads` to avoid ambiguous-column errors.
+    $whereAliased = $where;
+    if ($whereAliased !== '') {
+        $whereAliased = preg_replace(
+            '/\b(source|status|temperature|owner_user_id|trade|business_name|email|phone|first_name|last_name|notes)\b/',
+            'l.\1',
+            $whereAliased
+        );
+    }
+
+    $sql = "SELECT l.id, l.source, l.source_page, l.first_name, l.last_name, l.email, l.phone,
+                   l.business_name, l.trade, l.audit_score, l.status, l.owner_user_id,
+                   l.temperature, l.monthly_fee, l.ad_budget, l.mgmt_fee_pct, l.expected_close_at,
+                   l.created_at, l.updated_at,
+                   DATEDIFF(NOW(), l.created_at) AS days_old,
+                   COALESCE(es.opens, 0)  AS opens,
+                   COALESCE(es.clicks, 0) AS clicks
+            FROM leads l
+            LEFT JOIN (
+              SELECT lead_id,
+                     SUM(open_count)  AS opens,
+                     SUM(click_count) AS clicks
+                FROM email_sends
+               GROUP BY lead_id
+            ) es ON es.lead_id = l.id
+            {$whereAliased}
+            ORDER BY l.created_at DESC
             LIMIT {$limit} OFFSET {$offset}";
+
     $stmt = crm_db()->prepare($sql);
     $stmt->execute($params);
-    return $stmt->fetchAll();
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+        $r['lead_score'] = crm_computeLeadScore($r);
+    }
+    return $rows;
 }
 
 function crm_countLeads(array $filters = []): int {

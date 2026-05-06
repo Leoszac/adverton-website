@@ -244,11 +244,17 @@ function crm_sendTrackedEmail(int $leadId, array $lead, ?int $templateId, ?int $
     $sender   = $resolved['from'];
     $replyTo  = $resolved['reply_to'];
 
+    // Always send a plain-text alternative — improves deliverability
+    // (especially in Outlook/corporate filters that down-rank HTML-only mail)
+    // and gives a graceful fallback for clients that don't render HTML.
+    $textBody = crm_htmlToPlainText($bodyHtml);
+
     $payload = [
         'from'     => $sender,
         'to'       => [$lead['email']],
         'subject'  => $subject,
         'html'     => $html,
+        'text'     => $textBody,
         'reply_to' => $replyTo,
     ];
 
@@ -320,6 +326,33 @@ function crm_resolveUserSender(?int $userId): array {
     }
 
     return ['from' => $cfgFrom, 'reply_to' => $cfgReply];
+}
+
+// Convert HTML body to a clean plain-text alternative for the multipart email.
+// Preserves link URLs (Outlook hides them in HTML, so plain text shows them inline)
+// and converts paragraph/list breaks into line breaks.
+function crm_htmlToPlainText(string $html): string {
+    // Strip inline scripts/styles
+    $t = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $html);
+    $t = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $t);
+    // Convert <a href="X">Y</a> → "Y (X)" so the URL is visible in plain text
+    $t = preg_replace_callback('/<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/is', function($m){
+        $url  = trim($m[1]);
+        $text = trim(strip_tags($m[2]));
+        if ($text === '' || $text === $url) return $url;
+        return "{$text} ({$url})";
+    }, $t);
+    // Block-level → newline
+    $t = preg_replace('/<br\s*\/?>/i', "\n", $t);
+    $t = preg_replace('/<\/(p|div|h[1-6]|li|tr|table)>/i', "\n", $t);
+    $t = preg_replace('/<li\b[^>]*>/i', '• ', $t);
+    // Strip remaining tags
+    $t = strip_tags($t);
+    // Decode entities + collapse extra whitespace
+    $t = html_entity_decode($t, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $t = preg_replace("/[ \t]+/", ' ', $t);
+    $t = preg_replace("/\n{3,}/", "\n\n", $t);
+    return trim($t);
 }
 
 function crm_listSendsForLead(int $leadId): array {
