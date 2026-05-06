@@ -26,6 +26,7 @@ $files   = $client['lead_id'] ? crm_listFiles((int)$client['lead_id']) : [];
 $saved      = ($_GET['saved'] ?? '') === '1';
 $payErr     = (string)($_GET['payerr']  ?? '');
 $payLinkOk  = ($_GET['paylink'] ?? '') === '1';
+$cardLinkOk = ($_GET['cardlink'] ?? '') === '1';
 
 $mrr     = crm_clientMrr($client);
 $buyout  = crm_buyoutAmount($client);
@@ -77,7 +78,11 @@ crm_renderHeader($user, 'clients');
 </style>
 <main>
   <a class="back" href="/crm/clients.php">‹ All clients</a>
-  <?php if ($saved): ?><div class="saved"><?= $payLinkOk ? 'Payment link created and emailed.' : 'Saved.' ?></div><?php endif; ?>
+  <?php if ($saved):
+      $msg = 'Saved.';
+      if ($payLinkOk)  $msg = 'Payment link created and emailed.';
+      if ($cardLinkOk) $msg = 'Card-update link emailed.';
+  ?><div class="saved"><?= crm_h($msg) ?></div><?php endif; ?>
   <?php if ($payErr): ?><div class="saved" style="background:#fee2e2;color:#991b1b">Stripe error: <?= crm_h($payErr) ?></div><?php endif; ?>
 
   <div class="card">
@@ -158,6 +163,16 @@ crm_renderHeader($user, 'clients');
           $monthsLeft = max(0, 12 - $monthsPaid);
         ?>
           <span class="pill" style="background:#dcfce7;color:#166534">✓ Subscribed (<?= crm_h(substr((string)$client['stripe_subscription_id'], 0, 14)) ?>…)</span>
+          <form method="post" action="/crm/update.php" style="margin:0">
+            <input type="hidden" name="mode" value="client_send_card_update">
+            <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <button type="submit"
+                    onclick="return confirm('Email a Stripe Billing Portal link to <?= crm_h($client['primary_email'] ?? '?') ?> so they can update their card?\n\nThe portal session will ONLY allow payment-method update — no cancel, no plan changes.')"
+                    style="background:#fff;color:#0e0d12;border:1px solid #e7e4ee;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+              💳 Send card-update link
+            </button>
+          </form>
           <?php if (($user['role'] ?? '') === 'founder'): ?>
             <?php if ($canCancel): ?>
               <form method="post" action="/crm/update.php" style="margin:0">

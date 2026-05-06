@@ -444,38 +444,114 @@ case 'client_send_payment_link': {
     }
 
     $commitmentEnd = date('F Y', strtotime('+12 months'));
-    $subject = "Set up your Adverton subscription · {$monthly}/mo";
-    $body = "Hi {$name},\n\n"
-          . "Here's your secure payment link to activate your Adverton subscription:\n\n"
-          . $r['url'] . "\n\n"
-          . "What's included (\${$r['monthly']}/mo, billed monthly):\n"
-          . $itemsList . "\n"
-          . "Terms (per the Service Agreement you signed):\n"
-          . "· 12-month commitment, charged monthly until {$commitmentEnd}\n"
-          . "· Auto-renews for another 12 months unless either party gives 90-day notice\n"
-          . "· Card processing handled by Stripe — we never see card details\n\n"
-          . "Once payment is confirmed, your account goes active and onboarding kicks off the same day.\n\n"
-          . "Any questions, just reply.\n\n"
-          . "— Leandro\nAdverton";
+    $monthlyFmt    = '$' . number_format((float)$r['monthly'], 2);
+    $subject       = "Activate your Adverton subscription";
 
-    // Synthesize a "lead" payload for crm_sendTrackedEmail (it wants email + first_name)
-    $leadProxy = [
-        'id'         => 0, // not a real lead
-        'email'      => $client['primary_email'],
-        'first_name' => $client['business_name'] ?? '',
-        'last_name'  => '',
-    ];
-    // crm_sendTrackedEmail logs to lead_activities/email_sends — those FK to leads, so
-    // we can't reuse it for a client-only email. Instead, use Resend directly.
+    // Reply-To = the salesperson who clicked "Send" (so client replies route back to them)
+    $replyTo = crm_resolveUserSender((int)$user['id'])['reply_to'];
+
+    // Items list as HTML rows
+    $itemsHtml = '';
+    foreach ($r['items'] as $it) {
+        $itemsHtml .= '<tr><td style="padding:6px 12px 6px 0;color:#0e0d12;font-size:14px">'
+                   . htmlspecialchars((string)$it['name']) . '</td>'
+                   . '<td style="padding:6px 0;color:#6b6877;font-size:14px;text-align:right;white-space:nowrap">'
+                   . '$' . number_format((float)$it['monthly'], 2) . ' / mo</td></tr>';
+    }
+    $nameHtml    = htmlspecialchars($name);
+    $urlHtml     = htmlspecialchars($r['url']);
+
+    $bodyHtml = <<<HTML
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f4f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0e0d12">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f9">
+  <tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.05)">
+      <tr><td style="padding:32px 32px 8px 32px">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6d28d9">Adverton</div>
+      </td></tr>
+      <tr><td style="padding:8px 32px 0 32px">
+        <h1 style="margin:0;font-size:22px;line-height:1.3;color:#0e0d12;font-weight:700">Activate your Adverton subscription</h1>
+        <p style="margin:14px 0 0;font-size:15px;line-height:1.55;color:#383640">
+          Hi {$nameHtml}, here's your secure payment link. Click below to enter your card and activate your account today.
+        </p>
+      </td></tr>
+
+      <tr><td align="center" style="padding:28px 32px">
+        <a href="{$urlHtml}"
+           style="display:inline-block;background:#6d28d9;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;line-height:1">
+          💳 Pay {$monthlyFmt} / month →
+        </a>
+        <div style="margin-top:10px;font-size:11px;color:#6b6877">Card processing by Stripe · we never see card details</div>
+      </td></tr>
+
+      <tr><td style="padding:8px 32px">
+        <div style="background:#faf9ff;border:1px solid #e7e4ee;border-radius:10px;padding:16px 18px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b6877;margin-bottom:10px">What's included</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            {$itemsHtml}
+            <tr><td colspan="2" style="border-top:1px solid #e7e4ee;padding:10px 0 0;font-weight:700;color:#0e0d12;font-size:15px">
+              Total <span style="color:#6b6877;font-weight:500;font-size:13px">(billed monthly)</span>
+              <span style="float:right">{$monthlyFmt} / mo</span>
+            </td></tr>
+          </table>
+        </div>
+      </td></tr>
+
+      <tr><td style="padding:20px 32px 8px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6b6877;margin-bottom:8px">Terms</div>
+        <ul style="margin:0;padding:0 0 0 18px;color:#383640;font-size:14px;line-height:1.7">
+          <li>12-month commitment, charged monthly through {$commitmentEnd}</li>
+          <li>Auto-renews for another 12 months unless either party gives 90-day notice</li>
+          <li>Per the Adverton Service Agreement you signed</li>
+        </ul>
+      </td></tr>
+
+      <tr><td style="padding:24px 32px 32px">
+        <p style="margin:0;font-size:14px;color:#383640;line-height:1.55">
+          Once payment is confirmed, your account goes active and onboarding kicks off the same day.
+        </p>
+        <p style="margin:14px 0 0;font-size:14px;color:#383640;line-height:1.55">
+          Any questions, just reply to this email.
+        </p>
+        <p style="margin:18px 0 0;font-size:14px;color:#0e0d12">— The Adverton team</p>
+      </td></tr>
+
+      <tr><td style="padding:14px 32px 28px;border-top:1px solid #f0eef5">
+        <div style="font-size:11px;color:#a8a3b3;line-height:1.5">
+          Adverton · MDS LLC · 16192 Coastal Highway, Lewes, DE 19958 · adverton.net
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>
+HTML;
+
+    // Plain-text fallback (auto-derived from html for clients that prefer text)
+    $bodyText = "Hi {$name},\n\n"
+              . "Activate your Adverton subscription:\n\n"
+              . $r['url'] . "\n\n"
+              . "What's included ({$monthlyFmt}/mo, billed monthly):\n"
+              . $itemsList . "\n"
+              . "Terms (per the Adverton Service Agreement you signed):\n"
+              . "· 12-month commitment, charged monthly through {$commitmentEnd}\n"
+              . "· Auto-renews for another 12 months unless either party gives 90-day notice\n"
+              . "· Card processing by Stripe — we never see card details\n\n"
+              . "Once payment is confirmed, onboarding kicks off the same day.\n\n"
+              . "— The Adverton team";
+
     $apiKey = crm_config('RESEND_API_KEY');
     if ($apiKey) {
-        $sender = crm_resolveUserSender((int)$user['id']);
+        // Branded sender — transactional email comes from the company, replies go to salesperson
         $payload = [
-            'from'     => $sender['from'],
+            'from'     => 'Adverton <hello@adverton.net>',
             'to'       => [$client['primary_email']],
             'subject'  => $subject,
-            'text'     => $body,
-            'reply_to' => $sender['reply_to'],
+            'html'     => $bodyHtml,
+            'text'     => $bodyText,
+            'reply_to' => $replyTo,
         ];
         $ch = curl_init('https://api.resend.com/emails');
         curl_setopt_array($ch, [
@@ -490,10 +566,10 @@ case 'client_send_payment_link': {
         curl_close($ch);
         if ($code >= 400) {
             crm_logClientEvent($clientId, (int)$user['id'], 'note',
-                'Payment link email send failed (Resend ' . $code . ')');
+                'Payment link email send failed (Resend ' . $code . '): ' . substr((string)$resp, 0, 200));
         } else {
             crm_logClientEvent($clientId, (int)$user['id'], 'note',
-                'Payment link email sent to ' . $client['primary_email']);
+                'Payment link email sent to ' . $client['primary_email'] . ' (reply-to: ' . $replyTo . ')');
         }
     } else {
         crm_logClientEvent($clientId, (int)$user['id'], 'note',
@@ -501,6 +577,100 @@ case 'client_send_payment_link': {
     }
 
     header('Location: /crm/client.php?id=' . $clientId . '&saved=1&paylink=1');
+    exit;
+}
+
+case 'client_send_card_update': {
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); header('Location: /crm/clients.php'); exit; }
+    if (empty($client['primary_email'])) {
+        header('Location: /crm/client.php?id=' . $clientId . '&payerr=' . urlencode('Client has no primary_email'));
+        exit;
+    }
+
+    $r = crm_stripeCreateCardUpdateLink($client);
+    if (!$r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Card-update link creation failed: ' . $r['error']);
+        header('Location: /crm/client.php?id=' . $clientId . '&payerr=' . urlencode($r['error']));
+        exit;
+    }
+
+    crm_logClientEvent($clientId, (int)$user['id'], 'note',
+        "Stripe card-update link created", ['url' => $r['url']]);
+
+    $apiKey  = crm_config('RESEND_API_KEY');
+    $name    = trim((string)($client['business_name'] ?? '')) ?: 'there';
+    $url     = htmlspecialchars($r['url']);
+    $nameH   = htmlspecialchars($name);
+    $replyTo = crm_resolveUserSender((int)$user['id'])['reply_to'];
+    $subject = "Update your card on file · Adverton";
+
+    $bodyHtml = <<<HTML
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f4f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0e0d12">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f9">
+  <tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.05)">
+      <tr><td style="padding:32px 32px 8px">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6d28d9">Adverton</div>
+      </td></tr>
+      <tr><td style="padding:8px 32px">
+        <h1 style="margin:0;font-size:20px;line-height:1.3;color:#0e0d12;font-weight:700">Update your card on file</h1>
+        <p style="margin:14px 0 0;font-size:15px;line-height:1.55;color:#383640">
+          Hi {$nameH}, use the secure link below to update the card we have on file. This won't change your subscription or billing date — just the payment method.
+        </p>
+      </td></tr>
+      <tr><td align="center" style="padding:24px 32px">
+        <a href="{$url}" style="display:inline-block;background:#6d28d9;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;line-height:1">
+          💳 Update card →
+        </a>
+        <div style="margin-top:10px;font-size:11px;color:#6b6877">Hosted by Stripe · we never see card details</div>
+      </td></tr>
+      <tr><td style="padding:8px 32px 32px">
+        <p style="margin:0;font-size:14px;color:#383640;line-height:1.55">Any questions, just reply.</p>
+        <p style="margin:14px 0 0;font-size:14px;color:#0e0d12">— The Adverton team</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>
+HTML;
+
+    $bodyText = "Hi {$name},\n\nUpdate your card on file:\n\n{$r['url']}\n\nThis won't change your subscription or billing date — just the payment method.\n\n— The Adverton team";
+
+    if ($apiKey) {
+        $payload = [
+            'from'     => 'Adverton <hello@adverton.net>',
+            'to'       => [$client['primary_email']],
+            'subject'  => $subject,
+            'html'     => $bodyHtml,
+            'text'     => $bodyText,
+            'reply_to' => $replyTo,
+        ];
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey],
+            CURLOPT_TIMEOUT        => 8,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code >= 400) {
+            crm_logClientEvent($clientId, (int)$user['id'], 'note',
+                'Card-update email send failed (Resend ' . $code . ')');
+        } else {
+            crm_logClientEvent($clientId, (int)$user['id'], 'note',
+                'Card-update link emailed to ' . $client['primary_email']);
+        }
+    }
+
+    header('Location: /crm/client.php?id=' . $clientId . '&saved=1&cardlink=1');
     exit;
 }
 

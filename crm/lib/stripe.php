@@ -15,7 +15,7 @@ require_once __DIR__ . '/clients.php';
 // `code` matches the values used in client.addons[].code.
 const CRM_STRIPE_BASE_PLAN = [
     'code' => 'base',
-    'name' => 'Adverton Base Plan — website + reviews + LSA management',
+    'name' => 'Adverton',
     'monthly' => 799.00,
 ];
 const CRM_STRIPE_ADDON_CATALOG = [
@@ -135,6 +135,30 @@ function crm_clientStripeLineItems(array $client): array {
     }
 
     return $items;
+}
+
+// Create a Billing Portal session restricted to payment-method update only.
+// No cancel button, no subscription edits — just "swap your card".
+// Requires that a portal configuration exists in Stripe with the right perms.
+// We use Stripe's "default" config and rely on the `flow_data` API to scope
+// this single session to payment_method_update flow.
+function crm_stripeCreateCardUpdateLink(array $client): array {
+    if (empty($client['stripe_customer_id'])) {
+        return ['ok' => false, 'error' => 'Client has no stripe_customer_id (not yet subscribed)'];
+    }
+    $params = [
+        'customer'   => (string)$client['stripe_customer_id'],
+        'return_url' => 'https://adverton.net/',
+        // Scope this specific session to JUST update the default payment method.
+        // Even if your default portal config exposes other flows, this overrides.
+        'flow_data[type]' => 'payment_method_update',
+    ];
+    $r = crm_stripeRequest('POST', 'billing_portal/sessions', $params);
+    if (!$r['ok']) return ['ok' => false, 'error' => $r['error']];
+    return [
+        'ok'  => true,
+        'url' => $r['data']['url'] ?? '',
+    ];
 }
 
 // Cancel a Stripe subscription. By default cancels at period end (so the
