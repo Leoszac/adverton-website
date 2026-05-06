@@ -198,7 +198,8 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
   .bulk-bar input[type=text]{background:#1a1820;border:1px solid #2d2a36;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}
 </style>
 <main>
-  <div class="quick">
+  <div class="quick" style="justify-content:space-between">
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
     <a href="/crm/" class="<?= empty(array_filter($filters)) ? 'cur':'' ?>">All</a>
     <a href="<?= crm_h($qs(['mine'=>1,'page'=>null])) ?>">My leads</a>
     <a href="<?= crm_h($qs(['status'=>'new','page'=>null])) ?>">New</a>
@@ -207,6 +208,8 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
     <a href="<?= crm_h($qs(['status'=>'proposal','page'=>null])) ?>">Proposal</a>
     <a href="<?= crm_h($qs(['temperature'=>'hot','page'=>null])) ?>">🔥 Hot</a>
     <a href="<?= crm_h($qs(['stale_days'=>'7','page'=>null])) ?>">Stale 7d+</a>
+    </div>
+    <a href="/crm/lead-new.php" style="background:#6d28d9;color:#fff;border-color:#6d28d9;padding:5px 14px">+ New lead</a>
   </div>
 
   <form class="filters" method="get">

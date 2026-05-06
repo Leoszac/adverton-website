@@ -75,13 +75,16 @@ crm_renderHeader($user, 'clients');
     <div class="kpi <?= $atRisk?'warn':'' ?>"><div class="label">At risk</div><div class="value"><?= $atRisk ?></div></div>
   </div>
 
-  <div class="quick">
+  <div class="quick" style="justify-content:space-between">
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
     <a href="/crm/clients.php" class="<?= empty(array_filter($filters))?'cur':'' ?>">All</a>
     <a href="?mine=1">Mine</a>
     <a href="?status=onboarding">Onboarding</a>
     <a href="?status=active">Active</a>
     <a href="?payment_status=past_due">Past due</a>
     <a href="?expiring=90">Renewal &lt;90d</a>
+    </div>
+    <a href="/crm/client-new.php" style="background:#6d28d9;color:#fff;border-color:#6d28d9;padding:5px 14px">+ New client</a>
   </div>
 
   <form class="filters" method="get">

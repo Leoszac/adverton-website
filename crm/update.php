@@ -250,6 +250,62 @@ case 'template_save': {
     exit;
 }
 
+case 'lead_create': {
+    $email = strtolower(trim((string)($_POST['email'] ?? '')));
+    $name  = trim((string)($_POST['first_name'] ?? '') . ' ' . (string)($_POST['last_name'] ?? ''));
+    if ($email === '' && $name === '' && empty($_POST['business_name'])) {
+        header('Location: /crm/lead-new.php?err=empty'); exit;
+    }
+    $leadId = crm_insertLead([
+        'source'        => 'manual',
+        'source_page'   => 'manual entry by ' . ($user['username'] ?? ''),
+        'first_name'    => $_POST['first_name']    ?? null,
+        'last_name'     => $_POST['last_name']     ?? null,
+        'email'         => $_POST['email']         ?? null,
+        'phone'         => $_POST['phone']         ?? null,
+        'business_name' => $_POST['business_name'] ?? null,
+        'trade'         => $_POST['trade']         ?? null,
+        'city_state'    => $_POST['city_state']    ?? null,
+        'website'       => $_POST['website']       ?? null,
+    ]);
+    if (!$leadId) { header('Location: /crm/lead-new.php?err=insert'); exit; }
+
+    // Apply owner override + initial status (each may trigger downstream effects)
+    $owner = $_POST['owner_user_id'] ?? '';
+    $patch = [];
+    if ($owner !== '') $patch['owner_user_id'] = (int)$owner;
+    if (!empty($_POST['notes'])) $patch['notes'] = (string)$_POST['notes'];
+    if ($patch) crm_updateLead($leadId, $patch, (int)$user['id']);
+
+    $initial = (string)($_POST['initial_status'] ?? 'new');
+    if (in_array($initial, CRM_LEAD_STATUSES, true) && $initial !== 'new') {
+        crm_updateLead($leadId, ['status' => $initial], (int)$user['id']);
+    }
+    header('Location: /crm/lead.php?id=' . $leadId . '&saved=1');
+    exit;
+}
+
+case 'client_create': {
+    $clientId = crm_createClient([
+        'business_name'      => $_POST['business_name']      ?? null,
+        'trade'              => $_POST['trade']              ?? null,
+        'primary_email'      => $_POST['primary_email']      ?? null,
+        'primary_phone'      => $_POST['primary_phone']      ?? null,
+        'contract_start_at'  => $_POST['contract_start_at']  ?? null,
+        'contract_end_at'    => $_POST['contract_end_at']    ?? null,
+        'monthly_fee'        => $_POST['monthly_fee']        ?? null,
+        'ad_budget'          => $_POST['ad_budget']          ?? null,
+        'mgmt_fee_pct'       => $_POST['mgmt_fee_pct']       ?? null,
+        'status'             => $_POST['status']             ?? 'active',
+        'installment_count'  => $_POST['installment_count']  ?? 0,
+        'account_manager_id' => $_POST['account_manager_id'] ?? null,
+        'notes'              => $_POST['notes']              ?? null,
+    ], (int)$user['id']);
+    if (!$clientId) { header('Location: /crm/client-new.php?err=insert'); exit; }
+    header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
+    exit;
+}
+
 case 'client_update': {
     $id = (int)($_POST['id'] ?? 0);
     if ($id <= 0 || !crm_getClient($id)) { http_response_code(404); header('Location: /crm/clients.php'); exit; }

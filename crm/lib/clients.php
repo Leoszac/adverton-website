@@ -54,6 +54,48 @@ function crm_promoteLeadToClient(int $leadId, ?int $actorUserId = null): ?int {
     }
 }
 
+// Direct client creation — for clients closed off-platform or migrated in.
+// No lead_id required. Returns new client id or null on error.
+function crm_createClient(array $data, ?int $actorUserId = null): ?int {
+    try {
+        $start = !empty($data['contract_start_at']) ? (string)$data['contract_start_at'] : date('Y-m-d');
+        $end   = !empty($data['contract_end_at'])   ? (string)$data['contract_end_at']
+                                                    : date('Y-m-d', strtotime($start . ' +12 months'));
+
+        $stmt = crm_db()->prepare(
+            'INSERT INTO clients (lead_id, business_name, trade, primary_email, primary_phone,
+                                  contract_start_at, contract_end_at,
+                                  monthly_fee, ad_budget, mgmt_fee_pct,
+                                  status, payment_status, installment_count,
+                                  account_manager_id, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([
+            !empty($data['lead_id']) ? (int)$data['lead_id'] : null,
+            $data['business_name'] ?? null,
+            $data['trade']         ?? null,
+            $data['primary_email'] ?? null,
+            $data['primary_phone'] ?? null,
+            $start,
+            $end,
+            isset($data['monthly_fee']) && $data['monthly_fee'] !== '' ? (float)$data['monthly_fee'] : 799.00,
+            isset($data['ad_budget']) && $data['ad_budget'] !== '' ? (float)$data['ad_budget'] : null,
+            isset($data['mgmt_fee_pct']) && $data['mgmt_fee_pct'] !== '' ? (float)$data['mgmt_fee_pct'] : 0,
+            in_array($data['status'] ?? '', CRM_CLIENT_STATUSES, true) ? $data['status'] : 'active',
+            in_array($data['payment_status'] ?? '', CRM_PAYMENT_STATUSES, true) ? $data['payment_status'] : 'current',
+            isset($data['installment_count']) ? max(0, min(12, (int)$data['installment_count'])) : 0,
+            !empty($data['account_manager_id']) ? (int)$data['account_manager_id'] : $actorUserId,
+            $data['notes'] ?? null,
+        ]);
+        $id = (int) crm_db()->lastInsertId();
+        crm_logClientEvent($id, $actorUserId, 'status_change', 'Created manually (no lead source)');
+        return $id;
+    } catch (Throwable $e) {
+        error_log('[crm_createClient] ' . $e->getMessage());
+        return null;
+    }
+}
+
 function crm_getClient(int $id): ?array {
     try {
         $stmt = crm_db()->prepare('SELECT * FROM clients WHERE id = ?');
