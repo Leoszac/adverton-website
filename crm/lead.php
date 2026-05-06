@@ -10,6 +10,7 @@ require_once __DIR__ . '/lib/tags.php';
 require_once __DIR__ . '/lib/templates.php';
 require_once __DIR__ . '/lib/files.php';
 require_once __DIR__ . '/lib/email_track.php';
+require_once __DIR__ . '/lib/sequences.php';
 require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireLogin();
@@ -26,6 +27,7 @@ $allTags    = crm_listAllTags();
 $templates  = crm_listTemplates();
 $leadFiles  = crm_listFiles((int)$lead['id']);
 $emailSends = crm_listSendsForLead((int)$lead['id']);
+$leadSeqs   = crm_listEnrollmentsForLead((int)$lead['id']);
 $saved      = ($_GET['saved'] ?? '') === '1';
 $sendError  = (string)($_GET['sendError']  ?? '');
 $fileError  = (string)($_GET['fileerror']  ?? '');
@@ -506,6 +508,49 @@ crm_renderHeader($user, '');
           <button type="submit">Upload</button>
         </form>
       </div>
+
+      <?php if ($leadSeqs): ?>
+      <div class="card">
+        <h2>Sequences</h2>
+        <div class="sends-list">
+          <?php foreach ($leadSeqs as $se):
+            $isActive = empty($se['completed_at']);
+            $reason   = (string)($se['unenrolled_reason'] ?? '');
+            $totalSt  = (int)($se['total_steps'] ?? 0);
+            $curSt    = (int)$se['current_step'];
+            $when = $isActive
+                    ? ('next ' . crm_fmtRelative($se['next_run_at']))
+                    : crm_fmtRelative((string)($se['completed_at'] ?? ''));
+          ?>
+            <div class="s">
+              <div>
+                <div class="subj"><a href="/crm/sequences.php?edit=<?= (int)$se['sequence_id'] ?>" style="color:inherit;text-decoration:none"><?= crm_h($se['sequence_name']) ?></a></div>
+                <div class="meta">Step <?= $curSt ?>/<?= $totalSt ?> · <?= crm_h($when) ?></div>
+              </div>
+              <?php if ($isActive): ?>
+                <span class="stat sent">Active</span>
+              <?php elseif ($reason === 'completed'): ?>
+                <span class="stat opened">Completed</span>
+              <?php else: ?>
+                <span class="stat" style="background:#fee2e2;color:#991b1b">Off · <?= crm_h($reason) ?></span>
+              <?php endif; ?>
+              <?php if ($isActive): ?>
+                <form method="post" action="/crm/update.php" style="margin:0"
+                      onsubmit="return confirm('Unenroll this lead from this sequence?')">
+                  <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                  <input type="hidden" name="mode" value="sequence_unenroll">
+                  <input type="hidden" name="enrollment_id" value="<?= (int)$se['id'] ?>">
+                  <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
+                  <button type="submit" style="background:#fff;border:1px solid #e7e4ee;color:#6b6877;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">Unenroll</button>
+                </form>
+              <?php else: ?>
+                <span></span>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
 
       <?php if ($emailSends): ?>
       <div class="card">

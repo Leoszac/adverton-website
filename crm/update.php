@@ -410,6 +410,31 @@ case 'sequence_save': {
     exit;
 }
 
+case 'sequence_delete': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $id = (int)($_POST['id'] ?? 0);
+    if ($id > 0) crm_deleteSequence($id);
+    header('Location: /crm/sequences.php');
+    exit;
+}
+
+case 'sequence_duplicate': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    $id = (int)($_POST['id'] ?? 0);
+    $newId = $id > 0 ? crm_duplicateSequence($id, (int)$user['id']) : null;
+    header('Location: /crm/sequences.php' . ($newId ? ('?edit=' . $newId) : ''));
+    exit;
+}
+
+case 'sequence_unenroll': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    $enrId  = (int)($_POST['enrollment_id'] ?? 0);
+    $leadId = (int)($_POST['lead_id'] ?? 0);
+    if ($enrId > 0) crm_unenrollEnrollment($enrId, 'manual');
+    header('Location: /crm/lead.php?id=' . $leadId);
+    exit;
+}
+
 case 'routing_save': {
     if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
     $id = (int)($_POST['id'] ?? 0);

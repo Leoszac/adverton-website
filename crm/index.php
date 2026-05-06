@@ -316,8 +316,15 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
         <tr><td colspan="13" class="empty">No leads match these filters.</td></tr>
       <?php else: foreach ($rows as $r):
         $name = trim(($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? ''));
-        $score = $r['audit_score'];
-        $scoreCls = $score === null ? '' : ($score < 50 ? 'lo' : ($score < 75 ? 'md' : 'hi'));
+        // Composite lead score (0-100): source quality + audit need + engagement + freshness.
+        // Higher = more deserving of attention. Audit score visible on hover.
+        $score = $r['lead_score'] ?? null;
+        $auditScore = $r['audit_score'];
+        $scoreCls = $score === null ? '' : ($score >= 70 ? 'hi' : ($score >= 40 ? 'md' : 'lo'));
+        $scoreTitle = "Lead score (composite). Audit: " . ($auditScore === null ? '—' : (int)$auditScore . '/100')
+                    . " · Opens: " . (int)($r['opens'] ?? 0)
+                    . " · Clicks: " . (int)($r['clicks'] ?? 0)
+                    . " · Days old: " . (int)($r['days_old'] ?? 0);
         $owner = $r['owner_user_id'] !== null ? ($userMap[(int)$r['owner_user_id']] ?? '?') : '—';
         $mrr = crm_leadMrr($r);
       ?>
@@ -339,7 +346,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
               <?php endforeach; ?>
             </span>
           </td>
-          <td class="score <?= $scoreCls ?>"><?= $score === null ? '—' : (int)$score ?></td>
+          <td class="score <?= $scoreCls ?>" title="<?= crm_h($scoreTitle) ?>"><?= $score === null ? '—' : (int)$score ?></td>
           <td><?= $r['temperature'] ? '<span class="pill t-' . crm_h($r['temperature']) . '">' . crm_h($r['temperature']) . '</span>' : '—' ?></td>
           <td class="mrr"><?= crm_h(crm_fmtMoney($mrr ?: null)) ?></td>
           <td><?= crm_h($owner) ?></td>
