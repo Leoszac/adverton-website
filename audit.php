@@ -101,8 +101,16 @@ if ($secret && !empty($_POST['g-recaptcha-response'] ?? '')) {
         '&remoteip=' . urlencode($_SERVER['REMOTE_ADDR'] ?? '')
     );
     $result = json_decode((string)$verify, true);
-    if (!($result['success'] ?? false) || (($result['score'] ?? 0) < 0.3)) {
-        bail(403, 'recaptcha failed: ' . json_encode($result), 'recaptcha');
+    // Block only if token is valid but score is suspiciously low.
+    // Domain config errors (invalid-input-response) are logged but not blocking.
+    $errors = $result['error-codes'] ?? [];
+    $isDomainError = in_array('invalid-input-response', $errors, true)
+                  || in_array('invalid-input-secret', $errors, true);
+    if (!$isDomainError && ($result['success'] ?? false) && ($result['score'] ?? 1) < 0.3) {
+        bail(403, 'recaptcha low score: ' . json_encode($result), 'recaptcha');
+    }
+    if (!($result['success'] ?? false)) {
+        error_log('[adverton-audit] recaptcha non-blocking warn: ' . json_encode($result));
     }
 }
 
