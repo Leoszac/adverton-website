@@ -99,9 +99,21 @@ function crm_fmtMoney(?float $v): string {
     return '$' . number_format((float)$v, ($v == (int)$v ? 0 : 2));
 }
 
+// MySQL TIMESTAMP/DATETIME come back as 'YYYY-MM-DD HH:MM:SS' in the *session*
+// timezone, which we set to America/New_York in crm_db(). Just parse-and-display.
+function crm_parseDbTime(?string $ts): ?int {
+    if (!$ts) return null;
+    try {
+        $dt = new DateTime($ts, new DateTimeZone('America/New_York'));
+        return $dt->getTimestamp();
+    } catch (Throwable $e) {
+        return strtotime($ts) ?: null;
+    }
+}
+
 function crm_fmtRelative(?string $ts): string {
     if (!$ts) return '—';
-    $t = strtotime($ts);
+    $t = crm_parseDbTime($ts);
     if (!$t) return crm_h($ts);
     $diff = time() - $t;
     if ($diff < 60)         return 'just now';
@@ -109,4 +121,11 @@ function crm_fmtRelative(?string $ts): string {
     if ($diff < 86400)      return floor($diff/3600) . 'h ago';
     if ($diff < 86400*7)    return floor($diff/86400) . 'd ago';
     return date('M j', $t);
+}
+
+function crm_fmtDateTime(?string $ts): string {
+    if (!$ts) return '—';
+    $t = crm_parseDbTime($ts);
+    if (!$t) return crm_h($ts);
+    return date('M j, Y g:ia', $t);
 }

@@ -47,6 +47,11 @@ function crm_db(): PDO {
     static $pdo = null;
     if ($pdo !== null) return $pdo;
 
+    // PHP-side timezone: all date()/strtotime() output in NY local
+    if (!ini_get('date.timezone') || ini_get('date.timezone') !== 'America/New_York') {
+        date_default_timezone_set('America/New_York');
+    }
+
     $host = crm_config('DB_HOST', 'localhost');
     $name = crm_config('DB_NAME');
     $user = crm_config('DB_USER');
@@ -61,7 +66,26 @@ function crm_db(): PDO {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,
     ]);
+
+    // MySQL-side timezone: NOW(), CURDATE(), DATE_SUB() etc. now align to NY.
+    // Hostingheroes' MySQL doesn't load named tz tables, so we use the offset
+    // and update it daily-ish. -05:00 standard, -04:00 DST.
+    $offset = crm_currentNyOffset();
+    try { $pdo->exec("SET time_zone = '{$offset}'"); } catch (Throwable $e) { /* best-effort */ }
+
     return $pdo;
+}
+
+// Returns "-05:00" or "-04:00" depending on whether NY is in DST right now.
+function crm_currentNyOffset(): string {
+    $tz  = new DateTimeZone('America/New_York');
+    $now = new DateTime('now', $tz);
+    $sec = $tz->getOffset($now);            // e.g. -14400 in DST
+    $sign = $sec < 0 ? '-' : '+';
+    $abs  = abs($sec);
+    $h = (int)($abs / 3600);
+    $m = (int)(($abs % 3600) / 60);
+    return sprintf('%s%02d:%02d', $sign, $h, $m);
 }
 
 function crm_log(string $line): void {
