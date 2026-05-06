@@ -6,8 +6,8 @@ require_once __DIR__ . '/audit-scorer.php';
 
 // Email rendering + sending. Resend HTTP API primary, PHP mail() fallback.
 
-const SENDER_FROM    = 'Adverton Audit <no-reply@adverton.net>';
-const SENDER_REPLY   = 'leandro@adverton.net';
+const SENDER_FROM    = 'Adverton <no-reply@adverton.net>';
+const SENDER_REPLY   = 'hello@adverton.net';
 const SENDER_ADDRESS = '16192 Coastal Highway, Lewes, DE 19958, USA';
 const CTA_BASE_URL   = 'https://adverton.net/';
 
