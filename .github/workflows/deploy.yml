@@ -46,9 +46,8 @@ jobs:
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REMOTE_PATH: /home2/advertonnet/public_html
         run: |
-          # Build a lftp script. We mirror the repo into public_html with
-          # --delete to remove orphans, but exclude things that shouldn't ship.
-          cat > /tmp/lftp.script <<'LFTP'
+          echo "→ Mirroring to ${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}"
+          lftp -u "${SSH_USER}," "sftp://${SSH_HOST}:${SSH_PORT}" <<LFTP
           set sftp:auto-confirm yes
           set net:max-retries 3
           set net:reconnect-interval-base 5
@@ -56,9 +55,9 @@ jobs:
           set sftp:connect-program "ssh -a -x -i /home/runner/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15"
           mirror --reverse --delete --verbose --parallel=4 \
                  --exclude-glob .git \
-                 --exclude-glob .git/* \
+                 --exclude-glob .git/ \
                  --exclude-glob .github \
-                 --exclude-glob .github/* \
+                 --exclude-glob .github/ \
                  --exclude-glob .gitignore \
                  --exclude-glob .cpanel.yml \
                  --exclude-glob audit-config.example.php \
@@ -66,14 +65,9 @@ jobs:
                  --exclude-glob DEPLOY_GUIDE.md \
                  --exclude-glob configure_forms.sh \
                  --exclude-glob .DS_Store \
-                 . __REMOTE_PATH__/
+                 . ${REMOTE_PATH}/
           bye
           LFTP
-          # Substitute the path (lftp doesn't expand env vars in scripts cleanly)
-          sed -i "s|__REMOTE_PATH__|${REMOTE_PATH}|g" /tmp/lftp.script
-
-          echo "→ Mirroring to ${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}"
-          lftp -u "${SSH_USER}," sftp://${SSH_HOST}:${SSH_PORT} -f /tmp/lftp.script
           echo "✓ Mirror complete"
 
       - name: Verify live site
