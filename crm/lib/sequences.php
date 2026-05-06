@@ -76,13 +76,76 @@ function crm_replaceSequenceSteps(int $sequenceId, array $steps): void {
 
 function crm_enrollLeadInSequence(int $sequenceId, int $leadId): ?int {
     try {
+        // Honor the first step's delay_days. Without this the first step always
+        // ran immediately at enroll-time, ignoring its configured delay.
+        $stmt = crm_db()->prepare(
+            'SELECT delay_days FROM sequence_steps WHERE sequence_id = ? AND step_order = 1 LIMIT 1'
+        );
+        $stmt->execute([$sequenceId]);
+        $row = $stmt->fetch();
+        $delayDays = $row ? max(0, (int)$row['delay_days']) : 0;
+        $nextRun = date('Y-m-d H:i:s', strtotime("+{$delayDays} days"));
+
         $stmt = crm_db()->prepare(
             'INSERT IGNORE INTO sequence_enrollments (sequence_id, lead_id, current_step, next_run_at)
-             VALUES (?, ?, 0, NOW())'
+             VALUES (?, ?, 0, ?)'
         );
-        $stmt->execute([$sequenceId, $leadId]);
+        $stmt->execute([$sequenceId, $leadId, $nextRun]);
         return (int) crm_db()->lastInsertId();
     } catch (Throwable $e) { return null; }
+}
+
+// Aggregate counts for one sequence — used to power the stats card in the UI.
+function crm_getSequenceStats(int $sequenceId): array {
+    $empty = ['total'=>0,'active'=>0,'completed'=>0,'unenrolled'=>0,'completion_rate'=>0.0];
+    try {
+        $stmt = crm_db()->prepare(
+            'SELECT
+               COUNT(*) AS total,
+               SUM(CASE WHEN completed_at IS NULL THEN 1 ELSE 0 END) AS active,
+               SUM(CASE WHEN unenrolled_reason = "completed" THEN 1 ELSE 0 END) AS completed,
+               SUM(CASE WHEN completed_at IS NOT NULL AND unenrolled_reason != "completed" THEN 1 ELSE 0 END) AS unenrolled
+             FROM sequence_enrollments WHERE sequence_id = ?'
+        );
+        $stmt->execute([$sequenceId]);
+        $r = $stmt->fetch();
+        if (!$r) return $empty;
+        $total      = (int)$r['total'];
+        $completed  = (int)$r['completed'];
+        $unenrolled = (int)$r['unenrolled'];
+        $finished   = $completed + $unenrolled;
+        return [
+            'total'           => $total,
+            'active'          => (int)$r['active'],
+            'completed'       => $completed,
+            'unenrolled'      => $unenrolled,
+            'completion_rate' => $finished > 0 ? round($completed * 100.0 / $finished, 1) : 0.0,
+        ];
+    } catch (Throwable $e) { return $empty; }
+}
+
+// List enrollments for a sequence, optionally filtered by lifecycle state.
+// $statusFilter: null|'active'|'completed'|'unenrolled'
+function crm_listEnrollmentsForSequence(int $sequenceId, ?string $statusFilter = null, int $limit = 100): array {
+    try {
+        $where = ['e.sequence_id = ?'];
+        $args  = [$sequenceId];
+        if ($statusFilter === 'active') {
+            $where[] = 'e.completed_at IS NULL';
+        } elseif ($statusFilter === 'completed') {
+            $where[] = 'e.unenrolled_reason = "completed"';
+        } elseif ($statusFilter === 'unenrolled') {
+            $where[] = 'e.completed_at IS NOT NULL AND e.unenrolled_reason != "completed"';
+        }
+        $sql = 'SELECT e.*, l.first_name, l.last_name, l.business_name, l.email, l.status AS lead_status
+                FROM sequence_enrollments e JOIN leads l ON l.id = e.lead_id
+                WHERE ' . implode(' AND ', $where) . '
+                ORDER BY COALESCE(e.completed_at, e.next_run_at) DESC
+                LIMIT ' . max(1, min(500, (int)$limit));
+        $stmt = crm_db()->prepare($sql);
+        $stmt->execute($args);
+        return $stmt->fetchAll();
+    } catch (Throwable $e) { return []; }
 }
 
 function crm_unenrollLead(int $leadId, string $reason): int {
