@@ -357,5 +357,29 @@ crm_renderHeader($user, 'clients');
       <?php endif; ?>
     </div>
   </div>
+
+  <?php if (($user['role'] ?? '') === 'founder'):
+    $hasActiveSub = !empty($client['stripe_subscription_id']);
+    $confirmMsg = $hasActiveSub
+        ? 'Delete this client AND immediately cancel their active Stripe subscription?\n\nThis will:\n· Cancel Stripe sub ' . substr((string)$client['stripe_subscription_id'], 0, 16) . '… IMMEDIATELY (no period-end grace)\n· Delete the Stripe customer record too\n· Delete the client row + all client_events\n· The original lead (if any) survives\n\nCannot be undone.'
+        : 'Delete this client permanently?\n\nThis removes the client row + all client_events. The original lead (if any) survives.\n\nCannot be undone.';
+  ?>
+  <form class="card" method="post" action="/crm/update.php"
+        onsubmit="return confirm(<?= json_encode($confirmMsg) ?>)"
+        style="border:1px solid #fecaca;background:#fffafa;margin-top:14px">
+    <h2 style="color:#991b1b;margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.08em">Danger zone</h2>
+    <p style="font-size:13px;color:#6b6877;margin:0 0 10px">
+      <?php if ($hasActiveSub): ?>
+        Will <strong>immediately cancel</strong> the active Stripe subscription + delete the customer + delete this client row. Use for test data cleanup. For real cancellations, use "Cancel subscription" above (period-end graceful cancel).
+      <?php else: ?>
+        Use for test data or off-platform mistakes. No Stripe activity to cancel.
+      <?php endif; ?>
+    </p>
+    <input type="hidden" name="mode" value="client_delete">
+    <input type="hidden" name="id" value="<?= (int)$client['id'] ?>">
+    <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+    <button type="submit" style="background:#dc2626;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🗑 Delete client<?= $hasActiveSub ? ' + cancel subscription' : '' ?></button>
+  </form>
+  <?php endif; ?>
 </main>
 </body></html>

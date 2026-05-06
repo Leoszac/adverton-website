@@ -213,10 +213,22 @@ function crm_resolveUserSender(?int $userId): array {
         return ['from' => $from, 'reply_to' => $reply];
     }
 
-    return [
-        'from'     => crm_config('CRM_FROM_ADDRESS') ?: 'Adverton <leandro@adverton.net>',
-        'reply_to' => crm_config('CRM_REPLY_TO')     ?: 'leandro@adverton.net',
-    ];
+    $cfgFrom  = (string)(crm_config('CRM_FROM_ADDRESS') ?: '');
+    $cfgReply = (string)(crm_config('CRM_REPLY_TO') ?: '');
+
+    // Validate config-level From: must contain an email (RFC bracket-form OR bare).
+    // If invalid, log + use a hardcoded safe default rather than fail the send.
+    $fromHasEmail = (bool) preg_match('/<[^@\s]+@[^@\s>]+>/', $cfgFrom)
+                 || (bool) filter_var($cfgFrom, FILTER_VALIDATE_EMAIL);
+    if (!$fromHasEmail) {
+        if ($cfgFrom !== '') error_log("[crm_resolveUserSender] invalid CRM_FROM_ADDRESS='{$cfgFrom}' — using fallback");
+        $cfgFrom = 'Adverton <leandro@adverton.net>';
+    }
+    if (!filter_var($cfgReply, FILTER_VALIDATE_EMAIL)) {
+        $cfgReply = 'leandro@adverton.net';
+    }
+
+    return ['from' => $cfgFrom, 'reply_to' => $cfgReply];
 }
 
 function crm_listSendsForLead(int $leadId): array {

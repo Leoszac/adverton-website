@@ -59,6 +59,7 @@ crm_renderHeader($user, 'clients');
   .pill.cs-paused{background:#e5e7eb;color:#374151}
   .pill.cs-cancelled{background:#fecaca;color:#7f1d1d}
   .pill.cs-renewed{background:#fae8ff;color:#6b21a8}
+  .pill.ps-pending{background:#fef3c7;color:#92400e}
   .pill.ps-current{background:#dcfce7;color:#166534}
   .pill.ps-past_due{background:#fee2e2;color:#991b1b}
   .pill.ps-failed{background:#fee2e2;color:#991b1b}
@@ -69,6 +70,9 @@ crm_renderHeader($user, 'clients');
   .empty{padding:30px;text-align:center;color:#6b6877}
 </style>
 <main>
+  <?php $flash = (string)($_GET['msg'] ?? ''); if ($flash): ?>
+    <div style="background:#dcfce7;color:#166534;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px"><?= crm_h($flash) ?></div>
+  <?php endif; ?>
   <div class="kpis">
     <div class="kpi"><div class="label">Active clients</div><div class="value"><?= $total ?></div></div>
     <div class="kpi"><div class="label">Total MRR</div><div class="value"><?= crm_h(crm_fmtMoney($mrrTotal)) ?>/mo</div></div>

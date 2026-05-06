@@ -53,6 +53,9 @@ crm_renderHeader($user, '');
   <div class="sub">Configure third-party webhooks and integration secrets. Saved values override <code>crm-config.php</code>.</div>
 
   <?php if ($saved): ?><div class="saved">Saved.</div><?php endif; ?>
+  <?php $err = (string)($_GET['err'] ?? ''); if ($err): ?>
+    <div class="saved" style="background:#fee2e2;color:#991b1b">Validation error: <?= crm_h($err) ?></div>
+  <?php endif; ?>
 
   <form method="post" action="/crm/update.php">
     <input type="hidden" name="mode" value="integration_save">

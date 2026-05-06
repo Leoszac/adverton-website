@@ -8,7 +8,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 require_once __DIR__ . '/db.php';
 
 const CRM_CLIENT_STATUSES = ['onboarding','active','past_due','paused','cancelled','renewed'];
-const CRM_PAYMENT_STATUSES = ['current','past_due','failed','cancelled'];
+const CRM_PAYMENT_STATUSES = ['pending','current','past_due','failed','cancelled'];
 
 // Promote a won lead into a client. Idempotent: if a client already exists
 // for this lead_id, returns its id without creating a duplicate.
@@ -82,7 +82,7 @@ function crm_createClient(array $data, ?int $actorUserId = null): ?int {
             isset($data['ad_budget']) && $data['ad_budget'] !== '' ? (float)$data['ad_budget'] : null,
             isset($data['mgmt_fee_pct']) && $data['mgmt_fee_pct'] !== '' ? (float)$data['mgmt_fee_pct'] : 0,
             in_array($data['status'] ?? '', CRM_CLIENT_STATUSES, true) ? $data['status'] : 'active',
-            in_array($data['payment_status'] ?? '', CRM_PAYMENT_STATUSES, true) ? $data['payment_status'] : 'current',
+            in_array($data['payment_status'] ?? '', CRM_PAYMENT_STATUSES, true) ? $data['payment_status'] : 'pending',
             isset($data['installment_count']) ? max(0, min(12, (int)$data['installment_count'])) : 0,
             !empty($data['account_manager_id']) ? (int)$data['account_manager_id'] : $actorUserId,
             $data['notes'] ?? null,

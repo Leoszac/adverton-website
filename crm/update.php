@@ -309,6 +309,11 @@ case 'lead_create': {
 }
 
 case 'client_create': {
+    $bn = trim((string)($_POST['business_name'] ?? ''));
+    if ($bn === '') {
+        header('Location: /crm/client-new.php?err=' . urlencode('Business name is required'));
+        exit;
+    }
     $clientId = crm_createClient([
         'business_name'      => $_POST['business_name']      ?? null,
         'trade'              => $_POST['trade']              ?? null,
@@ -538,14 +543,76 @@ case 'client_cancel_subscription': {
 
 case 'integration_save': {
     if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
-    $saved = 0;
+    $saved = 0; $errors = [];
     foreach (CRM_DB_BACKED_KEYS as $k) {
         if (!array_key_exists($k, $_POST)) continue;
         $v = trim((string)$_POST[$k]);
+
+        // Per-key validation. Empty is always allowed (clears the override).
+        if ($v !== '') {
+            if ($k === 'CRM_FROM_ADDRESS') {
+                $ok = preg_match('/<[^@\s]+@[^@\s>]+>/', $v) || filter_var($v, FILTER_VALIDATE_EMAIL);
+                if (!$ok) { $errors[] = "{$k}: must be 'Name <email@domain>' or just 'email@domain'"; continue; }
+            }
+            if ($k === 'CRM_REPLY_TO' && !filter_var($v, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "{$k}: must be a valid email"; continue;
+            }
+            if ($k === 'STRIPE_API_KEY' && !preg_match('/^sk_(live|test)_/', $v)) {
+                $errors[] = "{$k}: must start with sk_live_ or sk_test_"; continue;
+            }
+            if ($k === 'NEW_LEAD_WEBHOOK_URL' && !filter_var($v, FILTER_VALIDATE_URL)) {
+                $errors[] = "{$k}: must be a valid URL"; continue;
+            }
+        }
         if (crm_saveSetting($k, $v, (int)$user['id'])) $saved++;
     }
-    crm_log("integration_save uid={$user['id']} keys={$saved}");
-    header('Location: /crm/integrations.php?saved=1');
+    crm_log("integration_save uid={$user['id']} keys={$saved} errors=" . count($errors));
+    $qs = $errors ? '?err=' . urlencode(implode(' · ', $errors)) : '?saved=1';
+    header('Location: /crm/integrations.php' . $qs);
+    exit;
+}
+
+case 'client_delete': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $id = (int)($_POST['id'] ?? 0);
+    if ($id <= 0) { http_response_code(400); exit; }
+    $client = crm_getClient($id);
+    if (!$client) { http_response_code(404); exit; }
+
+    $warnings = [];
+
+    // 1. Cancel any active Stripe subscription IMMEDIATELY (deleting would orphan it)
+    if (!empty($client['stripe_subscription_id'])) {
+        $r = crm_stripeCancelSubscription((string)$client['stripe_subscription_id'], true); // immediate
+        if (!$r['ok']) {
+            // Hard fail — refuse to delete if we can't kill the sub, otherwise the
+            // customer keeps getting billed with no CRM record.
+            header('Location: /crm/client.php?id=' . $id . '&payerr=' . urlencode(
+                'Could not cancel Stripe subscription: ' . $r['error'] . ' — deletion aborted to prevent orphaned billing'));
+            exit;
+        }
+        $warnings[] = 'Stripe sub ' . substr((string)$client['stripe_subscription_id'], 0, 14) . '… cancelled immediately';
+    }
+
+    // 2. Delete the Stripe customer too (so test data doesn't pile up there either)
+    if (!empty($client['stripe_customer_id'])) {
+        $r = crm_stripeRequest('DELETE', 'customers/' . $client['stripe_customer_id']);
+        if ($r['ok']) {
+            $warnings[] = 'Stripe customer ' . substr((string)$client['stripe_customer_id'], 0, 14) . '… deleted';
+        }
+    }
+
+    // 3. Delete the client row (client_events cascade via FK)
+    try {
+        $stmt = crm_db()->prepare('DELETE FROM clients WHERE id = ?');
+        $stmt->execute([$id]);
+        crm_log("client_delete uid={$user['id']} cid={$id} biz='" . ($client['business_name'] ?? '') . "' warnings=" . count($warnings));
+        $msg = 'Client deleted.' . ($warnings ? ' Also: ' . implode(' · ', $warnings) : '');
+        header('Location: /crm/clients.php?saved=1&msg=' . urlencode($msg));
+    } catch (Throwable $e) {
+        error_log('[client_delete] ' . $e->getMessage());
+        header('Location: /crm/client.php?id=' . $id . '&payerr=' . urlencode('DB delete failed: ' . $e->getMessage()));
+    }
     exit;
 }
 

@@ -27,6 +27,10 @@ crm_renderHeader($user, 'clients');
 <main>
   <a href="/crm/clients.php" style="font-size:13px;color:#6b6877;text-decoration:none;display:inline-block;margin-bottom:14px">‹ Back to clients</a>
 
+  <?php $err = (string)($_GET['err'] ?? ''); if ($err): ?>
+    <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;max-width:680px;margin-left:auto;margin-right:auto"><?= crm_h($err) ?></div>
+  <?php endif; ?>
+
   <form class="card" method="post" action="/crm/update.php">
     <h1>New client</h1>
     <div class="sub">Direct entry — no lead/pipeline history. Use this for clients you closed off-platform or are migrating in.</div>
