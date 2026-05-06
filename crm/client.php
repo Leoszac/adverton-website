@@ -127,13 +127,18 @@ crm_renderHeader($user, 'clients');
       <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
       <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
       <select name="code" style="width:auto">
+        <option value="local_seo_pro">Local SEO Pro — $399</option>
+        <option value="social_1">Social — 1 platform — $199</option>
+        <option value="social_2">Social — 2 platforms — $349</option>
+        <option value="social_3">Social — 3 platforms — $499</option>
         <option value="ai_voice">AI Voice — $349</option>
         <option value="meta_ads">Meta Ads — $199</option>
         <option value="yelp_mgmt">Yelp setup+mgmt — $149</option>
-        <option value="content_updates">Content updates — $99</option>
         <option value="multi_location">Multi-location — $199</option>
         <option value="extra_email">Extra email — $15</option>
         <option value="leads_marketplace_1">Lead marketplace (1) — $199</option>
+        <option value="leads_marketplace_2">Lead marketplace (2) — $349</option>
+        <option value="leads_marketplace_3">Lead marketplace (3) — $499</option>
       </select>
       <input type="number" step="0.01" name="price" placeholder="Override $" style="width:120px">
       <button type="submit" class="primary" style="margin-top:0">+ Add</button>

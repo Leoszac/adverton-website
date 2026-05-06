@@ -19,10 +19,13 @@ const CRM_STRIPE_BASE_PLAN = [
     'monthly' => 799.00,
 ];
 const CRM_STRIPE_ADDON_CATALOG = [
+    'local_seo_pro'        => ['name' => 'Local SEO Pro',                 'monthly' => 399.00],
+    'social_1'             => ['name' => 'Social Media Posts — 1 platform',  'monthly' => 199.00],
+    'social_2'             => ['name' => 'Social Media Posts — 2 platforms', 'monthly' => 349.00],
+    'social_3'             => ['name' => 'Social Media Posts — 3 platforms', 'monthly' => 499.00],
     'ai_voice'             => ['name' => 'AI Voice receptionist',         'monthly' => 349.00],
     'meta_ads'             => ['name' => 'Meta Ads management (IG+FB)',   'monthly' => 199.00],
     'yelp_mgmt'            => ['name' => 'Yelp setup + management',       'monthly' => 149.00],
-    'content_updates'      => ['name' => 'Monthly content updates',       'monthly' => 99.00],
     'multi_location'       => ['name' => 'Multi-location (per location)', 'monthly' => 199.00],
     'extra_email'          => ['name' => 'Extra branded email mailbox',   'monthly' => 15.00],
     'leads_marketplace_1'  => ['name' => 'Lead marketplace mgmt — 1 platform',  'monthly' => 199.00],

@@ -372,7 +372,7 @@ case 'client_addon_add': {
     $code  = (string)($_POST['code'] ?? '');
     $price = (float)($_POST['price'] ?? 0);
     if ($price <= 0) {
-        $defaults = ['ai_voice'=>349,'meta_ads'=>199,'yelp_mgmt'=>149,'content_updates'=>99,'multi_location'=>199,'extra_email'=>15,'leads_marketplace_1'=>199];
+        $defaults = ['local_seo_pro'=>399,'social_1'=>199,'social_2'=>349,'social_3'=>499,'ai_voice'=>349,'meta_ads'=>199,'yelp_mgmt'=>149,'multi_location'=>199,'extra_email'=>15,'leads_marketplace_1'=>199,'leads_marketplace_2'=>349,'leads_marketplace_3'=>499];
         $price = (float)($defaults[$code] ?? 0);
     }
     if ($id > 0 && $code !== '' && $price > 0) {
