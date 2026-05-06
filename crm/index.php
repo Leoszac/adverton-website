@@ -217,9 +217,12 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
       <label>Source</label>
       <select name="source">
         <option value="">All</option>
-        <option value="audit_auto"   <?= $filters['source']==='audit_auto'?'selected':'' ?>>Audit (auto)</option>
-        <option value="audit_manual" <?= $filters['source']==='audit_manual'?'selected':'' ?>>Audit (manual)</option>
-        <option value="contact_form" <?= $filters['source']==='contact_form'?'selected':'' ?>>Contact form</option>
+        <option value="audit_auto"          <?= $filters['source']==='audit_auto'?'selected':'' ?>>Audit · auto</option>
+        <option value="audit_manual"        <?= $filters['source']==='audit_manual'?'selected':'' ?>>Audit · manual</option>
+        <option value="contact_form"        <?= $filters['source']==='contact_form'?'selected':'' ?>>Contact form</option>
+        <option value="ebook_growth_engine" <?= $filters['source']==='ebook_growth_engine'?'selected':'' ?>>Ebook · Growth Engine</option>
+        <option value="inbound_call"        <?= $filters['source']==='inbound_call'?'selected':'' ?>>Inbound call</option>
+        <option value="manual"              <?= $filters['source']==='manual'?'selected':'' ?>>Manual entry</option>
       </select>
     </div>
     <div>
@@ -328,7 +331,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
           <td><?= crm_h($r['email'] ?? '') ?></td>
           <td><?= crm_h($r['phone'] ?? '') ?></td>
           <td><?= crm_h($r['trade'] ?? '') ?></td>
-          <td><span class="src"><?= crm_h($r['source']) ?></span></td>
+          <td><span class="src"><?= crm_h(crm_sourceLabel($r['source'])) ?></span></td>
           <td>
             <span class="tg">
               <?php foreach (($r['tags'] ?? []) as $tg): ?>

@@ -186,7 +186,7 @@ crm_renderHeader($user, '');
       </form>
     </div>
     <div class="sub">
-      <span style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#6b6877;font-weight:700"><?= crm_h($lead['source']) ?></span>
+      <span style="text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:#6b6877;font-weight:700"><?= crm_h(crm_sourceLabel($lead['source'])) ?></span>
       · received <?= crm_h(substr((string)$lead['created_at'], 0, 16)) ?>
       <?php if ($lead['source_page']): ?>· from <?= crm_h($lead['source_page']) ?><?php endif; ?>
     </div>

@@ -216,7 +216,7 @@ crm_renderHeader($user, 'reports');
             $cv = (int)$r['n'] > 0 ? ((int)$r['won'] / (int)$r['n']) : 0;
           ?>
             <tr>
-              <td><?= crm_h($r['source']) ?></td>
+              <td><?= crm_h(crm_sourceLabel($r['source'])) ?></td>
               <td class="num"><?= (int)$r['n'] ?></td>
               <td class="num"><?= (int)$r['won'] ?></td>
               <td class="num"><?= number_format($cv*100,1) ?>%</td>

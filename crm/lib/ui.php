@@ -99,6 +99,21 @@ function crm_fmtMoney(?float $v): string {
     return '$' . number_format((float)$v, ($v == (int)$v ? 0 : 2));
 }
 
+// Human-readable label for a lead source. Falls back to the raw value
+// (with underscores → spaces) for any unknown source.
+function crm_sourceLabel(?string $source): string {
+    static $labels = [
+        'audit_auto'           => 'Audit · auto',
+        'audit_manual'         => 'Audit · manual',
+        'contact_form'         => 'Contact form',
+        'inbound_call'         => 'Inbound call',
+        'manual'               => 'Manual entry',
+        'ebook_growth_engine'  => 'Ebook · Growth Engine',
+    ];
+    if (!$source) return '—';
+    return $labels[$source] ?? str_replace('_', ' ', $source);
+}
+
 // MySQL TIMESTAMP/DATETIME come back as 'YYYY-MM-DD HH:MM:SS' in the *session*
 // timezone, which we set to America/New_York in crm_db(). Just parse-and-display.
 function crm_parseDbTime(?string $ts): ?int {
