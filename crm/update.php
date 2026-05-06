@@ -279,9 +279,15 @@ case 'lead_create': {
     if ($email === '' && $name === '' && empty($_POST['business_name'])) {
         header('Location: /crm/lead-new.php?err=empty'); exit;
     }
+    $sourceIn = (string)($_POST['source'] ?? 'manual');
+    $allowedManual = ['manual','lead_magnet','referral','affiliate','inbound_call'];
+    if (!in_array($sourceIn, $allowedManual, true)) $sourceIn = 'manual';
+    $sourcePageIn = trim((string)($_POST['source_page'] ?? ''));
+    if ($sourcePageIn === '') $sourcePageIn = 'manual entry by ' . ($user['username'] ?? '');
+
     $leadId = crm_insertLead([
-        'source'        => 'manual',
-        'source_page'   => 'manual entry by ' . ($user['username'] ?? ''),
+        'source'        => $sourceIn,
+        'source_page'   => $sourcePageIn,
         'first_name'    => $_POST['first_name']    ?? null,
         'last_name'     => $_POST['last_name']     ?? null,
         'email'         => $_POST['email']         ?? null,

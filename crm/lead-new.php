@@ -61,6 +61,23 @@ crm_renderHeader($user, 'leads');
     </div>
     <div class="row2">
       <div>
+        <label>Source</label>
+        <select name="source">
+          <option value="manual">Manual entry</option>
+          <option value="lead_magnet">Lead magnet (audit, ebook, etc)</option>
+          <option value="referral">Referral</option>
+          <option value="affiliate">Affiliate</option>
+          <option value="inbound_call">Inbound call</option>
+        </select>
+      </div>
+      <div>
+        <label>Source page / referrer (optional)</label>
+        <input type="text" name="source_page" placeholder="who referred · campaign · landing page">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
         <label>Owner</label>
         <select name="owner_user_id">
           <option value="<?= (int)$user['id'] ?>">Me (<?= crm_h($user['display_name']) ?>)</option>

@@ -54,7 +54,7 @@ $addons = CRM_STRIPE_ADDON_CATALOG;
 <main class="wrap">
   <a href="/crm/lead.php?id=<?= (int)$leadId ?>" style="font-size:13px;color:#6b6877;text-decoration:none;display:inline-block;margin-bottom:14px">‹ Back to lead</a>
 
-  <form class="card" method="post" action="/crm/update.php" id="propForm">
+  <form class="card" method="post" action="/crm/proposal-preview.php" id="propForm">
     <h1>Build &amp; send proposal</h1>
     <div class="sub">Pick the plan + add-ons, click "Send proposal". The CRM creates a client + Stripe payment link + emails it. Lead auto-moves to <code>won</code> when they pay.</div>
 
@@ -69,7 +69,6 @@ $addons = CRM_STRIPE_ADDON_CATALOG;
       <div style="font-size:13px;color:#6b6877"><?= crm_h($lead['email'] ?? '(no email)') ?> · <?= crm_h($lead['business_name'] ?? '?') ?> · <?= crm_h($lead['trade'] ?? '?') ?></div>
     </div>
 
-    <input type="hidden" name="mode" value="proposal_send">
     <input type="hidden" name="lead_id" value="<?= (int)$leadId ?>">
     <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
 
@@ -111,7 +110,7 @@ $addons = CRM_STRIPE_ADDON_CATALOG;
       <div class="amt" id="total">$<?= number_format(799, 0) ?></div>
     </div>
 
-    <button type="submit" class="primary">📧 Send proposal email + Stripe link</button>
+    <button type="submit" class="primary">Preview proposal →</button>
   </form>
 </main>
 <script>

@@ -107,9 +107,7 @@ case 'customer.subscription.deleted': {
     ], null);
     crm_logClientEvent((int)$client['id'], null, 'status_change',
         'Stripe subscription cancelled');
-    if ($client['account_manager_id'] && $client['lead_id']) {
-        crm_clawbackOnCancel((int)$client['id'], (int)$client['lead_id'], (int)$client['account_manager_id']);
-    }
+    // Commissions disabled per founder decision — no clawback
     break;
 }
 

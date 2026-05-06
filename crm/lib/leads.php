@@ -299,30 +299,11 @@ function crm_updateLead(int $id, array $patch, ?int $actorUserId = null): bool {
             }
         }
 
-        // Won → promote to active client + commission event
+        // Won → promote to active client (no commission event — commissions disabled)
         if ($patch['status'] === 'won') {
             if (file_exists(__DIR__ . '/clients.php')) {
                 require_once __DIR__ . '/clients.php';
                 crm_promoteLeadToClient($id, $actorUserId);
-            }
-            if (file_exists(__DIR__ . '/commissions.php')) {
-                require_once __DIR__ . '/commissions.php';
-                crm_recordCommission($actorUserId ?? (int)($current['owner_user_id'] ?? 0),
-                    'close_signed', 250.00, $id, null, 'Lead → won');
-            }
-        }
-        // Qualified → demo commission (if BANT meets bar)
-        if ($patch['status'] === 'qualified' && file_exists(__DIR__ . '/commissions.php')) {
-            $bantYes = 0;
-            foreach (['bant_budget','bant_authority','bant_need'] as $k) {
-                if (($current[$k] ?? '') === 'yes') $bantYes++;
-            }
-            if ($bantYes >= 2) {
-                require_once __DIR__ . '/commissions.php';
-                crm_recordCommissionOnce(
-                    $actorUserId ?? (int)($current['owner_user_id'] ?? 0),
-                    'demo', 20.00, $id, null, 'Qualified demo (BANT≥2)'
-                );
             }
         }
     }

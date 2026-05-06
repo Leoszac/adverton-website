@@ -5,7 +5,6 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/clients.php';
-require_once __DIR__ . '/lib/commissions.php';
 require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireLogin();
@@ -305,59 +304,26 @@ crm_renderHeader($user, 'reports');
                      FROM clients WHERE status IN ('onboarding','active','renewed','past_due')";
     $committed = (float) ($db->query($committedSql)->fetch()['mrr'] ?? 0);
 
-    // Commissions by user, this month
-    $compSql = "SELECT u.id, u.display_name,
-                       SUM(CASE WHEN c.type='demo'         THEN c.amount ELSE 0 END) AS demos,
-                       SUM(CASE WHEN c.type='close_signed' THEN c.amount ELSE 0 END) AS signed,
-                       SUM(CASE WHEN c.type='close_day90'  THEN c.amount ELSE 0 END) AS day90,
-                       SUM(CASE WHEN c.type='clawback'     THEN c.amount ELSE 0 END) AS clawback,
-                       SUM(c.amount) AS total
-                FROM users u
-                LEFT JOIN commission_events c ON c.user_id = u.id
-                  AND c.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                GROUP BY u.id ORDER BY total DESC";
-    $compRows = $db->query($compSql)->fetchAll();
   ?>
 
-  <div class="grid2">
-    <div class="card">
-      <h2>Weighted forecast · next 90 days</h2>
-      <?php if (!$forecastByMonth): ?>
-        <div style="color:#6b6877;font-size:13px">Set <code>expected_close_at</code> on leads to see forecast.</div>
-      <?php else:
-        $maxF = max(1, max($forecastByMonth));
-        ksort($forecastByMonth);
-        foreach ($forecastByMonth as $m => $v):
-          $w = $v / $maxF * 100;
-      ?>
-        <div class="bar">
-          <span class="lbl"><?= crm_h(date('M Y', strtotime($m . '-01'))) ?></span>
-          <div class="track"><div class="fill" style="width:<?= number_format($w,1) ?>%;background:#16a34a"></div></div>
-          <span class="v"><?= crm_h(crm_fmtMoney($v)) ?>/mo</span>
-        </div>
-      <?php endforeach; endif; ?>
-      <p style="font-size:11px;color:#6b6877;margin-top:10px">Probabilities: new 5% · contacted 15% · qualified 35% · proposal 65% · won 100%.</p>
-      <p style="font-size:13px;margin-top:14px"><strong>Committed MRR (active clients):</strong> <?= crm_h(crm_fmtMoney($committed)) ?>/mo</p>
-    </div>
-
-    <div class="card">
-      <h2>Commissions · last 30 days</h2>
-      <table>
-        <thead><tr><th>User</th><th class="num">Demos</th><th class="num">Signed</th><th class="num">Day-90</th><th class="num">Clawback</th><th class="num">Total</th></tr></thead>
-        <tbody>
-        <?php foreach ($compRows as $r): if (!$r['total']) continue; ?>
-          <tr>
-            <td><?= crm_h($r['display_name']) ?></td>
-            <td class="num"><?= crm_h(crm_fmtMoney((float)$r['demos'])) ?></td>
-            <td class="num"><?= crm_h(crm_fmtMoney((float)$r['signed'])) ?></td>
-            <td class="num"><?= crm_h(crm_fmtMoney((float)$r['day90'])) ?></td>
-            <td class="num" style="color:#dc2626"><?= crm_h(crm_fmtMoney((float)$r['clawback'])) ?></td>
-            <td class="num"><strong><?= crm_h(crm_fmtMoney((float)$r['total'])) ?></strong></td>
-          </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
+  <div class="card">
+    <h2>Weighted forecast · next 90 days</h2>
+    <?php if (!$forecastByMonth): ?>
+      <div style="color:#6b6877;font-size:13px">Set <code>expected_close_at</code> on leads to see forecast.</div>
+    <?php else:
+      $maxF = max(1, max($forecastByMonth));
+      ksort($forecastByMonth);
+      foreach ($forecastByMonth as $m => $v):
+        $w = $v / $maxF * 100;
+    ?>
+      <div class="bar">
+        <span class="lbl"><?= crm_h(date('M Y', strtotime($m . '-01'))) ?></span>
+        <div class="track"><div class="fill" style="width:<?= number_format($w,1) ?>%;background:#16a34a"></div></div>
+        <span class="v"><?= crm_h(crm_fmtMoney($v)) ?>/mo</span>
+      </div>
+    <?php endforeach; endif; ?>
+    <p style="font-size:11px;color:#6b6877;margin-top:10px">Probabilities: new 5% · contacted 15% · qualified 35% · proposal 65% · won 100%.</p>
+    <p style="font-size:13px;margin-top:14px"><strong>Committed MRR (active clients):</strong> <?= crm_h(crm_fmtMoney($committed)) ?>/mo</p>
   </div>
 
   <div class="card">

@@ -6,7 +6,6 @@ declare(strict_types=1);
 if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/clients.php';
-require_once __DIR__ . '/lib/commissions.php';
 require_once __DIR__ . '/lib/activities.php';
 
 $cli = (php_sapi_name() === 'cli') || defined('CRM_INPROCESS_CRON');
@@ -20,8 +19,8 @@ if (!$cli) {
 $db = crm_db();
 $updated = 0;
 
-// Day-90 retention close commissions (idempotent)
-$d90 = crm_creditDay90Closes();
+// (Commissions disabled — no day-90 credit step.)
+$d90 = 0;
 
 $rows = $db->query(
     "SELECT * FROM clients WHERE status NOT IN ('cancelled')"
