@@ -58,40 +58,86 @@
 </header>
 
 <section class="audit-hero">
+  <div class="audit-hero-bg" aria-hidden="true"></div>
   <div class="wrap audit-hero-inner">
     <div class="audit-hero-grid">
-      <div>
-        <div class="eyebrow">Free GBP audit · 60 seconds · No call</div>
+      <div class="audit-hero-copy">
+        <div class="audit-hero-pill">
+          <span class="audit-hero-pill-dot"></span>
+          Free GBP audit · 60 seconds · No call
+        </div>
         <h1>What's <span class="accent">really</span> hurting your Google ranking?</h1>
-        <p class="lede">Paste your Google Maps link. We grade your profile from 0 to 100, name the exact issues costing you calls, and email you a fix-this-week checklist. <strong>Built for U.S. home service contractors.</strong></p>
-        <a href="#auditForm" class="btn btn-primary btn-arrow">Run my free audit</a>
+        <p class="lede">Paste your Google Maps link. We grade your profile from 0 to 100, name the exact issues costing you calls, and email you a fix-this-week checklist. <strong>Built only for U.S. home service contractors.</strong></p>
+        <div class="audit-hero-cta">
+          <a href="#auditForm" class="btn btn-primary btn-arrow">Run my free audit</a>
+          <span class="audit-hero-cta-meta">Takes about 60 seconds</span>
+        </div>
         <div class="audit-trust-row">
-          <span>✓ Real Google data</span>
-          <span>✓ 10 specific checks</span>
-          <span>✓ No credit card</span>
+          <span><strong>10</strong> specific checks</span>
+          <span><strong>0</strong> credit card</span>
+          <span><strong>1</strong> honest report</span>
         </div>
       </div>
+
       <div class="audit-hero-visual" aria-hidden="true">
-        <div class="audit-preview-card">
-          <div class="audit-preview-head">
-            <span class="audit-preview-dot"></span>
-            <span class="audit-preview-dot"></span>
-            <span class="audit-preview-dot"></span>
-            <span class="audit-preview-title">Your GBP audit</span>
+        <!-- Stylized Google Business Profile mockup card -->
+        <div class="gbp-mock">
+          <div class="gbp-mock-photo">
+            <img src="assets/heroes/plumbing.webp" alt="" loading="lazy">
+            <div class="gbp-mock-photo-count">📷 8</div>
           </div>
-          <div class="audit-preview-body">
-            <svg width="110" height="110" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+          <div class="gbp-mock-body">
+            <div class="gbp-mock-name">Acme Plumbing &amp; Drain</div>
+            <div class="gbp-mock-rating">
+              <span class="gbp-mock-rating-num">4.2</span>
+              <span class="gbp-mock-stars" aria-hidden="true">
+                <span class="gbp-mock-star filled">★</span>
+                <span class="gbp-mock-star filled">★</span>
+                <span class="gbp-mock-star filled">★</span>
+                <span class="gbp-mock-star filled">★</span>
+                <span class="gbp-mock-star half">★</span>
+              </span>
+              <span class="gbp-mock-reviews">(8 reviews)</span>
+            </div>
+            <div class="gbp-mock-meta">
+              <span class="gbp-mock-cat">Plumber</span>
+              <span class="gbp-mock-sep">·</span>
+              <span class="gbp-mock-open">Open</span>
+              <span class="gbp-mock-sep">·</span>
+              <span>Closes 5pm</span>
+            </div>
+            <div class="gbp-mock-actions">
+              <div class="gbp-mock-btn"><span>📞</span>Call</div>
+              <div class="gbp-mock-btn"><span>🧭</span>Directions</div>
+              <div class="gbp-mock-btn dim"><span>🌐</span>Website</div>
+              <div class="gbp-mock-btn"><span>↗</span>Share</div>
+            </div>
+          </div>
+
+          <!-- Floating issue tags -->
+          <div class="gbp-mock-issue gbp-mock-issue-1" title="Issue: only 8 reviews">
+            <span class="gbp-issue-x">✕</span>
+            Only 8 reviews
+          </div>
+          <div class="gbp-mock-issue gbp-mock-issue-2" title="Issue: stale reviews">
+            <span class="gbp-issue-x">✕</span>
+            No recent review
+          </div>
+          <div class="gbp-mock-issue gbp-mock-issue-3" title="Issue: generic category">
+            <span class="gbp-issue-x">✕</span>
+            Generic category
+          </div>
+
+          <!-- Floating audit score badge -->
+          <div class="gbp-mock-score">
+            <svg width="100" height="100" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
               <circle cx="70" cy="70" r="52" fill="none" stroke="#e7e4ee" stroke-width="12"/>
               <circle cx="70" cy="70" r="52" fill="none" stroke="#f59e0b" stroke-width="12"
                       stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="124.16"
                       transform="rotate(-90 70 70)"/>
-              <text x="70" y="78" text-anchor="middle" font-family="-apple-system, Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="800" fill="#f59e0b">62</text>
+              <text x="70" y="80" text-anchor="middle" font-family="-apple-system, Inter, Helvetica, Arial, sans-serif" font-size="38" font-weight="800" fill="#f59e0b">62</text>
             </svg>
-            <div class="audit-preview-tier">Decent — room to grow</div>
-            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> Only 8 reviews — top plumbers in your area have 75+</div>
-            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> No recent review (last one from 8 months ago)</div>
-            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> Generic category — switch to "Plumber"</div>
-            <div class="audit-preview-row pass"><span class="audit-preview-c">✓</span> Phone listed</div>
+            <div class="gbp-mock-score-label">/100</div>
           </div>
         </div>
       </div>
@@ -99,8 +145,40 @@
   </div>
 </section>
 
-<section class="audit-form-section">
-  <div class="wrap audit-form-grid">
+<section class="audit-pillars">
+  <div class="wrap">
+    <div class="audit-pillars-grid">
+      <div class="audit-pillar">
+        <div class="audit-pillar-icon" aria-hidden="true">🎯</div>
+        <h3>10 specific checks</h3>
+        <p>Reviews, photos, hours, categories, replies, website health — every signal Google ranks on, scored against what top contractors actually do.</p>
+      </div>
+      <div class="audit-pillar">
+        <div class="audit-pillar-icon" aria-hidden="true">📊</div>
+        <h3>Trade-specific benchmark</h3>
+        <p>Compared to top HVAC, plumbing, roofing, electrical and other home service businesses — not generic "all businesses" averages.</p>
+      </div>
+      <div class="audit-pillar">
+        <div class="audit-pillar-icon" aria-hidden="true">📝</div>
+        <h3>Fix-this-week checklist</h3>
+        <p>Prioritized 3-step plan emailed to you. Apply yourself, hand to your team, or have us do it. The report is yours either way.</p>
+      </div>
+      <div class="audit-pillar">
+        <div class="audit-pillar-icon" aria-hidden="true">🔒</div>
+        <h3>No spam, no upsells</h3>
+        <p>One inbound email with your audit. No 12-email "nurture" funnel. Unsubscribe in one click. Your info isn't sold or shared.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="audit-form-section" id="auditFormSection">
+  <div class="wrap audit-form-wrap-outer">
+    <div class="audit-form-headline">
+      <div class="eyebrow">Run the audit</div>
+      <h2>Paste your Maps link. Get your report.</h2>
+      <p class="lede">It really is one field plus your contact info. Lands in your inbox in about 60 seconds.</p>
+    </div>
 
     <div class="audit-form-wrap">
       <div id="errorBanner" class="audit-error is-hidden" role="alert"></div>
@@ -148,8 +226,8 @@
           </div>
         </div>
 
-        <!-- Manual path (hidden by default) -->
-        <div id="manualFields" class="is-hidden">
+        <!-- Manual path (hidden by default — inline style as safety) -->
+        <div id="manualFields" class="is-hidden" style="display:none">
           <div class="audit-manual-note">
             We'll look up your Google profile by hand. Audit lands in your inbox within 24 hours instead of 60 seconds.
           </div>
@@ -229,22 +307,6 @@
         </div>
       </form>
     </div>
-
-    <aside class="audit-side">
-      <div class="audit-side-card">
-        <div class="eyebrow">What you'll get</div>
-        <h3>A no-BS report card for your Google profile</h3>
-        <ul class="audit-side-list">
-          <li><span class="audit-side-check">✓</span> A score from 0 to 100 with the math behind it</li>
-          <li><span class="audit-side-check">✓</span> 10 specific checks (reviews, photos, hours, categories, replies, more)</li>
-          <li><span class="audit-side-check">✓</span> The 3 things to fix this week to move the needle</li>
-          <li><span class="audit-side-check">✓</span> A benchmark vs top contractors in your trade</li>
-        </ul>
-      </div>
-      <div class="audit-side-meta">
-        <strong>Why we built this:</strong> most contractors are leaving 30%+ of their potential calls on the table because of fixable Google profile issues. The audit shows you exactly which ones — free, no call.
-      </div>
-    </aside>
 
   </div>
 </section>
@@ -456,7 +518,9 @@
     var nowManual = manualFlag.value !== '1';
     manualFlag.value = nowManual ? '1' : '';
     autoFields.classList.toggle('is-hidden', nowManual);
+    autoFields.style.display = nowManual ? 'none' : '';
     manualFields.classList.toggle('is-hidden', !nowManual);
+    manualFields.style.display = nowManual ? '' : 'none';
     urlInput.required = !nowManual;
     document.getElementById('business_name').required = nowManual;
     document.getElementById('city_state').required = nowManual;
