@@ -436,6 +436,17 @@ crm_renderHeader($user, '');
         <button type="submit" class="primary">Save</button>
       </form>
 
+      <form class="card" method="post" action="/crm/update.php"
+            onsubmit="return confirm('Delete this lead permanently?\n\nAll activities, tasks, files, tags, and email tracking will be removed. Any linked client survives but loses the lead history reference.\n\nThis cannot be undone.')"
+            style="border-color:#fecaca;background:#fffafa">
+        <h2 style="color:#991b1b">Danger zone</h2>
+        <input type="hidden" name="mode" value="lead_delete">
+        <input type="hidden" name="id" value="<?= (int)$lead['id'] ?>">
+        <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+        <p style="font-size:13px;color:#6b6877;margin:0 0 10px">Hard-deletes the lead and all its data (timeline, tasks, files, tags, email sends).</p>
+        <button type="submit" style="background:#dc2626;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🗑 Delete lead</button>
+      </form>
+
       <div class="card">
         <h2>Tasks for this lead</h2>
         <div class="task-list">

@@ -225,6 +225,7 @@ case 'bulk': {
         case 'status':  $value = $_POST['bulk_value_status'] ?? '';  break;
         case 'owner':   $value = $_POST['bulk_value_owner']  ?? '';  break;
         case 'tag_add': $value = $_POST['bulk_value_tag']    ?? '';  break;
+        case 'delete':  $value = '';  break;
         default:
             header('Location: /crm/'); exit;
     }
@@ -247,6 +248,13 @@ case 'template_save': {
         'body'    => $_POST['body']    ?? '',
     ], (int)$user['id']);
     header('Location: /crm/templates.php?edit=' . $newId . '&saved=1');
+    exit;
+}
+
+case 'lead_delete': {
+    $id = (int)($_POST['id'] ?? 0);
+    if ($id > 0) crm_deleteLead($id);
+    header('Location: /crm/');
     exit;
 }
 

@@ -268,7 +268,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
 
   <div class="meta"><?= (int)$total ?> lead<?= $total===1?'':'s' ?> · page <?= (int)$page ?> of <?= $totalPages ?></div>
 
-  <form id="bulk-form" method="post" action="/crm/update.php">
+  <form id="bulk-form" method="post" action="/crm/update.php" onsubmit="return confirmBulk(this)">
     <input type="hidden" name="mode" value="bulk">
     <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
 
@@ -280,6 +280,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
         <option value="status">Change status to…</option>
         <option value="owner">Reassign to…</option>
         <option value="tag_add">Add tag…</option>
+        <option value="delete">🗑 Delete (cannot undo)</option>
       </select>
 
       <select name="bulk_value_status" style="display:none">
@@ -376,6 +377,14 @@ document.getElementById('bulk-action').addEventListener('change', e => {
   const map = {status:'bulk_value_status', owner:'bulk_value_owner', tag_add:'bulk_value_tag'};
   if (map[v]) document.querySelector('[name="' + map[v] + '"]').style.display = '';
 });
+function confirmBulk(form){
+  const action = form.elements['bulk_action'].value;
+  const n = form.querySelectorAll('input[name="ids[]"]:checked').length;
+  if (action === 'delete') {
+    return confirm('Delete ' + n + ' lead' + (n===1?'':'s') + ' permanently?\n\nThis removes all activities, tasks, files, tags, and email tracking for the selected leads. Linked clients survive but lose lead history reference.\n\nThis cannot be undone.');
+  }
+  return true;
+}
 </script>
 </body></html><?php
 }

@@ -391,6 +391,30 @@ function crm_touchLastContacted(int $leadId): void {
     } catch (Throwable $e) { /* ignore */ }
 }
 
+// Hard-delete a lead: removes attached files from disk, then DELETEs from DB.
+// Linked rows (activities, tasks, tags, lead_tags, files, email_sends, sequence_enrollments)
+// auto-cascade. Linked clients (clients.lead_id FK) ON DELETE SET NULL — client survives.
+function crm_deleteLead(int $id): bool {
+    if ($id <= 0) return false;
+    try {
+        // Wipe physical files first (rows will cascade)
+        if (function_exists('crm_filesDir')) {
+            $dir = crm_filesDir($id);
+            if (is_dir($dir)) {
+                foreach ((array) glob($dir . '/*') as $f) @unlink($f);
+                @rmdir($dir);
+            }
+        }
+        $stmt = crm_db()->prepare('DELETE FROM leads WHERE id = ?');
+        $ok = $stmt->execute([$id]);
+        crm_log("lead_delete id={$id} rows=" . $stmt->rowCount());
+        return $ok;
+    } catch (Throwable $e) {
+        error_log('[crm_deleteLead] ' . $e->getMessage());
+        return false;
+    }
+}
+
 function crm_newLeadsSinceLastSeen(int $userId): int {
     try {
         $stmt = crm_db()->prepare(
@@ -432,6 +456,9 @@ function crm_bulkUpdate(array $ids, string $action, $value, ?int $actorUserId): 
                 break;
             case 'tag_remove':
                 if (function_exists('crm_removeTagFromLead') && crm_removeTagFromLead($id, (int)$value)) $n++;
+                break;
+            case 'delete':
+                if (crm_deleteLead($id)) $n++;
                 break;
         }
     }
