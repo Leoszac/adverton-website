@@ -96,12 +96,12 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 .dropdown-menu a { display: block; padding: 10px 14px; border-radius: 6px; font-size: 14px; color: var(--ink-2); }
 .dropdown-menu a:hover { background: var(--purple-bg); color: var(--purple); }
 .nav-cta { display: flex; gap: 10px; align-items: center; }
+/* Distinct accent color, but vertical alignment matches plain nav-links */
 .nav-link-pill {
-  background: var(--purple-tint); color: var(--purple) !important;
-  padding: 6px 12px; border-radius: 100px;
-  font-weight: 600 !important; font-size: 13px !important;
+  color: var(--purple) !important;
+  font-weight: 600 !important;
 }
-.nav-link-pill:hover { background: var(--purple); color: #fff !important; }
+.nav-link-pill:hover { color: var(--purple-dark) !important; }
 @media (max-width: 800px) { .nav-links { display: none; } }
 
 .hero {
