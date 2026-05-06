@@ -358,6 +358,19 @@ p.lede { font-size: 18px; color: var(--ink-2); }
   .how-step { margin-top: 18px; }
 }
 
+.growth-engine { background: #fff; padding-top: 64px; padding-bottom: 80px; }
+.growth-engine .wheel { max-width: 600px; margin: 0 auto; padding: 0 24px; }
+.growth-engine .wheel-svg { width: 100%; height: auto; display: block; }
+.growth-engine .wheel-caption {
+  margin: 32px auto 0; max-width: 660px; text-align: center;
+  font-size: 14px; color: var(--ink-3); line-height: 1.6;
+  font-style: italic;
+}
+@media (max-width: 600px) {
+  .growth-engine { padding: 56px 0; }
+  .growth-engine .wheel { padding: 0 12px; }
+}
+
 .verticals { background: var(--purple-bg); }
 .verticals-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px;
