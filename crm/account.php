@@ -11,6 +11,35 @@ $db = crm_db();
 
 $msgPwd = ''; $errPwd = '';
 $msgTotp = ''; $errTotp = '';
+$msgProfile = ''; $errProfile = '';
+
+// --- Profile change (username + display name) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'profile') {
+    if (!crm_csrfCheck($_POST['csrf'] ?? null)) { http_response_code(403); exit('CSRF'); }
+    $newUsername = trim((string)($_POST['username'] ?? ''));
+    $newDisplay  = trim((string)($_POST['display_name'] ?? ''));
+
+    if (!preg_match('/^[a-z0-9._-]{3,60}$/', $newUsername)) {
+        $errProfile = 'Username must be 3-60 chars, lowercase letters/numbers/dots/dashes/underscores only.';
+    } elseif ($newDisplay === '' || mb_strlen($newDisplay) > 120) {
+        $errProfile = 'Display name is required and must be ≤120 chars.';
+    } else {
+        // Check uniqueness if username changed
+        $stmt = $db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
+        $stmt->execute([$newUsername, (int)$user['id']]);
+        if ($stmt->fetch()) {
+            $errProfile = 'That username is already taken.';
+        } else {
+            $stmt = $db->prepare('UPDATE users SET username = ?, display_name = ? WHERE id = ?');
+            $stmt->execute([$newUsername, $newDisplay, (int)$user['id']]);
+            crm_log("profile_update uid={$user['id']} new_username={$newUsername}");
+            $msgProfile = 'Profile updated. From the next login use the new username.';
+            // Update local copy for the rest of this render
+            $user['username']     = $newUsername;
+            $user['display_name'] = $newDisplay;
+        }
+    }
+}
 
 // --- Password change ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'password') {
@@ -100,6 +129,27 @@ crm_renderHeader($user, '');
 <main>
   <h1>Account · <?= crm_h($user['display_name']) ?></h1>
   <div class="who">Signed in as <strong><?= crm_h($user['username']) ?></strong> · role <strong><?= crm_h($user['role'] ?? 'sales') ?></strong></div>
+
+  <div class="card" style="max-width:680px;margin:0 0 14px">
+    <h2>Profile</h2>
+    <div class="sub">Change your username (login id) and display name. Take effect on next login for the username.</div>
+
+    <?php if ($msgProfile): ?><div class="saved"><?= crm_h($msgProfile) ?></div><?php endif; ?>
+    <?php if ($errProfile): ?><div class="err"><?= crm_h($errProfile) ?></div><?php endif; ?>
+
+    <form method="post" autocomplete="off">
+      <input type="hidden" name="form" value="profile">
+      <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+
+      <label>Username (lowercase, 3-60 chars; letters/numbers/. _ -)</label>
+      <input type="text" name="username" pattern="[a-z0-9._-]{3,60}" required value="<?= crm_h($user['username'] ?? '') ?>">
+
+      <label>Display name</label>
+      <input type="text" name="display_name" required maxlength="120" value="<?= crm_h($user['display_name'] ?? '') ?>">
+
+      <button type="submit">Update profile</button>
+    </form>
+  </div>
 
   <div class="grid2">
     <div class="card">
