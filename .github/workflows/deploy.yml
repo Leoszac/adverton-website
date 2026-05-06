@@ -3,7 +3,7 @@ name: Deploy to adverton.net
 on:
   push:
     branches: [main]
-  workflow_dispatch: # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 concurrency:
   group: deploy-adverton-net
@@ -11,11 +11,21 @@ concurrency:
 
 jobs:
   deploy:
-    name: Pull + deploy on cPanel
+    name: SFTP mirror to public_html
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp
+
       - name: Configure SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
@@ -24,46 +34,58 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          # Sanity check: the file should look like a private key
           if ! head -1 ~/.ssh/id_deploy | grep -q "BEGIN.*PRIVATE KEY"; then
-            echo "ERROR: SSH_PRIVATE_KEY secret doesn't look like a private key"
-            head -1 ~/.ssh/id_deploy
+            echo "ERROR: SSH_PRIVATE_KEY secret doesn't look like a private key" >&2
             exit 1
           fi
-          echo "Key looks well-formed."
 
-      - name: Pull from GitHub + deploy via cPanel UAPI
+      - name: Mirror site to public_html via SFTP
         env:
           SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
           SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
-          REPO_ROOT: /home2/advertonnet/repositories/adverton-website
+          REMOTE_PATH: /home2/advertonnet/public_html
         run: |
-          echo "Connecting to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
-          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=accept-new \
-              -o ConnectTimeout=10 \
-              -o ServerAliveInterval=5 \
-              "${SSH_USER}@${SSH_HOST}" \
-              "set -e; \
-               echo '→ Pulling main from GitHub'; \
-               uapi --output=json VersionControl update repository_root=${REPO_ROOT} branch=main; \
-               echo '→ Running .cpanel.yml deploy'; \
-               uapi --output=json VersionControlDeployment create repository_root=${REPO_ROOT}; \
-               echo '✓ Triggered'"
+          # Build a lftp script. We mirror the repo into public_html with
+          # --delete to remove orphans, but exclude things that shouldn't ship.
+          cat > /tmp/lftp.script <<'LFTP'
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          set xfer:clobber yes
+          set sftp:connect-program "ssh -a -x -i /home/runner/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15"
+          mirror --reverse --delete --verbose --parallel=4 \
+                 --exclude-glob .git \
+                 --exclude-glob .git/* \
+                 --exclude-glob .github \
+                 --exclude-glob .github/* \
+                 --exclude-glob .gitignore \
+                 --exclude-glob .cpanel.yml \
+                 --exclude-glob audit-config.example.php \
+                 --exclude-glob crm-config.example.php \
+                 --exclude-glob DEPLOY_GUIDE.md \
+                 --exclude-glob configure_forms.sh \
+                 --exclude-glob .DS_Store \
+                 . __REMOTE_PATH__/
+          bye
+          LFTP
+          # Substitute the path (lftp doesn't expand env vars in scripts cleanly)
+          sed -i "s|__REMOTE_PATH__|${REMOTE_PATH}|g" /tmp/lftp.script
+
+          echo "→ Mirroring to ${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}"
+          lftp -u "${SSH_USER}," sftp://${SSH_HOST}:${SSH_PORT} -f /tmp/lftp.script
+          echo "✓ Mirror complete"
 
       - name: Verify live site
         env:
           SITE_URL: https://adverton.net/
         run: |
-          # cPanel deploy task runs async — give it a moment
-          sleep 12
+          # Site is static; new files should be served immediately after upload.
           for i in 1 2 3; do
             CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$SITE_URL")
             echo "Attempt $i: HTTP $CODE"
-            if [ "$CODE" = "200" ]; then exit 0; fi
-            sleep 4
+            [ "$CODE" = "200" ] && exit 0
+            sleep 3
           done
-          echo "Site did not return 200 after deploy"
+          echo "Site did not return 200 after deploy" >&2
           exit 1
