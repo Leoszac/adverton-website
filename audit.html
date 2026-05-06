@@ -291,7 +291,7 @@
           </label>
         </div>
 
-        <script src="https://www.google.com/recaptcha/api.js?render=6LdFktQsAAAAAJ6Ve9ZUJstntjVkRcAlbjFW-RIC"></script>
+        <script src="https://www.google.com/recaptcha/api.js?render=6Lfq6_UpAAAAAGOnjJd1sz_NTxfAYdneOyb2NN83"></script>
         <input type="hidden" name="g-recaptcha-response" id="recaptchaResponse">
 
         <button type="submit" id="submitBtn" class="btn btn-primary form-submit btn-arrow">Send me my free audit</button>
@@ -536,7 +536,7 @@
     if (typeof grecaptcha === 'undefined') return;
     e.preventDefault();
     grecaptcha.ready(function(){
-      grecaptcha.execute('6LdFktQsAAAAAJ6Ve9ZUJstntjVkRcAlbjFW-RIC', { action: 'audit' })
+      grecaptcha.execute('6Lfq6_UpAAAAAGOnjJd1sz_NTxfAYdneOyb2NN83', { action: 'audit' })
         .then(function(token){
           document.getElementById('recaptchaResponse').value = token;
           form.submit();

@@ -9,7 +9,7 @@ require_once __DIR__ . '/audit-scorer.php';
 const SENDER_FROM    = 'Adverton Audit <no-reply@adverton.net>';
 const SENDER_REPLY   = 'leandro@adverton.net';
 const SENDER_ADDRESS = '16192 Coastal Highway, Lewes, DE 19958, USA';
-const CALENDLY_URL   = 'https://calendly.com/adverton/15min';
+const CTA_BASE_URL   = 'https://adverton.net/';
 
 // Brand tokens — kept 1:1 in sync with website-deploy/styles.css :root.
 const COLOR_PURPLE     = '#6d28d9';
@@ -135,7 +135,7 @@ function renderAuditEmail(array $form, array $audit, string $auditId): string {
     $top = topFailedChecks($audit, 3);
     $topActionsHtml = renderTopActions($top);
 
-    $ctaUrl = CALENDLY_URL . '?utm_source=audit&utm_medium=email&utm_campaign=gbp_audit&audit_id=' . urlencode($auditId);
+    $ctaUrl = CTA_BASE_URL . '?utm_source=audit&utm_medium=email&utm_campaign=gbp_audit&audit_id=' . urlencode($auditId) . '#contact';
 
     // Compose body
     $body = '';
