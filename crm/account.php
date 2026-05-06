@@ -13,33 +13,53 @@ $msgPwd = ''; $errPwd = '';
 $msgTotp = ''; $errTotp = '';
 $msgProfile = ''; $errProfile = '';
 
-// --- Profile change (username + display name) ---
+// --- Profile change (username + display name + email sender prefs) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'profile') {
     if (!crm_csrfCheck($_POST['csrf'] ?? null)) { http_response_code(403); exit('CSRF'); }
     $newUsername = trim((string)($_POST['username'] ?? ''));
     $newDisplay  = trim((string)($_POST['display_name'] ?? ''));
+    $emailFrom     = trim((string)($_POST['email_from']      ?? ''));
+    $emailFromName = trim((string)($_POST['email_from_name'] ?? ''));
+    $emailReplyTo  = trim((string)($_POST['email_reply_to']  ?? ''));
 
     if (!preg_match('/^[a-z0-9._-]{3,60}$/', $newUsername)) {
         $errProfile = 'Username must be 3-60 chars, lowercase letters/numbers/dots/dashes/underscores only.';
     } elseif ($newDisplay === '' || mb_strlen($newDisplay) > 120) {
         $errProfile = 'Display name is required and must be ≤120 chars.';
+    } elseif ($emailFrom !== '' && !filter_var($emailFrom, FILTER_VALIDATE_EMAIL)) {
+        $errProfile = 'From email is not a valid address.';
+    } elseif ($emailReplyTo !== '' && !filter_var($emailReplyTo, FILTER_VALIDATE_EMAIL)) {
+        $errProfile = 'Reply-to email is not a valid address.';
     } else {
-        // Check uniqueness if username changed
         $stmt = $db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
         $stmt->execute([$newUsername, (int)$user['id']]);
         if ($stmt->fetch()) {
             $errProfile = 'That username is already taken.';
         } else {
-            $stmt = $db->prepare('UPDATE users SET username = ?, display_name = ? WHERE id = ?');
-            $stmt->execute([$newUsername, $newDisplay, (int)$user['id']]);
-            crm_log("profile_update uid={$user['id']} new_username={$newUsername}");
-            $msgProfile = 'Profile updated. From the next login use the new username.';
-            // Update local copy for the rest of this render
+            $stmt = $db->prepare(
+                'UPDATE users SET username = ?, display_name = ?,
+                                  email_from = ?, email_from_name = ?, email_reply_to = ?
+                 WHERE id = ?'
+            );
+            $stmt->execute([
+                $newUsername, $newDisplay,
+                $emailFrom     !== '' ? $emailFrom     : null,
+                $emailFromName !== '' ? $emailFromName : null,
+                $emailReplyTo  !== '' ? $emailReplyTo  : null,
+                (int)$user['id'],
+            ]);
+            crm_log("profile_update uid={$user['id']} new_username={$newUsername} from={$emailFrom}");
+            $msgProfile = 'Profile updated.';
             $user['username']     = $newUsername;
             $user['display_name'] = $newDisplay;
         }
     }
 }
+
+// Pull current email sender settings for display
+$stmt = $db->prepare('SELECT email_from, email_from_name, email_reply_to FROM users WHERE id = ?');
+$stmt->execute([(int)$user['id']]);
+$senderRow = $stmt->fetch() ?: ['email_from'=>'','email_from_name'=>'','email_reply_to'=>''];
 
 // --- Password change ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'password') {
@@ -146,6 +166,20 @@ crm_renderHeader($user, '');
 
       <label>Display name</label>
       <input type="text" name="display_name" required maxlength="120" value="<?= crm_h($user['display_name'] ?? '') ?>">
+
+      <h3 style="margin:22px 0 6px;font-size:14px;color:#0e0d12">Email sender (when you "Send template" from a lead)</h3>
+      <p style="font-size:12px;color:#6b6877;margin:0 0 8px">
+        These appear as the From + Reply-To on every tracked email you send. The address must be on a domain verified in Resend (currently <code>adverton.net</code>). Leave blank to use the global default.
+      </p>
+
+      <label>From email (e.g. leo@adverton.net or hello@adverton.net)</label>
+      <input type="email" name="email_from" maxlength="160" value="<?= crm_h($senderRow['email_from'] ?? '') ?>" placeholder="leo@adverton.net">
+
+      <label>From display name (e.g. "Leo" or "Adverton Team")</label>
+      <input type="text" name="email_from_name" maxlength="120" value="<?= crm_h($senderRow['email_from_name'] ?? '') ?>" placeholder="Leo">
+
+      <label>Reply-to (optional — defaults to From email)</label>
+      <input type="email" name="email_reply_to" maxlength="160" value="<?= crm_h($senderRow['email_reply_to'] ?? '') ?>" placeholder="leo@adverton.net">
 
       <button type="submit">Update profile</button>
     </form>

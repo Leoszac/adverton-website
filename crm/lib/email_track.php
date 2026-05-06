@@ -148,8 +148,10 @@ function crm_sendTrackedEmail(int $leadId, array $lead, ?int $templateId, ?int $
     $html = crm_wrapLinksWithRedirector($html, $send['click_token']);
     $html = crm_appendOpenPixel($html, $send['open_token']);
 
-    $sender   = crm_config('CRM_FROM_ADDRESS')   ?: 'Adverton <leandro@adverton.net>';
-    $replyTo  = crm_config('CRM_REPLY_TO')       ?: 'leandro@adverton.net';
+    // Resolve sender — per-user override takes precedence over global config
+    $resolved = crm_resolveUserSender($userId);
+    $sender   = $resolved['from'];
+    $replyTo  = $resolved['reply_to'];
 
     $payload = [
         'from'     => $sender,
@@ -184,6 +186,37 @@ function crm_sendTrackedEmail(int $leadId, array $lead, ?int $templateId, ?int $
         'Sent: ' . $subject . ($templateId ? ' (template)' : ''));
     crm_touchLastContacted($leadId);
     return ['ok' => true, 'send_id' => $send['id']];
+}
+
+// Resolve the From + Reply-To for a sending user.
+// Falls back to crm-config.php values if the user hasn't set their own.
+function crm_resolveUserSender(?int $userId): array {
+    $userFrom = null; $userName = null; $userReply = null;
+    if ($userId) {
+        try {
+            $stmt = crm_db()->prepare(
+                'SELECT email_from, email_from_name, email_reply_to FROM users WHERE id = ?'
+            );
+            $stmt->execute([$userId]);
+            $row = $stmt->fetch();
+            if ($row) {
+                $userFrom  = trim((string)($row['email_from']      ?? ''));
+                $userName  = trim((string)($row['email_from_name'] ?? ''));
+                $userReply = trim((string)($row['email_reply_to']  ?? ''));
+            }
+        } catch (Throwable $e) { /* fall through to config */ }
+    }
+
+    if ($userFrom !== '' && $userFrom !== null && filter_var($userFrom, FILTER_VALIDATE_EMAIL)) {
+        $from = $userName !== '' ? "{$userName} <{$userFrom}>" : $userFrom;
+        $reply = ($userReply !== '' && filter_var($userReply, FILTER_VALIDATE_EMAIL)) ? $userReply : $userFrom;
+        return ['from' => $from, 'reply_to' => $reply];
+    }
+
+    return [
+        'from'     => crm_config('CRM_FROM_ADDRESS') ?: 'Adverton <leandro@adverton.net>',
+        'reply_to' => crm_config('CRM_REPLY_TO')     ?: 'leandro@adverton.net',
+    ];
 }
 
 function crm_listSendsForLead(int $leadId): array {
