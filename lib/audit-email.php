@@ -171,35 +171,18 @@ function renderAuditEmail(array $form, array $audit, string $auditId): string {
 
     // 8. Sign-off
     $body .= "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;margin:32px 0 12px;'>If anything in here doesn't make sense, just reply to this email. I read every reply.</p>";
-    $body .= "<p style='color:" . COLOR_INK . ";margin:0;'>— Leandro<br><span style='color:" . COLOR_INK_3 . ";font-size:14px;'>Adverton · The marketing team for U.S. home service contractors</span></p>";
+    $body .= "<p style='color:" . COLOR_INK . ";margin:0;'>— Leo from Adverton<br><span style='color:" . COLOR_INK_3 . ";font-size:14px;'>The marketing team for U.S. home service contractors</span></p>";
 
     return renderEmailShell("Your GBP audit: {$score}/100", $body, $form['email']);
 }
 
 function renderScoreHero(int $score, string $color, string $tier, string $benchmark): string {
-    // SVG ring: radius 52, circumference ~326.7
-    $r = 52;
-    $c = 2 * M_PI * $r;          // ≈ 326.726
-    $offset = $c * (1 - $score / 100);
-    $offsetFmt = number_format($offset, 2, '.', '');
-    $cFmt = number_format($c, 2, '.', '');
-
-    $svg = ''
-        . '<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">'
-        . '<circle cx="70" cy="70" r="' . $r . '" fill="none" stroke="' . COLOR_LINE . '" stroke-width="12"/>'
-        . '<circle cx="70" cy="70" r="' . $r . '" fill="none" stroke="' . $color . '" stroke-width="12" '
-        .   'stroke-linecap="round" stroke-dasharray="' . $cFmt . '" stroke-dashoffset="' . $offsetFmt . '" '
-        .   'transform="rotate(-90 70 70)"/>'
-        . '<text x="70" y="78" text-anchor="middle" font-family="' . FONT_STACK . '" '
-        .   'font-size="34" font-weight="800" fill="' . $color . '">' . $score . '</text>'
-        . '</svg>';
-
     return ''
         . '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:' . COLOR_PURPLE_BG . ';border:1px solid ' . COLOR_LINE . ';border-radius:16px;margin:0 0 24px;">'
         . '<tr><td style="padding:28px 24px;text-align:center;">'
-        . $svg
-        . '<div style="font-size:13px;color:' . COLOR_INK_3 . ';text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-top:12px;">Your audit score</div>'
-        . '<div style="font-size:18px;font-weight:700;color:' . $color . ';margin-top:6px;">' . $tier . '</div>'
+        . '<div style="font-size:72px;font-weight:900;color:' . $color . ';line-height:1;letter-spacing:-2px;">' . $score . '</div>'
+        . '<div style="font-size:18px;font-weight:600;color:' . COLOR_INK_3 . ';margin-top:2px;">/ 100</div>'
+        . '<div style="font-size:13px;color:' . COLOR_INK_3 . ';text-transform:uppercase;letter-spacing:0.12em;font-weight:700;margin-top:10px;">Your audit score</div>'
         . '<div style="font-size:14px;color:' . COLOR_INK_2 . ';line-height:1.55;margin-top:14px;max-width:480px;margin-left:auto;margin-right:auto;">' . $benchmark . '</div>'
         . '</td></tr></table>';
 }

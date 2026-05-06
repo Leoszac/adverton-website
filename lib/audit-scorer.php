@@ -256,6 +256,6 @@ function tradeCtaCopy(string $temperature): array {
     return [
         'headline' => "You're in good shape. Want to compound?",
         'body'     => "Most contractors with your score plateau because they stop pushing the system that got them here. We keep it running for <strong>$799/month flat</strong> so you don't have to think about it.",
-        'button'   => "See what's included",
+        'button'   => "Book a 15-min call",
     ];
 }
