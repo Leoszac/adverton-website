@@ -5,6 +5,7 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/stripe.php';
+require_once __DIR__ . '/lib/email_track.php';
 require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/activities.php';
 require_once __DIR__ . '/lib/tasks.php';
@@ -24,6 +25,7 @@ $activities = $client['lead_id'] ? crm_listActivities((int)$client['lead_id']) :
 $tasks   = $client['lead_id'] ? crm_listTasksForLead((int)$client['lead_id']) : [];
 $files   = $client['lead_id'] ? crm_listFiles((int)$client['lead_id']) : [];
 $saved      = ($_GET['saved'] ?? '') === '1';
+$clientSends = crm_listSendsForClient((int)$client['id']);
 $payErr     = (string)($_GET['payerr']  ?? '');
 $payLinkOk  = ($_GET['paylink'] ?? '') === '1';
 $cardLinkOk = ($_GET['cardlink'] ?? '') === '1';
@@ -223,6 +225,30 @@ crm_renderHeader($user, 'clients');
         <?php if (!empty($client['stripe_checkout_url'])): ?>
           · <a href="<?= crm_h($client['stripe_checkout_url']) ?>" target="_blank" rel="noopener" style="color:#6d28d9">Open the live link →</a>
         <?php endif; ?>
+      </div>
+    <?php endif; ?>
+
+    <?php if ($clientSends): ?>
+      <div style="margin-top:14px;border-top:1px solid #e7e4ee;padding-top:14px">
+        <div style="font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px">Tracked emails sent</div>
+        <?php foreach ($clientSends as $s):
+          $stat = $s['first_clicked_at'] ? 'clicked' : ($s['first_opened_at'] ? 'opened' : 'sent');
+          $statColor = $stat === 'clicked' ? ['#fae8ff','#6b21a8'] : ($stat === 'opened' ? ['#dcfce7','#166534'] : ['#e0e7ff','#3730a3']);
+          $statLabel = $stat === 'clicked' ? "Clicked × {$s['click_count']}"
+                     : ($stat === 'opened' ? "Opened × {$s['open_count']}" : 'Sent');
+        ?>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0eef5;font-size:13px">
+            <div>
+              <div style="font-weight:600;color:#0e0d12"><?= crm_h($s['subject']) ?></div>
+              <div style="font-size:11px;color:#6b6877">
+                <?= crm_h(crm_fmtRelative($s['sent_at'])) ?>
+                <?php if ($s['first_opened_at']): ?> · opened <?= crm_h(crm_fmtRelative($s['first_opened_at'])) ?><?php endif; ?>
+                <?php if ($s['first_clicked_at']): ?> · clicked <?= crm_h(crm_fmtRelative($s['first_clicked_at'])) ?><?php endif; ?>
+              </div>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:<?= $statColor[0] ?>;color:<?= $statColor[1] ?>"><?= crm_h($statLabel) ?></span>
+          </div>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
   </div>

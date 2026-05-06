@@ -110,6 +110,61 @@ foreach ($rows as $c) {
     }
 }
 
+// ---- Unpaid payment-link reminders ----
+// Clients with a checkout link sent N days ago and still no Stripe subscription
+// → auto-task for the AM. 3d / 7d / 14d-stale.
+$counters['unpaid_3d'] = 0; $counters['unpaid_7d'] = 0; $counters['unpaid_14d_stale'] = 0;
+$unpaid = $db->query(
+    "SELECT id, business_name, lead_id, account_manager_id, primary_email,
+            stripe_checkout_sent_at,
+            DATEDIFF(NOW(), stripe_checkout_sent_at) AS days_since_sent
+     FROM clients
+     WHERE stripe_checkout_sent_at IS NOT NULL
+       AND (stripe_subscription_id IS NULL OR stripe_subscription_id = '')
+       AND status NOT IN ('cancelled')"
+)->fetchAll();
+
+foreach ($unpaid as $c) {
+    $daysAgo = (int)$c['days_since_sent'];
+    $bizName = $c['business_name'] ?: ('Client #' . $c['id']);
+    $am      = $c['account_manager_id'] ? (int)$c['account_manager_id'] : null;
+    $leadId  = $c['lead_id'] ? (int)$c['lead_id'] : null;
+    $cid     = (int)$c['id'];
+
+    if ($daysAgo === 3) {
+        ensureTaskOnce($leadId, $am,
+            "💳 Resend payment link · {$bizName} (3d unpaid)",
+            date('Y-m-d 10:00:00', strtotime('+1 day')));
+        crm_logClientEvent($cid, null, 'note', '3-day unpaid reminder created');
+        $counters['unpaid_3d']++;
+    }
+    if ($daysAgo === 7) {
+        ensureTaskOnce($leadId, $am,
+            "📞 Call {$bizName} · payment link sent 7 days ago, still unpaid",
+            date('Y-m-d 10:00:00', strtotime('+1 day')));
+        crm_logClientEvent($cid, null, 'note', '7-day unpaid reminder created');
+        $counters['unpaid_7d']++;
+    }
+    if ($daysAgo >= 14) {
+        // Tag client (and lead if any) as at-risk so they show up in dashboards
+        try {
+            $tagId = (int)($db->query("SELECT id FROM tags WHERE name = 'payment-stale' LIMIT 1")->fetch()['id'] ?? 0);
+            if (!$tagId) {
+                $db->prepare("INSERT INTO tags (name, color) VALUES ('payment-stale', '#dc2626')")->execute();
+                $tagId = (int)$db->lastInsertId();
+            }
+            if ($leadId && $tagId) {
+                $db->prepare('INSERT IGNORE INTO lead_tags (lead_id, tag_id) VALUES (?, ?)')
+                   ->execute([$leadId, $tagId]);
+            }
+        } catch (Throwable $e) { /* ignore */ }
+        ensureTaskOnce($leadId, $am,
+            "🚨 Decide on {$bizName} · 14d unpaid · close out or escalate",
+            date('Y-m-d 10:00:00', strtotime('+1 day')));
+        $counters['unpaid_14d_stale']++;
+    }
+}
+
 echo "Client triggers run · " . json_encode($counters) . "\n";
 
 // Helper: create a task only if no open task with same title exists for the lead

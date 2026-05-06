@@ -193,6 +193,9 @@ crm_renderHeader($user, '');
 
     <div class="quick-actions">
       <?php if ($telHref):   ?><a class="qa primary" href="<?= crm_h($telHref) ?>">📞 Call <?= crm_h($lead['phone']) ?></a><?php endif; ?>
+      <?php if (in_array($lead['status'], ['qualified','proposal'], true) && !empty($lead['email'])): ?>
+        <a class="qa" href="/crm/proposal-send.php?lead_id=<?= (int)$lead['id'] ?>" style="background:#fae8ff;color:#6b21a8;border-color:#e9d5ff">📋 Send proposal</a>
+      <?php endif; ?>
       <?php if ($emailHref): ?>
         <div class="templ-menu" id="tm">
           <button class="qa" onclick="document.getElementById('tm').classList.toggle('open')">✉️ Compose with template ▾</button>

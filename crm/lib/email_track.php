@@ -14,15 +14,15 @@ require_once __DIR__ . '/activities.php';
 
 const CRM_TRACK_BASE = 'https://adverton.net/crm';
 
-function crm_createEmailSend(int $leadId, ?int $templateId, ?int $userId, string $subject): array {
+function crm_createEmailSend(?int $leadId, ?int $templateId, ?int $userId, string $subject, ?int $clientId = null): array {
     $open  = bin2hex(random_bytes(16));
     $click = bin2hex(random_bytes(16));
     try {
         $stmt = crm_db()->prepare(
-            'INSERT INTO email_sends (lead_id, template_id, user_id, open_token, click_token, subject)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO email_sends (lead_id, client_id, template_id, user_id, open_token, click_token, subject)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$leadId, $templateId, $userId, $open, $click, mb_substr($subject, 0, 255)]);
+        $stmt->execute([$leadId, $clientId, $templateId, $userId, $open, $click, mb_substr($subject, 0, 255)]);
         return [
             'id'           => (int) crm_db()->lastInsertId(),
             'open_token'   => $open,
@@ -32,6 +32,18 @@ function crm_createEmailSend(int $leadId, ?int $templateId, ?int $userId, string
         error_log('[crm_createEmailSend] ' . $e->getMessage());
         return ['id' => 0, 'open_token' => '', 'click_token' => ''];
     }
+}
+
+function crm_listSendsForClient(int $clientId): array {
+    try {
+        $stmt = crm_db()->prepare(
+            'SELECT s.*, u.display_name AS user_name
+             FROM email_sends s LEFT JOIN users u ON u.id = s.user_id
+             WHERE s.client_id = ? ORDER BY s.sent_at DESC'
+        );
+        $stmt->execute([$clientId]);
+        return $stmt->fetchAll();
+    } catch (Throwable $e) { return []; }
 }
 
 function crm_pixelUrl(string $openToken): string {

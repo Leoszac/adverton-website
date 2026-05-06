@@ -412,6 +412,62 @@ case 'routing_save': {
     exit;
 }
 
+case 'proposal_send': {
+    $leadId = (int)($_POST['lead_id'] ?? 0);
+    $lead = $leadId > 0 ? crm_getLead($leadId) : null;
+    if (!$lead) { http_response_code(404); header('Location: /crm/'); exit; }
+    if (empty($lead['email'])) {
+        header('Location: /crm/proposal-send.php?lead_id=' . $leadId . '&err=' . urlencode('Lead has no email — add it first'));
+        exit;
+    }
+
+    $monthlyFee  = (float)($_POST['monthly_fee']  ?? 799);
+    $adBudget    = (float)($_POST['ad_budget']    ?? 0);
+    $mgmtPct     = (float)($_POST['mgmt_fee_pct'] ?? 0);
+    $addonCodes  = (array)($_POST['addons']       ?? []);
+
+    // Update the lead with the proposed terms (so the existing client_create
+    // path picks them up). Also bump status to 'proposal' if not already there.
+    crm_updateLead($leadId, [
+        'monthly_fee'  => $monthlyFee,
+        'ad_budget'    => $adBudget > 0 ? $adBudget : null,
+        'mgmt_fee_pct' => $mgmtPct,
+    ], (int)$user['id']);
+    if ($lead['status'] !== 'proposal' && !in_array($lead['status'], ['won','lost'], true)) {
+        crm_updateLead($leadId, ['status' => 'proposal'], (int)$user['id']);
+    }
+
+    // Get-or-create the client (idempotent)
+    $client = crm_getClientByLead($leadId);
+    if (!$client) {
+        $clientId = crm_promoteLeadToClient($leadId, (int)$user['id']);
+        if (!$clientId) {
+            header('Location: /crm/proposal-send.php?lead_id=' . $leadId . '&err=' . urlencode('Failed to create client'));
+            exit;
+        }
+        $client = crm_getClient($clientId);
+        // promoteLeadToClient set status=onboarding; demote to onboarding+pending until they pay
+        crm_updateClient($clientId, ['status' => 'onboarding', 'payment_status' => 'pending'], (int)$user['id']);
+    }
+
+    // Apply selected add-ons (skip duplicates)
+    foreach ($addonCodes as $code) {
+        $code = (string)$code;
+        if (!isset(CRM_STRIPE_ADDON_CATALOG[$code])) continue;
+        $price = (float) CRM_STRIPE_ADDON_CATALOG[$code]['monthly'];
+        crm_addAddonToClient((int)$client['id'], $code, $price, (int)$user['id']);
+    }
+    // Refresh client with new addons
+    $client = crm_getClient((int)$client['id']);
+
+    // Now reuse the existing client_send_payment_link path by re-injecting POST
+    $_POST['client_id'] = (int)$client['id'];
+    crm_logActivity($leadId, (int)$user['id'], 'system', 'proposal_sent',
+        'Proposal sent · monthly_fee=' . $monthlyFee . ' addons=' . count($addonCodes));
+    // Fall through into the next case
+}
+// fall-through
+
 case 'client_send_payment_link': {
     $clientId = (int)($_POST['client_id'] ?? 0);
     $client = $clientId > 0 ? crm_getClient($clientId) : null;
@@ -450,6 +506,15 @@ case 'client_send_payment_link': {
     // Reply-To = the salesperson who clicked "Send" (so client replies route back to them)
     $replyTo = crm_resolveUserSender((int)$user['id'])['reply_to'];
 
+    // Create an email_send row so we can track open + click on the CTA button.
+    $send = crm_createEmailSend(null, null, (int)$user['id'], $subject, $clientId);
+    $trackedUrl = $send['click_token']
+        ? crm_redirectUrl($send['click_token'], $r['url'])
+        : $r['url'];
+    $pixelTag = $send['open_token']
+        ? '<img src="' . htmlspecialchars(crm_pixelUrl($send['open_token']), ENT_QUOTES, 'UTF-8') . '" alt="" width="1" height="1" style="display:block;border:0">'
+        : '';
+
     // Items list as HTML rows
     $itemsHtml = '';
     foreach ($r['items'] as $it) {
@@ -459,7 +524,7 @@ case 'client_send_payment_link': {
                    . '$' . number_format((float)$it['monthly'], 2) . ' / mo</td></tr>';
     }
     $nameHtml    = htmlspecialchars($name);
-    $urlHtml     = htmlspecialchars($r['url']);
+    $urlHtml     = htmlspecialchars($trackedUrl);
 
     $bodyHtml = <<<HTML
 <!doctype html>
@@ -526,6 +591,7 @@ case 'client_send_payment_link': {
     </table>
   </td></tr>
 </table>
+{$pixelTag}
 </body></html>
 HTML;
 
@@ -602,10 +668,13 @@ case 'client_send_card_update': {
 
     $apiKey  = crm_config('RESEND_API_KEY');
     $name    = trim((string)($client['business_name'] ?? '')) ?: 'there';
-    $url     = htmlspecialchars($r['url']);
     $nameH   = htmlspecialchars($name);
     $replyTo = crm_resolveUserSender((int)$user['id'])['reply_to'];
     $subject = "Update your card on file · Adverton";
+
+    $send = crm_createEmailSend(null, null, (int)$user['id'], $subject, $clientId);
+    $url     = htmlspecialchars($send['click_token'] ? crm_redirectUrl($send['click_token'], $r['url']) : $r['url']);
+    $pixel   = $send['open_token'] ? '<img src="' . htmlspecialchars(crm_pixelUrl($send['open_token']), ENT_QUOTES, 'UTF-8') . '" alt="" width="1" height="1" style="display:block;border:0">' : '';
 
     $bodyHtml = <<<HTML
 <!doctype html>
@@ -636,6 +705,7 @@ case 'client_send_card_update': {
     </table>
   </td></tr>
 </table>
+{$pixel}
 </body></html>
 HTML;
 
