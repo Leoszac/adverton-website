@@ -3,14 +3,14 @@
 // Other lost reasons (price, not_a_fit, competitor) are respected.
 
 declare(strict_types=1);
-define('CRM_ENTRY', 1);
+if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/tags.php';
 require_once __DIR__ . '/lib/activities.php';
 
-$cli = (php_sapi_name() === 'cli');
+$cli = (php_sapi_name() === 'cli') || defined('CRM_INPROCESS_CRON');
 if (!$cli) {
     header('Content-Type: text/plain');
     if (!hash_equals((string)crm_config('SEED_TOKEN'), (string)($_GET['token'] ?? ''))) {

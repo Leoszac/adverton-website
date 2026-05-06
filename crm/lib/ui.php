@@ -8,6 +8,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/tasks.php';
 require_once __DIR__ . '/leads.php';
+require_once __DIR__ . '/cron_dispatcher.php';
 
 function crm_renderHead(string $title): void {
     ?><!doctype html>
@@ -53,6 +54,8 @@ function crm_renderHead(string $title): void {
 }
 
 function crm_renderHeader(array $user, string $current = ''): void {
+    // Background cron tick — runs after the response is sent
+    crm_scheduleCronTick();
     $counts = crm_countDueTasks((int)$user['id']);
     $totalDue = $counts['overdue'] + $counts['today'];
     ?>
@@ -74,7 +77,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
       <a href="/crm/sequences.php">Sequences</a>
       <a href="/crm/routing.php">Routing</a>
     <?php endif; ?>
-    <a href="/crm/2fa-setup.php" title="2FA settings" style="margin-left:auto;font-size:14px">🔒</a>
+    <a href="/crm/account.php" title="Account · password · 2FA" style="margin-left:auto;font-size:14px">⚙️</a>
     <?php
     $newCount = crm_newLeadsSinceLastSeen((int)$user['id']);
     if ($newCount > 0): ?>

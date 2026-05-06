@@ -3,13 +3,13 @@
 // Run via cPanel cron:  0 8 * * *  /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php
 
 declare(strict_types=1);
-define('CRM_ENTRY', 1);
+if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/activities.php';
 
-$cli = (php_sapi_name() === 'cli');
+$cli = (php_sapi_name() === 'cli') || defined('CRM_INPROCESS_CRON');
 if (!$cli) {
     header('Content-Type: text/plain');
     $expected = crm_config('SEED_TOKEN');
