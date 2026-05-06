@@ -1,0 +1,62 @@
+name: Deploy to adverton.net
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+concurrency:
+  group: deploy-adverton-net
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Pull + deploy on cPanel
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Pull from GitHub + deploy via cPanel UAPI
+        env:
+          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          REPO_ROOT: /home2/advertonnet/repositories/adverton-website
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              "${SSH_USER}@${SSH_HOST}" \
+              "set -e; \
+               echo '→ Pulling main from GitHub'; \
+               uapi --output=json VersionControl update repository_root=${REPO_ROOT} branch=main; \
+               echo '→ Running .cpanel.yml deploy'; \
+               uapi --output=json VersionControlDeployment create repository_root=${REPO_ROOT}; \
+               echo '✓ Triggered'"
+
+      - name: Verify live site
+        env:
+          SITE_URL: https://adverton.net/
+        run: |
+          # cPanel deploy task runs async — give it a moment
+          sleep 12
+          for i in 1 2 3; do
+            CODE=$(curl -sS -o /dev/null -w "%{http_code}" "$SITE_URL")
+            echo "Attempt $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then exit 0; fi
+            sleep 4
+          done
+          echo "Site did not return 200 after deploy"
+          exit 1
