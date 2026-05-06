@@ -15,6 +15,7 @@ require_once __DIR__ . '/db.php';
 // crm_config() consults the DB for any key in this list before falling back
 // to crm-config.php.
 const CRM_DB_BACKED_KEYS = [
+    'STRIPE_API_KEY',
     'STRIPE_WEBHOOK_SECRET',
     'PANDADOC_WEBHOOK_SECRET',
     'OPENPHONE_WEBHOOK_SECRET',

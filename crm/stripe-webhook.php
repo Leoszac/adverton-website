@@ -27,6 +27,38 @@ $obj  = $event['data']['object'] ?? [];
 
 switch ($type) {
 
+case 'checkout.session.completed': {
+    // Subscription mode session — link the resulting subscription_id back
+    // to the client and flip status to active.
+    $sessionId = $obj['id'] ?? '';
+    $subId     = $obj['subscription'] ?? '';
+    $custId    = $obj['customer']     ?? '';
+    $clientIdMeta = $obj['metadata']['client_id'] ?? null;
+
+    $client = null;
+    if ($clientIdMeta) $client = crm_getClient((int)$clientIdMeta);
+    if (!$client && $custId) {
+        // Fallback: lookup by customer id
+        try {
+            $stmt = crm_db()->prepare('SELECT * FROM clients WHERE stripe_customer_id = ? LIMIT 1');
+            $stmt->execute([$custId]);
+            $client = $stmt->fetch() ?: null;
+        } catch (Throwable $e) {}
+    }
+    if (!$client) break;
+
+    $patch = [
+        'status'                 => 'active',
+        'payment_status'         => 'current',
+        'stripe_customer_id'     => $custId ?: $client['stripe_customer_id'],
+        'stripe_subscription_id' => $subId,
+    ];
+    crm_updateClient((int)$client['id'], $patch, null);
+    crm_logClientEvent((int)$client['id'], null, 'payment_succeeded',
+        "Checkout completed · sub {$subId}", ['session_id' => $sessionId]);
+    break;
+}
+
 case 'invoice.payment_succeeded': {
     $subId = $obj['subscription'] ?? '';
     if (!$subId) break;

@@ -4,6 +4,7 @@ define('CRM_ENTRY', 1);
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/clients.php';
+require_once __DIR__ . '/lib/stripe.php';
 require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/activities.php';
 require_once __DIR__ . '/lib/tasks.php';
@@ -22,7 +23,9 @@ $lead    = $client['lead_id'] ? crm_getLead((int)$client['lead_id']) : null;
 $activities = $client['lead_id'] ? crm_listActivities((int)$client['lead_id']) : [];
 $tasks   = $client['lead_id'] ? crm_listTasksForLead((int)$client['lead_id']) : [];
 $files   = $client['lead_id'] ? crm_listFiles((int)$client['lead_id']) : [];
-$saved   = ($_GET['saved'] ?? '') === '1';
+$saved      = ($_GET['saved'] ?? '') === '1';
+$payErr     = (string)($_GET['payerr']  ?? '');
+$payLinkOk  = ($_GET['paylink'] ?? '') === '1';
 
 $mrr     = crm_clientMrr($client);
 $buyout  = crm_buyoutAmount($client);
@@ -74,7 +77,8 @@ crm_renderHeader($user, 'clients');
 </style>
 <main>
   <a class="back" href="/crm/clients.php">‹ All clients</a>
-  <?php if ($saved): ?><div class="saved">Saved.</div><?php endif; ?>
+  <?php if ($saved): ?><div class="saved"><?= $payLinkOk ? 'Payment link created and emailed.' : 'Saved.' ?></div><?php endif; ?>
+  <?php if ($payErr): ?><div class="saved" style="background:#fee2e2;color:#991b1b">Stripe error: <?= crm_h($payErr) ?></div><?php endif; ?>
 
   <div class="card">
     <h1>
@@ -127,6 +131,58 @@ crm_renderHeader($user, 'clients');
       <input type="number" step="0.01" name="price" placeholder="Override $" style="width:120px">
       <button type="submit" class="primary" style="margin-top:0">+ Add</button>
     </form>
+  </div>
+
+  <div class="card" style="background:#faf9ff;border-color:#e0d6f5">
+    <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Billing &amp; Stripe</h2>
+    <?php
+      // Compute what would be billed if we send a fresh link right now
+      $previewItems   = crm_clientStripeLineItems($client);
+      $previewMonthly = crm_clientStripeMonthlyTotal($previewItems);
+      $hasSub         = !empty($client['stripe_subscription_id']);
+      $linkSentAt     = $client['stripe_checkout_sent_at'] ?? null;
+    ?>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#0e0d12">
+          <?= crm_h(crm_fmtMoney($previewMonthly)) ?>/mo subscription
+        </div>
+        <div style="font-size:12px;color:#6b6877;margin-top:3px">
+          Base + <?= max(0, count($previewItems) - 1) ?> add-on<?= count($previewItems) === 2 ? '':'s' ?> · billed monthly via Stripe
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <?php if ($hasSub): ?>
+          <span class="pill" style="background:#dcfce7;color:#166534">✓ Subscribed (<?= crm_h(substr((string)$client['stripe_subscription_id'], 0, 14)) ?>…)</span>
+        <?php else: ?>
+          <form method="post" action="/crm/update.php" style="margin:0">
+            <input type="hidden" name="mode" value="client_send_payment_link">
+            <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <button type="submit" style="background:#6d28d9;color:#fff;border:0;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer"
+                    onclick="return confirm('Create a Stripe Checkout link for <?= crm_h(crm_fmtMoney($previewMonthly)) ?>/mo and email it to <?= crm_h($client['primary_email'] ?? '?') ?>?')">
+              💳 <?= $linkSentAt ? 'Resend payment link' : 'Send payment link' ?>
+            </button>
+          </form>
+        <?php endif; ?>
+      </div>
+    </div>
+    <details style="margin-top:14px;font-size:13px">
+      <summary style="cursor:pointer;color:#6b6877">Line-item breakdown</summary>
+      <ul style="margin:8px 0 0;padding:0 0 0 18px;color:#0e0d12">
+        <?php foreach ($previewItems as $it): ?>
+          <li><?= crm_h($it['name']) ?> — <?= crm_h(crm_fmtMoney((float)$it['monthly'])) ?>/mo</li>
+        <?php endforeach; ?>
+      </ul>
+    </details>
+    <?php if ($linkSentAt && !$hasSub): ?>
+      <div style="margin-top:10px;font-size:12px;color:#6b6877">
+        Last link sent <?= crm_h(crm_fmtRelative($linkSentAt)) ?>
+        <?php if (!empty($client['stripe_checkout_url'])): ?>
+          · <a href="<?= crm_h($client['stripe_checkout_url']) ?>" target="_blank" rel="noopener" style="color:#6d28d9">Open the live link →</a>
+        <?php endif; ?>
+      </div>
+    <?php endif; ?>
   </div>
 
   <div class="grid2">

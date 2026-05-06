@@ -87,13 +87,21 @@ crm_renderHeader($user, '');
 
     <!-- ============== Stripe ============== -->
     <div class="section">
-      <h2>Stripe — payment status webhook</h2>
-      <div class="desc">When a client subscription is created in Stripe and you set the client's <code>stripe_subscription_id</code> in CRM, payment events flow back automatically (succeeded → installment +1, failed → past_due + urgent task to AM, deleted → cancelled + clawback).</div>
+      <h2>Stripe — payment links + status webhook</h2>
+      <div class="desc">Once both the <strong>API key</strong> and <strong>webhook secret</strong> are set, the "💳 Send payment link" button on each client page will create a Stripe Checkout subscription and email it. When the customer pays, the webhook auto-updates payment_status / installment_count.</div>
 
       <div class="row">
         <div class="meta">
+          <div class="name">Stripe API secret key</div>
+          <div class="help">Stripe → Developers → API keys → Standard keys → Secret key. Starts with <code>sk_live_</code> (or <code>sk_test_</code> while testing). Used to create Customers + Checkout Sessions.</div>
+          <span class="badge <?= $cur['STRIPE_API_KEY']['set']?'set':'unset' ?>"><?= $cur['STRIPE_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="STRIPE_API_KEY" value="<?= crm_h($cur['STRIPE_API_KEY']['value']) ?>" placeholder="sk_live_..." autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
           <div class="name">Webhook URL (paste in Stripe dashboard)</div>
-          <div class="help">Stripe → Developers → Webhooks → Add endpoint. Subscribe to: <code>invoice.payment_succeeded</code>, <code>invoice.payment_failed</code>, <code>customer.subscription.deleted</code>, <code>customer.subscription.updated</code>.</div>
+          <div class="help">Stripe → Developers → Webhooks → Add endpoint. Subscribe to: <code>checkout.session.completed</code>, <code>invoice.payment_succeeded</code>, <code>invoice.payment_failed</code>, <code>customer.subscription.deleted</code>, <code>customer.subscription.updated</code>.</div>
         </div>
         <div>
           <div class="copy"><span><?= $base ?>/crm/stripe-webhook.php</span><button type="button" onclick="copy(this,'<?= $base ?>/crm/stripe-webhook.php')">Copy</button></div>

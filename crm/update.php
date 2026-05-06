@@ -14,6 +14,7 @@ require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/sequences.php';
 require_once __DIR__ . '/lib/routing.php';
 require_once __DIR__ . '/lib/settings.php';
+require_once __DIR__ . '/lib/stripe.php';
 
 $user = crm_requireLogin();
 
@@ -403,6 +404,94 @@ case 'routing_save': {
     $id = (int)($_POST['id'] ?? 0);
     crm_saveRoutingRule($id, $_POST);
     header('Location: /crm/routing.php?saved=1');
+    exit;
+}
+
+case 'client_send_payment_link': {
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); header('Location: /crm/clients.php'); exit; }
+
+    $r = crm_stripeCreatePaymentLink($client);
+    if (!$r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Payment link creation failed: ' . $r['error']);
+        header('Location: /crm/client.php?id=' . $clientId . '&payerr=' . urlencode($r['error']));
+        exit;
+    }
+
+    crm_updateClient($clientId, [
+        'stripe_checkout_url'        => $r['url'],
+        'stripe_checkout_session_id' => $r['session_id'],
+        'stripe_checkout_sent_at'    => date('Y-m-d H:i:s'),
+    ], (int)$user['id']);
+
+    crm_logClientEvent($clientId, (int)$user['id'], 'note',
+        "Stripe Checkout session created · \${$r['monthly']}/mo · " . count($r['items']) . ' line items',
+        ['session_id' => $r['session_id'], 'url' => $r['url']]);
+
+    // Build the email body inline (don't depend on a template existing)
+    $name    = trim((string)($client['business_name'] ?? '')) ?: 'there';
+    $monthly = '$' . number_format((float)$r['monthly'], 2);
+    $itemsList = '';
+    foreach ($r['items'] as $it) {
+        $itemsList .= '· ' . $it['name'] . ' — $' . number_format((float)$it['monthly'], 2) . "/mo\n";
+    }
+
+    $subject = "Set up your Adverton subscription · {$monthly}/mo";
+    $body = "Hi {$name},\n\n"
+          . "Here's your secure payment link to activate your Adverton subscription:\n\n"
+          . $r['url'] . "\n\n"
+          . "What's included (\${$r['monthly']}/mo, billed monthly):\n"
+          . $itemsList . "\n"
+          . "Card processing is handled by Stripe — we never see your card details.\n\n"
+          . "Once payment is confirmed your account is active and we kick off onboarding.\n\n"
+          . "Any questions, just reply to this email.\n\n"
+          . "— Leandro\nAdverton";
+
+    // Synthesize a "lead" payload for crm_sendTrackedEmail (it wants email + first_name)
+    $leadProxy = [
+        'id'         => 0, // not a real lead
+        'email'      => $client['primary_email'],
+        'first_name' => $client['business_name'] ?? '',
+        'last_name'  => '',
+    ];
+    // crm_sendTrackedEmail logs to lead_activities/email_sends — those FK to leads, so
+    // we can't reuse it for a client-only email. Instead, use Resend directly.
+    $apiKey = crm_config('RESEND_API_KEY');
+    if ($apiKey) {
+        $sender = crm_resolveUserSender((int)$user['id']);
+        $payload = [
+            'from'     => $sender['from'],
+            'to'       => [$client['primary_email']],
+            'subject'  => $subject,
+            'text'     => $body,
+            'reply_to' => $sender['reply_to'],
+        ];
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey],
+            CURLOPT_TIMEOUT        => 8,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code >= 400) {
+            crm_logClientEvent($clientId, (int)$user['id'], 'note',
+                'Payment link email send failed (Resend ' . $code . ')');
+        } else {
+            crm_logClientEvent($clientId, (int)$user['id'], 'note',
+                'Payment link email sent to ' . $client['primary_email']);
+        }
+    } else {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Payment link created but RESEND_API_KEY not set — copy the URL manually');
+    }
+
+    header('Location: /crm/client.php?id=' . $clientId . '&saved=1&paylink=1');
     exit;
 }
 
