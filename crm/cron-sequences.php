@@ -36,6 +36,7 @@ foreach ($rows as $enr) {
     $enrId  = (int)$enr['id'];
     $leadId = (int)$enr['lead_id'];
     $lead   = crm_getLead($leadId);
+    $seqName = (string)($enr['sequence_name'] ?? 'sequence');
     if (!$lead) {
         $db->prepare('UPDATE sequence_enrollments SET completed_at = NOW(), unenrolled_reason = "lead_gone" WHERE id = ?')->execute([$enrId]);
         $unenrolled++; continue;
@@ -44,6 +45,8 @@ foreach ($rows as $enr) {
     if (in_array($lead['status'], ['won','lost'], true)) {
         $db->prepare('UPDATE sequence_enrollments SET completed_at = NOW(), unenrolled_reason = ? WHERE id = ?')
            ->execute(['status_' . $lead['status'], $enrId]);
+        crm_logActivity($leadId, null, 'system', 'sequence_unenrolled',
+            "Unenrolled from \"{$seqName}\" — status changed to {$lead['status']}");
         $unenrolled++; continue;
     }
     // DNC tag check
@@ -54,6 +57,8 @@ foreach ($rows as $enr) {
     $stmt->execute([$leadId]);
     if ($stmt->fetch()) {
         $db->prepare('UPDATE sequence_enrollments SET completed_at = NOW(), unenrolled_reason = "dnc" WHERE id = ?')->execute([$enrId]);
+        crm_logActivity($leadId, null, 'system', 'sequence_unenrolled',
+            "Unenrolled from \"{$seqName}\" — DNC / at-risk tag");
         $unenrolled++; continue;
     }
 
@@ -88,12 +93,16 @@ foreach ($rows as $enr) {
                 '{first_name}'    => $lead['first_name'] ?? '',
                 '{business_name}' => $lead['business_name'] ?? '',
             ]);
+            $notes = (string)($payload['notes'] ?? '');
             crm_createTask([
                 'lead_id'     => $leadId,
                 'assigned_to' => $lead['owner_user_id'] ?? null,
                 'title'       => $title,
+                'notes'       => $notes !== '' ? $notes : null,
                 'due_at'      => date('Y-m-d 10:00:00', strtotime('+1 day')),
             ]);
+            crm_logActivity($leadId, null, 'system', 'task_created',
+                "Auto-created task from \"{$seqName}\": {$title}");
         } elseif ($action === 'add_tag') {
             crm_addTagToLead($leadId, (string)($payload['tag'] ?? ''));
         } elseif ($action === 'remove_tag') {
@@ -121,6 +130,8 @@ foreach ($rows as $enr) {
             'UPDATE sequence_enrollments SET current_step = current_step + 1, completed_at = NOW(),
              unenrolled_reason = "completed" WHERE id = ?'
         )->execute([$enrId]);
+        crm_logActivity($leadId, null, 'system', 'sequence_completed',
+            "Finished all steps of \"{$seqName}\" — no reply received");
     }
     $processed++;
 }

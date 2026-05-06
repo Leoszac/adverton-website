@@ -141,7 +141,7 @@ function crm_insertLead(array $data): ?int {
                 'due_at'      => date('Y-m-d H:i:s', time() + 3600),  // +1 hour
             ]);
             crm_logActivity($id, null, 'system', 'hot_lead_routed',
-                'Bypassed nurture; created callback task due in 1 hour');
+                'Bypassed nurture; created callback task due in 1 hour: ' . $title);
             return $id;
         }
 
