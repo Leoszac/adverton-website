@@ -6,24 +6,7 @@ if (!defined('AUDIT_ENTRY')) { http_response_code(404); exit; }
 //   - place details: GET  https://places.googleapis.com/v1/places/{place_id}
 // Auth: X-Goog-Api-Key header. Field mask required on every call.
 
-const PLACES_FIELD_MASK = implode(',', [
-    'id',
-    'displayName',
-    'formattedAddress',
-    'location',
-    'rating',
-    'userRatingCount',
-    'nationalPhoneNumber',
-    'internationalPhoneNumber',
-    'websiteUri',
-    'regularOpeningHours',
-    'photos',
-    'types',
-    'primaryType',
-    'businessStatus',
-    'reviews',
-    'googleMapsUri',
-]);
+define('PLACES_FIELD_MASK', 'id,displayName,formattedAddress,location,rating,userRatingCount,nationalPhoneNumber,internationalPhoneNumber,websiteUri,regularOpeningHours,photos,types,primaryType,businessStatus,reviews,googleMapsUri');
 
 const PLACES_SEARCH_FIELD_MASK = 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount';
 
