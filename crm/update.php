@@ -438,15 +438,19 @@ case 'client_send_payment_link': {
         $itemsList .= '· ' . $it['name'] . ' — $' . number_format((float)$it['monthly'], 2) . "/mo\n";
     }
 
+    $commitmentEnd = date('F Y', strtotime('+12 months'));
     $subject = "Set up your Adverton subscription · {$monthly}/mo";
     $body = "Hi {$name},\n\n"
           . "Here's your secure payment link to activate your Adverton subscription:\n\n"
           . $r['url'] . "\n\n"
           . "What's included (\${$r['monthly']}/mo, billed monthly):\n"
           . $itemsList . "\n"
-          . "Card processing is handled by Stripe — we never see your card details.\n\n"
-          . "Once payment is confirmed your account is active and we kick off onboarding.\n\n"
-          . "Any questions, just reply to this email.\n\n"
+          . "Terms (per the Service Agreement you signed):\n"
+          . "· 12-month commitment, charged monthly until {$commitmentEnd}\n"
+          . "· Auto-renews for another 12 months unless either party gives 90-day notice\n"
+          . "· Card processing handled by Stripe — we never see card details\n\n"
+          . "Once payment is confirmed, your account goes active and onboarding kicks off the same day.\n\n"
+          . "Any questions, just reply.\n\n"
           . "— Leandro\nAdverton";
 
     // Synthesize a "lead" payload for crm_sendTrackedEmail (it wants email + first_name)
@@ -492,6 +496,43 @@ case 'client_send_payment_link': {
     }
 
     header('Location: /crm/client.php?id=' . $clientId . '&saved=1&paylink=1');
+    exit;
+}
+
+case 'client_cancel_subscription': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); exit; }
+    if (empty($client['stripe_subscription_id'])) {
+        header('Location: /crm/client.php?id=' . $clientId . '&payerr=' . urlencode('No active subscription'));
+        exit;
+    }
+
+    // 12-month commitment guard. Override allowed only for founders who
+    // actively pass &override=1 (e.g. mutual termination, fraud).
+    $override = !empty($_POST['override']);
+    if (!$override && (int)$client['installment_count'] < 12) {
+        $missing = 12 - (int)$client['installment_count'];
+        header('Location: /crm/client.php?id=' . $clientId
+             . '&payerr=' . urlencode("12-month commitment in force ({$missing} installments remaining). Re-submit with override=1 if mutual termination."));
+        exit;
+    }
+
+    $r = crm_stripeCancelSubscription((string)$client['stripe_subscription_id'], false);
+    if (!$r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Subscription cancel failed: ' . $r['error']);
+        header('Location: /crm/client.php?id=' . $clientId . '&payerr=' . urlencode($r['error']));
+        exit;
+    }
+
+    crm_logClientEvent($clientId, (int)$user['id'], 'status_change',
+        'Stripe subscription scheduled to cancel at period end'
+        . ($override ? ' (override · pre-12-month)' : ''),
+        ['cancel_at_period_end' => true, 'override' => $override]);
+
+    header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
     exit;
 }
 

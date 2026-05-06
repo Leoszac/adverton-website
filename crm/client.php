@@ -152,8 +152,30 @@ crm_renderHeader($user, 'clients');
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <?php if ($hasSub): ?>
+        <?php if ($hasSub):
+          $monthsPaid = (int)$client['installment_count'];
+          $canCancel  = $monthsPaid >= 12;
+          $monthsLeft = max(0, 12 - $monthsPaid);
+        ?>
           <span class="pill" style="background:#dcfce7;color:#166534">✓ Subscribed (<?= crm_h(substr((string)$client['stripe_subscription_id'], 0, 14)) ?>…)</span>
+          <?php if (($user['role'] ?? '') === 'founder'): ?>
+            <?php if ($canCancel): ?>
+              <form method="post" action="/crm/update.php" style="margin:0">
+                <input type="hidden" name="mode" value="client_cancel_subscription">
+                <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+                <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                <button type="submit"
+                        onclick="return confirm('Cancel this subscription at the end of the current billing period?\n\nThe client keeps service through their already-paid month, then billing stops. Stripe sends them a cancellation notice. This is a graceful cancel — for immediate refunds, do it from the Stripe dashboard.')"
+                        style="background:#fee2e2;color:#991b1b;border:0;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+                  Cancel subscription (period-end)
+                </button>
+              </form>
+            <?php else: ?>
+              <span style="font-size:11px;color:#6b6877;background:#fef3c7;padding:4px 10px;border-radius:8px">
+                🔒 12-month commitment · <?= $monthsLeft ?> installment<?= $monthsLeft===1?'':'s' ?> left
+              </span>
+            <?php endif; ?>
+          <?php endif; ?>
         <?php else: ?>
           <form method="post" action="/crm/update.php" style="margin:0">
             <input type="hidden" name="mode" value="client_send_payment_link">
@@ -175,6 +197,11 @@ crm_renderHeader($user, 'clients');
         <?php endforeach; ?>
       </ul>
     </details>
+    <div style="margin-top:10px;font-size:11px;color:#6b6877;line-height:1.5">
+      🔒 Subscription is set up with a <strong>12-month commitment</strong> per Service Agreement Section 4.
+      Stripe Customer Portal is <strong>not</strong> exposed to the client — only you can cancel from this page after month 12.
+      Auto-renews for another 12 months unless either party gives 90-day notice.
+    </div>
     <?php if ($linkSentAt && !$hasSub): ?>
       <div style="margin-top:10px;font-size:12px;color:#6b6877">
         Last link sent <?= crm_h(crm_fmtRelative($linkSentAt)) ?>

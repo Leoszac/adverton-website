@@ -137,6 +137,20 @@ function crm_clientStripeLineItems(array $client): array {
     return $items;
 }
 
+// Cancel a Stripe subscription. By default cancels at period end (so the
+// client keeps service through the current paid month). Pass $immediate=true
+// to refund-eligible immediate cancel. Returns ['ok'=>bool, 'error'=>string].
+function crm_stripeCancelSubscription(string $subscriptionId, bool $immediate = false): array {
+    if ($immediate) {
+        return crm_stripeRequest('DELETE', "subscriptions/{$subscriptionId}");
+    }
+    // Cancel at period end = subscription stays active until next renewal date,
+    // then stops. Standard B2B "graceful cancel".
+    return crm_stripeRequest('POST', "subscriptions/{$subscriptionId}", [
+        'cancel_at_period_end' => 'true',
+    ]);
+}
+
 // Compute the total monthly subscription value (for display + email).
 function crm_clientStripeMonthlyTotal(array $items): float {
     $sum = 0.0;
@@ -178,8 +192,13 @@ function crm_stripeCreatePaymentLink(array $client): array {
         $params["line_items[{$i}][price_data][unit_amount]"]           = $unit;
         $i++;
     }
-    // Optional: tie the resulting subscription back to our client_id via metadata
-    $params['subscription_data[metadata][client_id]'] = (int)($client['id'] ?? 0);
+    // Tie subscription back to our client + record the 12-month commitment
+    $params['subscription_data[metadata][client_id]']         = (int)($client['id'] ?? 0);
+    $params['subscription_data[metadata][commitment_months]'] = 12;
+    $params['subscription_data[metadata][commitment_until]']  = date('Y-m-d', strtotime('+12 months'));
+    $params['subscription_data[metadata][adverton_business]'] = (string)($client['business_name'] ?? '');
+    // Description shown on Stripe invoices + customer receipts
+    $params['subscription_data[description]'] = 'Adverton subscription · 12-month commitment per Service Agreement Section 4';
 
     $r = crm_stripeRequest('POST', 'checkout/sessions', $params);
     if (!$r['ok']) return ['ok' => false, 'error' => $r['error']];
