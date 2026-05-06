@@ -16,17 +16,21 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Configure SSH
+      - name: Configure SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
-          SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
-          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Sanity check: the file should look like a private key
+          if ! head -1 ~/.ssh/id_deploy | grep -q "BEGIN.*PRIVATE KEY"; then
+            echo "ERROR: SSH_PRIVATE_KEY secret doesn't look like a private key"
+            head -1 ~/.ssh/id_deploy
+            exit 1
+          fi
+          echo "Key looks well-formed."
 
       - name: Pull from GitHub + deploy via cPanel UAPI
         env:
@@ -35,9 +39,12 @@ jobs:
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
           REPO_ROOT: /home2/advertonnet/repositories/adverton-website
         run: |
+          echo "Connecting to ${SSH_USER}@${SSH_HOST}:${SSH_PORT}..."
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
               -o BatchMode=yes \
               -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=10 \
+              -o ServerAliveInterval=5 \
               "${SSH_USER}@${SSH_HOST}" \
               "set -e; \
                echo '→ Pulling main from GitHub'; \
