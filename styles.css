@@ -189,6 +189,29 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 .tool-logo:hover { border-color: var(--purple-light); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .tool-logo svg { flex-shrink: 0; }
 
+.problem { background: var(--purple-bg); padding: 64px 0 56px; }
+.problem-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  max-width: 1080px; margin: 0 auto;
+}
+.problem-item {
+  background: #fff; padding: 24px 26px;
+  border-radius: var(--radius); border: 1px solid var(--line);
+  display: flex; gap: 16px; align-items: flex-start;
+}
+.problem-num {
+  font-size: 13px; font-weight: 800; color: var(--purple);
+  background: var(--purple-tint);
+  padding: 4px 10px; border-radius: 100px;
+  letter-spacing: 0.04em; flex-shrink: 0;
+}
+.problem-item p {
+  margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.55;
+}
+@media (max-width: 800px) {
+  .problem-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+
 .promise { background: #fff; }
 .promise-header { max-width: 720px; margin: 0 auto 56px; text-align: center; }
 .promise-grid {
