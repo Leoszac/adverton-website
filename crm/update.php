@@ -93,24 +93,37 @@ case 'template_send': {
     $leadId     = (int)($_POST['lead_id']     ?? 0);
     $templateId = (int)($_POST['template_id'] ?? 0);
     $lead = $leadId > 0 ? crm_getLead($leadId) : null;
-    $tpl  = $templateId > 0 ? crm_getTemplate($templateId) : null;
-    if (!$lead || !$tpl) { http_response_code(404); exit; }
+    if (!$lead) { http_response_code(404); exit; }
 
-    $subject = crm_renderTemplate($tpl['subject'], $lead);
-    $body    = crm_renderTemplate($tpl['body'],    $lead);
+    // Accept user-edited subject/body (from email-compose.php). Fall back to
+    // re-rendering the template if the editor wasn't used.
+    $subject = trim((string)($_POST['subject'] ?? ''));
+    $body    = (string)($_POST['body'] ?? '');
+    if ($subject === '' || $body === '') {
+        $tpl = $templateId > 0 ? crm_getTemplate($templateId) : null;
+        if (!$tpl) { http_response_code(400); exit('Subject and body required'); }
+        $subject = crm_renderTemplate($tpl['subject'], $lead);
+        $body    = crm_renderTemplate($tpl['body'],    $lead);
+    } else {
+        // Re-render the user's edits in case they kept variables like {first_name}
+        // (so they can choose to leave placeholders OR write literal copy)
+        $subject = crm_renderTemplate($subject, $lead);
+        $body    = crm_renderTemplate($body,    $lead);
+    }
 
-    $r = crm_sendTrackedEmail($leadId, $lead, $templateId, (int)$user['id'], $subject, $body);
+    $r = crm_sendTrackedEmail($leadId, $lead, $templateId ?: null, (int)$user['id'], $subject, $body);
     $back = '/crm/lead.php?id=' . $leadId;
+    $composeBack = '/crm/email-compose.php?lead_id=' . $leadId . ($templateId ? '&template_id=' . $templateId : '');
     if ($r['ok']) {
-        // First contact bumps status new → contacted
         if ($lead['status'] === 'new') {
             crm_updateLead($leadId, ['status' => 'contacted'], (int)$user['id']);
         }
         $back .= '&saved=1';
+        header('Location: ' . $back);
     } else {
-        $back .= '&sendError=' . urlencode($r['error'] ?? 'send failed');
+        // On send failure, return to compose so user can fix and retry
+        header('Location: ' . $composeBack . '&err=' . urlencode($r['error'] ?? 'send failed'));
     }
-    header('Location: ' . $back);
     exit;
 }
 

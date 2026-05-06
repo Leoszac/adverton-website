@@ -195,21 +195,16 @@ crm_renderHeader($user, '');
       <?php if ($telHref):   ?><a class="qa primary" href="<?= crm_h($telHref) ?>">📞 Call <?= crm_h($lead['phone']) ?></a><?php endif; ?>
       <?php if ($emailHref): ?>
         <div class="templ-menu" id="tm">
-          <button class="qa" onclick="document.getElementById('tm').classList.toggle('open')">✉️ Send template ▾</button>
+          <button class="qa" onclick="document.getElementById('tm').classList.toggle('open')">✉️ Compose with template ▾</button>
           <div class="panel">
             <?php if (!$templates): ?>
               <div class="empty">No templates yet. <a href="/crm/templates.php" style="color:#6d28d9">Create one →</a></div>
             <?php else: foreach ($templates as $tpl): ?>
-              <form method="post" action="/crm/update.php" style="margin:0">
-                <input type="hidden" name="mode" value="template_send">
-                <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
-                <input type="hidden" name="template_id" value="<?= (int)$tpl['id'] ?>">
-                <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
-                <button type="submit" class="tpl-row" title="Send via Adverton (tracked)"><?= crm_h($tpl['name']) ?> <span class="hint">→ tracked send</span></button>
-              </form>
+              <a href="/crm/email-compose.php?lead_id=<?= (int)$lead['id'] ?>&template_id=<?= (int)$tpl['id'] ?>" class="tpl-row"><?= crm_h($tpl['name']) ?> <span class="hint">→ edit then send</span></a>
             <?php endforeach; endif; ?>
             <div class="divider"></div>
-            <a href="<?= crm_h($emailHref) ?>" class="blank">Blank email (mail client)</a>
+            <a href="/crm/email-compose.php?lead_id=<?= (int)$lead['id'] ?>" class="tpl-row">✏️ Compose blank (tracked)</a>
+            <a href="<?= crm_h($emailHref) ?>" class="blank">Open mail client (mailto:, no tracking)</a>
           </div>
         </div>
       <?php endif; ?>
@@ -539,25 +534,11 @@ crm_renderHeader($user, '');
 </main>
 
 <script>
-const CSRF_TOKEN = <?= json_encode(crm_csrfToken()) ?>;
 function toggleQL(name){
   document.querySelectorAll('.ql-form').forEach(f => {
     if (f.id === 'ql-' + name) f.classList.toggle('show');
     else f.classList.remove('show');
   });
-}
-async function logTemplateUse(el, leadId, templateId, name){
-  // Fire async POST to log activity, then let the mailto: open normally
-  const fd = new FormData();
-  fd.set('mode', 'activity');
-  fd.set('lead_id', leadId);
-  fd.set('type', 'email');
-  fd.set('disposition', 'sent');
-  fd.set('body', 'Sent template: ' + name);
-  fd.set('csrf', CSRF_TOKEN);
-  try { fetch('/crm/update.php', { method: 'POST', body: fd, credentials: 'same-origin' }); } catch (e) {}
-  // Don't preventDefault — mailto: opens in default email client
-  document.getElementById('tm')?.classList.remove('open');
 }
 document.addEventListener('click', e => {
   const tm = document.getElementById('tm');
