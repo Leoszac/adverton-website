@@ -72,6 +72,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
       <?php endif; ?>
     </a>
     <a href="/crm/reports.php" class="<?= $current==='reports'?'cur':'' ?>">Reports</a>
+    <a href="/crm/nurture-stats.php" class="<?= $current==='nurture'?'cur':'' ?>">Nurture</a>
     <a href="/crm/templates.php" class="<?= $current==='templates'?'cur':'' ?>">Templates</a>
     <?php if (($user['role'] ?? '') === 'founder'): ?>
       <a href="/crm/sequences.php">Sequences</a>

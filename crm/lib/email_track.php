@@ -112,6 +112,8 @@ function crm_recordOpen(string $token, string $ip, string $ua): void {
             crm_logActivity((int)$row['lead_id'], null, 'email', 'opened',
                 'Email opened (first time) · ' . substr($ua, 0, 80));
         }
+
+        crm_bumpTemperatureOnEngagement((int)$row['lead_id']);
     } catch (Throwable $e) { error_log('[crm_recordOpen] ' . $e->getMessage()); }
 }
 
@@ -136,7 +138,84 @@ function crm_recordClick(string $token, string $url, string $ip, string $ua): vo
             crm_logActivity((int)$row['lead_id'], null, 'email', 'clicked',
                 'Clicked: ' . mb_substr($url, 0, 200));
         }
+
+        crm_bumpTemperatureOnEngagement((int)$row['lead_id']);
     } catch (Throwable $e) { error_log('[crm_recordClick] ' . $e->getMessage()); }
+}
+
+// Bump a lead's temperature based on email engagement.
+// Rules (only ever bump up, never down):
+//   - 1+ click  OR  4+ opens   → hot
+//   - 2+ opens                 → warm (minimum)
+// When promoted to hot via engagement: auto-unenroll from active nurture
+// sequences (a hot lead deserves manual attention) and create a callback task.
+function crm_bumpTemperatureOnEngagement(int $leadId): void {
+    try {
+        $db = crm_db();
+        $stmt = $db->prepare(
+            'SELECT temperature, owner_user_id, first_name, last_name, email, phone, trade, source
+               FROM leads WHERE id = ?'
+        );
+        $stmt->execute([$leadId]);
+        $lead = $stmt->fetch();
+        if (!$lead) return;
+
+        // Aggregate opens + clicks across all email_sends for this lead
+        $stmt = $db->prepare(
+            'SELECT COALESCE(SUM(open_count),0)  AS opens,
+                    COALESCE(SUM(click_count),0) AS clicks
+               FROM email_sends WHERE lead_id = ?'
+        );
+        $stmt->execute([$leadId]);
+        $agg = $stmt->fetch();
+        $opens  = (int)($agg['opens']  ?? 0);
+        $clicks = (int)($agg['clicks'] ?? 0);
+
+        $current = (string)($lead['temperature'] ?? '');
+        $target  = null;
+        if ($clicks >= 1 || $opens >= 4) $target = 'hot';
+        elseif ($opens >= 2)             $target = 'warm';
+
+        // Rank to enforce "only bump up"
+        $rank = ['cold' => 1, 'warm' => 2, 'hot' => 3];
+        if ($target === null) return;
+        $cur = $rank[$current] ?? 0;
+        $new = $rank[$target]  ?? 0;
+        if ($new <= $cur) return;
+
+        $db->prepare('UPDATE leads SET temperature = ? WHERE id = ?')->execute([$target, $leadId]);
+
+        $detail = "{$opens} opens · {$clicks} clicks · " . strtoupper($current ?: 'unset') . ' → ' . strtoupper($target);
+        crm_logActivity($leadId, null, 'system', 'temperature_bumped', "Engagement scoring: {$detail}");
+
+        // If promoted to HOT via engagement, treat like a fresh HOT lead:
+        // unenroll active sequences + create immediate callback task.
+        if ($target === 'hot') {
+            $db->prepare(
+                'UPDATE sequence_enrollments
+                    SET completed_at = NOW(), unenrolled_reason = "engagement_hot"
+                  WHERE lead_id = ? AND completed_at IS NULL'
+            )->execute([$leadId]);
+
+            if (file_exists(__DIR__ . '/tasks.php')) {
+                require_once __DIR__ . '/tasks.php';
+                $name = trim(($lead['first_name'] ?? '') . ' ' . ($lead['last_name'] ?? ''));
+                crm_createTask([
+                    'lead_id'     => $leadId,
+                    'assigned_to' => $lead['owner_user_id'] ?? null,
+                    'title'       => 'CALL NOW — engagement HOT (' . ($name ?: $lead['email']) . ')',
+                    'notes'       => "Lead just hit HOT via engagement scoring ({$opens} opens, {$clicks} clicks). "
+                                   . "Active nurture sequences auto-unenrolled. "
+                                   . "Source: " . ($lead['source'] ?? '?')
+                                   . " · Trade: " . ($lead['trade'] ?? '—')
+                                   . " · Phone: " . ($lead['phone'] ?? '—'),
+                    'due_at'      => date('Y-m-d H:i:s', time() + 3600),
+                ]);
+                crm_logActivity($leadId, null, 'system', 'hot_lead_routed',
+                    'Engagement promoted to HOT — sequences unenrolled, callback task created');
+            }
+        }
+    } catch (Throwable $e) { error_log('[crm_bumpTemperatureOnEngagement] ' . $e->getMessage()); }
 }
 
 // Send an email through Resend with tracking baked in. Returns ['ok'=>bool,'error'=>string].
