@@ -54,7 +54,7 @@ http_response_code($status === 'ok' ? 200 : 400);
 <title>Unsubscribed — Adverton</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20260506">
 </head>
 <body>
 <header class="nav">
