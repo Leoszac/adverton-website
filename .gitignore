@@ -13,3 +13,7 @@ Thumbs.db
 # Local notes
 DEPLOY_GUIDE.md
 configure_forms.sh
+
+# Audit secrets — real config lives OUTSIDE public_html on the server.
+# If this file ever appears here, it's a mistake; never commit.
+audit-config.php

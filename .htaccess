@@ -37,6 +37,13 @@ RewriteRule ^([^.]+)$ $1.html [L]
   ErrorDocument 403 /404.html
 </FilesMatch>
 
+# Belt-and-suspenders: block any *-config*.php and *.example.php from web access.
+# Real audit secrets live outside public_html; this ensures the example template
+# can't be loaded if it ever leaks into the deploy.
+<FilesMatch "(^|.*-)config(\.|-).*\.php$|\.example\.php$">
+  Require all denied
+</FilesMatch>
+
 # Real 404 page (returns proper 404 status, no soft-404 redirect to /)
 ErrorDocument 404 /404.html
 

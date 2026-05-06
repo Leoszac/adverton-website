@@ -1,0 +1,7 @@
+# Block direct access to library files. They are loaded only via audit.php.
+<RequireAll>
+    Require all denied
+</RequireAll>
+# Apache 2.2 fallback
+Order deny,allow
+Deny from all

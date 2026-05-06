@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Google Business Profile Audit — Adverton</title>
+<meta name="description" content="Free 60-second Google Business Profile audit for U.S. home service contractors. Get a 0–100 score and a checklist of what to fix — sent straight to your inbox.">
+<link rel="canonical" href="https://adverton.net/audit">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://adverton.net/audit">
+<meta property="og:title" content="Free Google Business Profile Audit — Adverton">
+<meta property="og:description" content="Free 60-second Google Business Profile audit for U.S. home service contractors. Get a 0–100 score and a checklist of what to fix — sent straight to your inbox.">
+<meta property="og:image" content="https://adverton.net/assets/og-image.png">
+<meta property="og:site_name" content="Adverton">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Free Google Business Profile Audit — Adverton">
+<meta name="twitter:description" content="Free 60-second Google Business Profile audit for U.S. home service contractors. Get a 0–100 score and a checklist of what to fix — sent straight to your inbox.">
+<meta name="twitter:image" content="https://adverton.net/assets/og-image.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SDEBS959S1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "G-SDEBS959S1");
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a href="/" class="nav-logo"><img src="assets/adverton-logo.png" alt="Adverton"></a>
+    <nav class="nav-links">
+      <div class="dropdown">
+        <button class="dropdown-trigger">Industries ▾</button>
+        <div class="dropdown-menu">
+          <a href="hvac.html">HVAC</a>
+          <a href="plumbing.html">Plumbing</a>
+          <a href="roofing.html">Roofing</a>
+          <a href="electrical.html">Electrical</a>
+          <a href="pest-control.html">Pest Control</a>
+          <a href="landscaping.html">Landscaping</a>
+        </div>
+      </div>
+      <a href="/#bundle">What's included</a>
+      <a href="/#how">How it works</a>
+      <a href="/#faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/#contact" class="btn btn-primary">Book a 15-min call</a>
+    </div>
+  </div>
+</header>
+
+<section class="audit-hero">
+  <div class="wrap audit-hero-inner">
+    <div class="audit-hero-grid">
+      <div>
+        <div class="eyebrow">Free GBP audit · 60 seconds · No call</div>
+        <h1>What's <span class="accent">really</span> hurting your Google ranking?</h1>
+        <p class="lede">Paste your Google Maps link. We grade your profile from 0 to 100, name the exact issues costing you calls, and email you a fix-this-week checklist. <strong>Built for U.S. home service contractors.</strong></p>
+        <a href="#auditForm" class="btn btn-primary btn-arrow">Run my free audit</a>
+        <div class="audit-trust-row">
+          <span>✓ Real Google data</span>
+          <span>✓ 10 specific checks</span>
+          <span>✓ No credit card</span>
+        </div>
+      </div>
+      <div class="audit-hero-visual" aria-hidden="true">
+        <div class="audit-preview-card">
+          <div class="audit-preview-head">
+            <span class="audit-preview-dot"></span>
+            <span class="audit-preview-dot"></span>
+            <span class="audit-preview-dot"></span>
+            <span class="audit-preview-title">Your GBP audit</span>
+          </div>
+          <div class="audit-preview-body">
+            <svg width="110" height="110" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="70" cy="70" r="52" fill="none" stroke="#e7e4ee" stroke-width="12"/>
+              <circle cx="70" cy="70" r="52" fill="none" stroke="#f59e0b" stroke-width="12"
+                      stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="124.16"
+                      transform="rotate(-90 70 70)"/>
+              <text x="70" y="78" text-anchor="middle" font-family="-apple-system, Inter, Helvetica, Arial, sans-serif" font-size="34" font-weight="800" fill="#f59e0b">62</text>
+            </svg>
+            <div class="audit-preview-tier">Decent — room to grow</div>
+            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> Only 8 reviews — top plumbers in your area have 75+</div>
+            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> No recent review (last one from 8 months ago)</div>
+            <div class="audit-preview-row"><span class="audit-preview-x">✕</span> Generic category — switch to "Plumber"</div>
+            <div class="audit-preview-row pass"><span class="audit-preview-c">✓</span> Phone listed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="audit-form-section">
+  <div class="wrap audit-form-grid">
+
+    <div class="audit-form-wrap">
+      <div id="errorBanner" class="audit-error is-hidden" role="alert"></div>
+      <form id="auditForm" class="audit-form" action="/audit.php" method="POST" novalidate>
+        <input type="hidden" name="manual_audit" id="manualAudit" value="">
+        <div class="form-honeypot" aria-hidden="true">
+          <label>Don't fill this <input type="text" name="website_url_hp" tabindex="-1" autocomplete="off"></label>
+        </div>
+
+        <!-- Automated path (default) -->
+        <div id="autoFields">
+          <div class="form-row">
+            <label for="gbp_url">Your Google Business Profile link <span class="req">*</span></label>
+            <input
+              type="url"
+              name="gbp_url"
+              id="gbp_url"
+              placeholder="https://maps.app.goo.gl/..."
+              autocomplete="off"
+              spellcheck="false">
+            <div id="urlValidator" class="url-validator"></div>
+            <details class="audit-help">
+              <summary>How do I find my link? <span class="audit-help-arrow">▾</span></summary>
+              <div class="audit-help-tabs">
+                <button type="button" class="audit-help-tab is-active" data-tab="mobile">On your phone</button>
+                <button type="button" class="audit-help-tab" data-tab="desktop">On your computer</button>
+              </div>
+              <ol class="audit-help-steps" id="helpMobile">
+                <li>Open <strong>Google Maps</strong> on your phone.</li>
+                <li>Search for your <strong>business name</strong>.</li>
+                <li>Tap your business in the results — make sure you tap the <strong>specific listing</strong>, not just the search result.</li>
+                <li>Tap the <strong>Share</strong> button (looks like 📤).</li>
+                <li>Tap <strong>Copy link</strong>.</li>
+                <li>Come back here and paste it above.</li>
+              </ol>
+              <ol class="audit-help-steps is-hidden" id="helpDesktop">
+                <li>Go to <a href="https://www.google.com/maps" target="_blank" rel="noopener">google.com/maps</a>.</li>
+                <li>Search for your <strong>business name</strong>.</li>
+                <li>Click your business in the results.</li>
+                <li>Click the <strong>Share</strong> button next to the business name.</li>
+                <li>Click <strong>Copy link</strong>.</li>
+                <li>Come back here and paste it above.</li>
+              </ol>
+            </details>
+          </div>
+        </div>
+
+        <!-- Manual path (hidden by default) -->
+        <div id="manualFields" class="is-hidden">
+          <div class="audit-manual-note">
+            We'll look up your Google profile by hand. Audit lands in your inbox within 24 hours instead of 60 seconds.
+          </div>
+          <div class="form-row">
+            <label for="business_name">Business name <span class="req">*</span></label>
+            <input type="text" name="business_name" id="business_name" autocomplete="organization">
+          </div>
+          <div class="form-row">
+            <label for="city_state">City and state <span class="req">*</span></label>
+            <input type="text" name="city_state" id="city_state" placeholder="Houston, TX" autocomplete="address-level2">
+          </div>
+          <div class="form-row">
+            <label for="m_website">Website (optional)</label>
+            <input type="url" name="website" id="m_website" placeholder="https://yourcompany.com">
+          </div>
+        </div>
+
+        <div class="form-row split">
+          <div>
+            <label for="first_name">First name <span class="req">*</span></label>
+            <input type="text" name="first_name" id="first_name" required autocomplete="given-name">
+          </div>
+          <div>
+            <label for="last_name">Last name <span class="req">*</span></label>
+            <input type="text" name="last_name" id="last_name" required autocomplete="family-name">
+          </div>
+        </div>
+
+        <div class="form-row split">
+          <div>
+            <label for="email">Email <span class="req">*</span></label>
+            <input type="email" name="email" id="email" required autocomplete="email">
+          </div>
+          <div>
+            <label for="phone">Mobile phone <span class="req">*</span></label>
+            <input type="tel" name="phone" id="phone" required autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="trade">What's your trade? <span class="req">*</span></label>
+          <select name="trade" id="trade" required>
+            <option value="">Select…</option>
+            <option>HVAC</option>
+            <option>Plumbing</option>
+            <option>Roofing</option>
+            <option>Electrical</option>
+            <option>Solar</option>
+            <option>Restoration</option>
+            <option>Garage Door</option>
+            <option>Pest Control</option>
+            <option>Landscaping</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="form-row audit-consent">
+          <label>
+            <input type="checkbox" name="consent" id="consent" value="1" required>
+            <span>I agree to receive my audit results and follow-up communications from Adverton at the email and mobile number above. I can opt out anytime. See our <a href="privacy.html">Privacy Policy</a>.</span>
+          </label>
+        </div>
+
+        <script src="https://www.google.com/recaptcha/api.js?render=6LdFktQsAAAAAJ6Ve9ZUJstntjVkRcAlbjFW-RIC"></script>
+        <input type="hidden" name="g-recaptcha-response" id="recaptchaResponse">
+
+        <button type="submit" id="submitBtn" class="btn btn-primary form-submit btn-arrow">Send me my free audit</button>
+
+        <div class="audit-fallback">
+          <button type="button" class="audit-fallback-btn" id="toggleManual">
+            Can't find your link? <strong>Audit me anyway →</strong>
+          </button>
+        </div>
+
+        <div class="form-fineprint">
+          Protected by reCAPTCHA. We don't sell your info. By submitting you agree to our <a href="terms.html">Terms</a>.
+        </div>
+      </form>
+    </div>
+
+    <aside class="audit-side">
+      <div class="audit-side-card">
+        <div class="eyebrow">What you'll get</div>
+        <h3>A no-BS report card for your Google profile</h3>
+        <ul class="audit-side-list">
+          <li><span class="audit-side-check">✓</span> A score from 0 to 100 with the math behind it</li>
+          <li><span class="audit-side-check">✓</span> 10 specific checks (reviews, photos, hours, categories, replies, more)</li>
+          <li><span class="audit-side-check">✓</span> The 3 things to fix this week to move the needle</li>
+          <li><span class="audit-side-check">✓</span> A benchmark vs top contractors in your trade</li>
+        </ul>
+      </div>
+      <div class="audit-side-meta">
+        <strong>Why we built this:</strong> most contractors are leaving 30%+ of their potential calls on the table because of fixable Google profile issues. The audit shows you exactly which ones — free, no call.
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+<section class="section how">
+  <div class="wrap">
+    <div class="how-header">
+      <div class="eyebrow">How it works</div>
+      <h2>Three steps. About 60 seconds.</h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="week">Step 1</div>
+        <h3>Paste your Google Maps link.</h3>
+        <p>One field. Open Maps, search your business, click Share, paste the link here. Stuck? We'll do it for you — see the "Audit me anyway" button.</p>
+      </div>
+      <div class="how-step">
+        <div class="week">Step 2</div>
+        <h3>We grade your profile.</h3>
+        <p>10 specific checks against what top performers in your trade actually do. Every check has a fix attached.</p>
+      </div>
+      <div class="how-step">
+        <div class="week">Step 3</div>
+        <h3>You get the report.</h3>
+        <p>Lands in your inbox in about 60 seconds. Read it on your phone between jobs. Apply the fixes yourself, or have us do it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section audit-faq">
+  <div class="wrap audit-faq-inner">
+    <div class="eyebrow">Common questions</div>
+    <h2>Real talk before you run it.</h2>
+    <div class="audit-faq-grid">
+      <div class="audit-faq-item">
+        <h3>Is this actually free?</h3>
+        <p>Yes. No credit card, no trial, no pop-up to "unlock" a paid version. We're a marketing company that wants to earn your trust before pitching you. The audit is the trust.</p>
+      </div>
+      <div class="audit-faq-item">
+        <h3>Where does the data come from?</h3>
+        <p>Google's official Places API. Same source Google uses to power Maps. No scraping, no guesses — what we score is what Google sees.</p>
+      </div>
+      <div class="audit-faq-item">
+        <h3>Will you sell my info or spam me?</h3>
+        <p>No. Your info goes to Leandro at Adverton and nowhere else. You can unsubscribe in one click from any email we send. See our <a href="privacy.html">privacy policy</a>.</p>
+      </div>
+      <div class="audit-faq-item">
+        <h3>What if my score is low?</h3>
+        <p>Means there's room to grow — that's the point. Each issue in your report has a fix attached. Apply them yourself, or hire us to do it. Either way, the report is yours.</p>
+      </div>
+      <div class="audit-faq-item">
+        <h3>Why do you need my phone number?</h3>
+        <p>Because most contractors fill this on their phone between jobs and prefer a quick text over a long email if there's anything urgent in the report. We don't cold-call you.</p>
+      </div>
+      <div class="audit-faq-item">
+        <h3>Can I run this for my competitor?</h3>
+        <p>Yes — but it works best on a profile you can actually fix. If you want to benchmark against competitors, book a 15-min call and we'll do it together.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="wrap final-cta-inner">
+    <h2>One field. One inbox check. One honest report.</h2>
+    <p>Built specifically for U.S. home service contractors. No email funnel. No upsells in the report.</p>
+    <a href="#auditForm" class="btn btn-primary btn-arrow">Run my free audit</a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <img src="assets/adverton-logo-white.png" alt="Adverton" loading="lazy">
+      <p>The marketing team for U.S. home service contractors. $799/month, flat — one bill, one team. Operated by MDS LLC, 16192 Coastal Highway, Lewes, DE 19958.</p>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Tools</h4>
+        <a href="audit.html">Free GBP audit</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="index.html#bundle">What's included</a>
+        <a href="index.html#how">How it works</a>
+        <a href="index.html#contact">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    © 2026 MDS LLC · Delaware, USA · adverton.net
+  </div>
+</footer>
+
+<div id="cookie-banner" class="cookie-banner">
+  <p>We use cookies to improve your experience and measure site traffic. See our <a href="privacy.html">Privacy Policy</a>.</p>
+  <div class="cookie-banner-actions">
+    <button class="cookie-banner-btn secondary" onclick="ckDecline()">Decline</button>
+    <button class="cookie-banner-btn" onclick="ckAccept()">Accept</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Display server-side error if redirected back with ?error=...
+  var errorParam = new URLSearchParams(location.search).get('error');
+  if (errorParam) {
+    var msgs = {
+      missing_field: "Please fill in all required fields.",
+      bad_email:     "That email address doesn't look right.",
+      bad_phone:     "Please enter a valid 10-digit U.S. phone number.",
+      consent:       "You need to check the consent box to receive your audit.",
+      recaptcha:     "Spam check failed — please refresh the page and try again.",
+      missing_url:   "Please paste your Google Business Profile link.",
+      ambiguous_url: "That URL points to multiple businesses. Click your specific listing in Google Maps first, then click Share → Copy link.",
+      not_found:     "We couldn't find that business in Google. Make sure your profile is published, then try again — or use the \"Audit me anyway\" option below.",
+      invalid_url:   "That doesn't look like a Google Maps link. Open Google Maps, click your listing, then Share → Copy link.",
+      api_error:     "Something went wrong on our end. Try again in a minute, or use the \"Audit me anyway\" option below.",
+      rate_limit:    "Too many requests from your network. Try again in a few minutes.",
+      method:        "Invalid request method.",
+      generic:       "Something went wrong. Please try again."
+    };
+    var banner = document.getElementById('errorBanner');
+    banner.textContent = msgs[errorParam] || msgs.generic;
+    banner.classList.remove('is-hidden');
+    setTimeout(function(){ banner.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
+  }
+
+  // Cookie banner
+  if (!localStorage.getItem('ck_consent')) {
+    setTimeout(function(){
+      var b = document.getElementById('cookie-banner');
+      if (b) b.classList.add('show');
+    }, 800);
+  }
+  window.ckAccept = function(){
+    localStorage.setItem('ck_consent', 'accepted');
+    var b = document.getElementById('cookie-banner'); if (b) b.classList.remove('show');
+  };
+  window.ckDecline = function(){
+    localStorage.setItem('ck_consent', 'declined');
+    var b = document.getElementById('cookie-banner'); if (b) b.classList.remove('show');
+    window['ga-disable-G-SDEBS959S1'] = true;
+  };
+
+  // Help tabs
+  var tabs = document.querySelectorAll('.audit-help-tab');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('is-active'); });
+      t.classList.add('is-active');
+      var which = t.getAttribute('data-tab');
+      document.getElementById('helpMobile').classList.toggle('is-hidden', which !== 'mobile');
+      document.getElementById('helpDesktop').classList.toggle('is-hidden', which !== 'desktop');
+    });
+  });
+
+  // URL validator
+  var urlInput = document.getElementById('gbp_url');
+  var validator = document.getElementById('urlValidator');
+  var submitBtn = document.getElementById('submitBtn');
+
+  function classify(url){
+    if (!url) return { state: '', msg: '' };
+    var u = url.trim();
+    if (!/^https?:\/\//i.test(u)) {
+      return { state: 'bad', msg: "Doesn't look like a URL — paste the full link including https://." };
+    }
+    var host = '';
+    try { host = new URL(u).host.toLowerCase(); } catch (e) { return { state: 'bad', msg: "We couldn't read that URL." }; }
+    var isGoogle = ['google.com','www.google.com','maps.google.com','maps.app.goo.gl','g.page','goo.gl'].includes(host);
+    if (!isGoogle) return { state: 'bad', msg: "That's not a Google Maps link." };
+    var isShort = ['maps.app.goo.gl','g.page','goo.gl'].includes(host);
+    if (isShort) return { state: 'ok', msg: "Looks good — that's a Google Maps share link." };
+    if (u.indexOf('/maps/place/') !== -1) return { state: 'ok', msg: "Looks good — that's a specific business listing." };
+    if (/[?&]output=search/i.test(u) || /[?&]q=/i.test(u)) {
+      return { state: 'warn', msg: "That's a search URL — it points to multiple businesses. Click your specific listing first, then click Share." };
+    }
+    return { state: 'bad', msg: "We can't tell what business that link points to. Try the Share button on your specific listing." };
+  }
+
+  function updateValidator(){
+    var c = classify(urlInput.value);
+    validator.className = 'url-validator';
+    validator.textContent = c.msg;
+    if (c.state) validator.classList.add('url-validator-' + c.state);
+    var manual = document.getElementById('manualAudit').value === '1';
+    submitBtn.disabled = !manual && c.state !== 'ok';
+  }
+  if (urlInput) {
+    urlInput.addEventListener('input', updateValidator);
+    urlInput.addEventListener('blur', updateValidator);
+    updateValidator();
+  }
+
+  // Manual fallback toggle
+  var toggleBtn = document.getElementById('toggleManual');
+  var autoFields = document.getElementById('autoFields');
+  var manualFields = document.getElementById('manualFields');
+  var manualFlag = document.getElementById('manualAudit');
+  toggleBtn.addEventListener('click', function(){
+    var nowManual = manualFlag.value !== '1';
+    manualFlag.value = nowManual ? '1' : '';
+    autoFields.classList.toggle('is-hidden', nowManual);
+    manualFields.classList.toggle('is-hidden', !nowManual);
+    urlInput.required = !nowManual;
+    document.getElementById('business_name').required = nowManual;
+    document.getElementById('city_state').required = nowManual;
+    toggleBtn.innerHTML = nowManual
+      ? '← Back to paste-link audit'
+      : 'Can\'t find your link? <strong>Audit me anyway →</strong>';
+    updateValidator();
+  });
+
+  // reCAPTCHA — pull token at submit
+  var form = document.getElementById('auditForm');
+  form.addEventListener('submit', function(e){
+    if (typeof grecaptcha === 'undefined') return;
+    e.preventDefault();
+    grecaptcha.ready(function(){
+      grecaptcha.execute('6LdFktQsAAAAAJ6Ve9ZUJstntjVkRcAlbjFW-RIC', { action: 'audit' })
+        .then(function(token){
+          document.getElementById('recaptchaResponse').value = token;
+          form.submit();
+        });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
