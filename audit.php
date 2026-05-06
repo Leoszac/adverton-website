@@ -13,6 +13,11 @@ require_once __DIR__ . '/lib/gbp-resolver.php';
 require_once __DIR__ . '/lib/audit-scorer.php';
 require_once __DIR__ . '/lib/audit-email.php';
 
+// CRM persistence (best-effort: never breaks lead capture if DB is down).
+if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
+@require_once __DIR__ . '/crm/lib/db.php';
+@require_once __DIR__ . '/crm/lib/leads.php';
+
 // ------- Config loader -------
 
 function loadAuditConfig(): array {
@@ -129,6 +134,26 @@ if ($isManual) {
     }
     @sendManualPendingEmail($form);
     @notifyNewLead($form, null, $auditId, true);
+    if (function_exists('crm_insertLead')) {
+        @crm_insertLead([
+            'source'        => 'audit_manual',
+            'source_page'   => $_SERVER['HTTP_REFERER'] ?? null,
+            'first_name'    => $form['first_name'],
+            'last_name'     => $form['last_name'],
+            'email'         => $form['email'],
+            'phone'         => $form['phone'],
+            'business_name' => $form['business_name'],
+            'trade'         => $form['trade'],
+            'city_state'    => $form['city_state'],
+            'website'       => $form['website'],
+            'audit_id'      => $auditId,
+            'ip'            => $_SERVER['REMOTE_ADDR'] ?? null,
+            'user_agent'    => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+            'utm_source'    => $_POST['utm_source']   ?? null,
+            'utm_medium'    => $_POST['utm_medium']   ?? null,
+            'utm_campaign'  => $_POST['utm_campaign'] ?? null,
+        ]);
+    }
     header('Location: ' . REDIRECT_OK_MANUAL);
     exit;
 }
@@ -161,6 +186,29 @@ $auditResult['google_maps_uri'] = $place['googleMapsUri'] ?? '';
 // Fire emails (best-effort: we still redirect to thank-you even if one fails)
 @sendAuditEmail($form, $auditResult, $auditId);
 @notifyNewLead($form, $auditResult, $auditId, false);
+
+if (function_exists('crm_insertLead')) {
+    @crm_insertLead([
+        'source'        => 'audit_auto',
+        'source_page'   => $_SERVER['HTTP_REFERER'] ?? null,
+        'first_name'    => $form['first_name'],
+        'last_name'     => $form['last_name'],
+        'email'         => $form['email'],
+        'phone'         => $form['phone'],
+        'business_name' => $auditResult['business_name'] ?? $form['business_name'],
+        'trade'         => $form['trade'],
+        'city_state'    => $form['city_state'],
+        'website'       => $form['website'],
+        'gbp_url'       => $form['gbp_url'],
+        'audit_score'   => $auditResult['score'] ?? null,
+        'audit_id'      => $auditId,
+        'ip'            => $_SERVER['REMOTE_ADDR'] ?? null,
+        'user_agent'    => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+        'utm_source'    => $_POST['utm_source']   ?? null,
+        'utm_medium'    => $_POST['utm_medium']   ?? null,
+        'utm_campaign'  => $_POST['utm_campaign'] ?? null,
+    ]);
+}
 
 header('Location: ' . REDIRECT_OK_AUTO);
 exit;

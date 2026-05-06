@@ -3,5 +3,7 @@ Allow: /
 Disallow: /thank-you
 Disallow: /thank-you.html
 Disallow: /send.php
+Disallow: /crm/
+Disallow: /crm
 
 Sitemap: https://adverton.net/sitemap.xml

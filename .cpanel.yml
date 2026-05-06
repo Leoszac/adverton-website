@@ -8,4 +8,6 @@ deployment:
     - /bin/sh -c "/bin/cp -Rf *.html *.php *.css *.svg *.ico *.png sitemap.xml robots.txt .htaccess $DEPLOYPATH/"
     - /bin/cp -Rf assets $DEPLOYPATH/
     - /bin/cp -Rf lib $DEPLOYPATH/
+    - /bin/cp -Rf crm $DEPLOYPATH/
     - /bin/rm -f $DEPLOYPATH/audit-config.example.php
+    - /bin/rm -f $DEPLOYPATH/crm-config.example.php

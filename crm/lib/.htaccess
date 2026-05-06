@@ -1,0 +1,2 @@
+# Block ALL direct web access to lib/ — only PHP includes from /crm/*.php should reach here.
+Require all denied

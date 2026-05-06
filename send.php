@@ -4,6 +4,11 @@
 
 declare(strict_types=1);
 
+// CRM persistence (best-effort: never breaks lead capture if DB is down).
+if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
+@require_once __DIR__ . '/crm/lib/db.php';
+@require_once __DIR__ . '/crm/lib/leads.php';
+
 const RECIPIENT     = 'hello@adverton.net';
 const SENDER_DOMAIN = 'adverton.net';
 const RECAPTCHA_SECRET = '6LdFktQsAAAAAP0h44NT50T83DQZgpvlFqvxUexu'; // server-side
@@ -91,6 +96,26 @@ $ok = mail(RECIPIENT, $subject, $body, $headers);
 
 if (!$ok) {
     bail(500, 'mail() returned false');
+}
+
+if (function_exists('crm_insertLead')) {
+    @crm_insertLead([
+        'source'        => 'contact_form',
+        'source_page'   => $_SERVER['HTTP_REFERER'] ?? null,
+        'first_name'    => $d['first_name']    ?? null,
+        'last_name'     => $d['last_name']     ?? null,
+        'email'         => $d['email']         ?? null,
+        'phone'         => $d['phone']         ?? null,
+        'business_name' => $d['business_name'] ?? null,
+        'trade'         => $d['trade']         ?? null,
+        'revenue'       => $d['revenue']       ?? null,
+        'message'       => $d['message']       ?? null,
+        'ip'            => $_SERVER['REMOTE_ADDR'] ?? null,
+        'user_agent'    => substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
+        'utm_source'    => $d['utm_source']   ?? null,
+        'utm_medium'    => $d['utm_medium']   ?? null,
+        'utm_campaign'  => $d['utm_campaign'] ?? null,
+    ]);
 }
 
 // Auto-responder to the prospect (best-effort — don't bail if it fails)

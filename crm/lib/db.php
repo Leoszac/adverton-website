@@ -1,0 +1,66 @@
+<?php
+// CRM DB layer — PDO MySQL connection + config loader.
+// Real config lives at /home2/advertonnet/crm-config.php (chmod 600), OUTSIDE
+// public_html. Never commit real credentials.
+
+declare(strict_types=1);
+
+if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
+
+function crm_loadConfig(): array {
+    $candidates = [
+        '/home2/advertonnet/crm-config.php',
+        dirname(__DIR__, 3) . '/crm-config.php',
+        __DIR__ . '/../crm-config.php',
+    ];
+    foreach ($candidates as $p) {
+        if (is_readable($p)) {
+            $cfg = include $p;
+            if (is_array($cfg)) return $cfg;
+        }
+    }
+    error_log('[crm] no config file found in ' . implode(', ', $candidates));
+    return [];
+}
+
+function crm_config(string $key, ?string $default = null): ?string {
+    static $cfg = null;
+    if ($cfg === null) $cfg = crm_loadConfig();
+    return isset($cfg[$key]) ? (string)$cfg[$key] : $default;
+}
+
+function crm_db(): PDO {
+    static $pdo = null;
+    if ($pdo !== null) return $pdo;
+
+    $host = crm_config('DB_HOST', 'localhost');
+    $name = crm_config('DB_NAME');
+    $user = crm_config('DB_USER');
+    $pass = crm_config('DB_PASS');
+    if (!$name || !$user) {
+        throw new RuntimeException('CRM config missing DB_NAME or DB_USER');
+    }
+
+    $dsn = "mysql:host={$host};dbname={$name};charset=utf8mb4";
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ]);
+    return $pdo;
+}
+
+function crm_log(string $line): void {
+    $logPath = '/home2/advertonnet/logs/crm.log';
+    $dir = dirname($logPath);
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    @file_put_contents(
+        $logPath,
+        gmdate('Y-m-d\TH:i:s\Z') . ' ' . $line . "\n",
+        FILE_APPEND | LOCK_EX
+    );
+}
+
+function crm_h(string $s): string {
+    return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}

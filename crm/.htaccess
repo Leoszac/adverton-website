@@ -1,0 +1,24 @@
+# CRM — extra protection on top of the parent .htaccess.
+# - Block direct web access to lib/, .sql, .md, one-shot setup scripts
+# - Tell crawlers to stay out (belt to robots.txt's suspenders)
+
+<IfModule mod_headers.c>
+  Header always set X-Robots-Tag "noindex, nofollow, noarchive"
+  Header always set Cache-Control "private, no-store, no-cache, must-revalidate"
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+
+# Internal-only files — never servable
+<FilesMatch "\.(sql|md)$">
+  Require all denied
+</FilesMatch>
+
+# One-shot setup/import scripts and CLI cron jobs: blocked from web by default.
+# Webhooks (stripe, pandadoc, openphone, smartlead, push-subscribe) and the
+# pixel/redirector (t.php, r.php) MUST stay reachable — those are not blocked.
+<FilesMatch "^(seed-users|import-audit-log|cron-calendly|cron-client-triggers|cron-sequences|cron-health-score|cron-lost-reengagement|crm-config\.example)\.php$">
+  Require all denied
+</FilesMatch>
