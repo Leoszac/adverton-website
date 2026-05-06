@@ -76,6 +76,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
     <?php if (($user['role'] ?? '') === 'founder'): ?>
       <a href="/crm/sequences.php">Sequences</a>
       <a href="/crm/routing.php">Routing</a>
+      <a href="/crm/integrations.php">Integrations</a>
     <?php endif; ?>
     <a href="/crm/account.php" title="Account · password · 2FA" style="margin-left:auto;font-size:14px">⚙️</a>
     <?php

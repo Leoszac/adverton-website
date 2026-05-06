@@ -15,6 +15,7 @@ const CRM_CRON_JOBS = [
     'health_score'      => ['interval' => 86400, 'script' => 'cron-health-score.php'],
     'lost_reengagement' => ['interval' => 86400, 'script' => 'cron-lost-reengagement.php'],
     'sequences'         => ['interval' => 1800,  'script' => 'cron-sequences.php'],
+    'backup'            => ['interval' => 86400, 'script' => 'cron-backup.php'],
 ];
 
 function crm_loadCronState(): array {

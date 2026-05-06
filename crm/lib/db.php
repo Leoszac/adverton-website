@@ -24,6 +24,20 @@ function crm_loadConfig(): array {
 }
 
 function crm_config(string $key, ?string $default = null): ?string {
+    // DB-backed settings take precedence for whitelisted keys (managed via
+    // /crm/integrations.php). DB credentials etc. always come from the file.
+    if (defined('CRM_DB_BACKED_KEYS') === false) {
+        // Lazy-load the whitelist once we have a DB connection candidate
+        if (is_readable(__DIR__ . '/settings.php')) {
+            require_once __DIR__ . '/settings.php';
+        }
+    }
+    if (defined('CRM_DB_BACKED_KEYS') || (function_exists('crm_loadDbSettings'))) {
+        if (function_exists('crm_loadDbSettings') && in_array($key, CRM_DB_BACKED_KEYS, true)) {
+            $db = crm_loadDbSettings();
+            if (isset($db[$key]) && $db[$key] !== '') return (string)$db[$key];
+        }
+    }
     static $cfg = null;
     if ($cfg === null) $cfg = crm_loadConfig();
     return isset($cfg[$key]) ? (string)$cfg[$key] : $default;

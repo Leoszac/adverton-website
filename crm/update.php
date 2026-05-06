@@ -13,6 +13,7 @@ require_once __DIR__ . '/lib/email_track.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/sequences.php';
 require_once __DIR__ . '/lib/routing.php';
+require_once __DIR__ . '/lib/settings.php';
 
 $user = crm_requireLogin();
 
@@ -402,6 +403,19 @@ case 'routing_save': {
     $id = (int)($_POST['id'] ?? 0);
     crm_saveRoutingRule($id, $_POST);
     header('Location: /crm/routing.php?saved=1');
+    exit;
+}
+
+case 'integration_save': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $saved = 0;
+    foreach (CRM_DB_BACKED_KEYS as $k) {
+        if (!array_key_exists($k, $_POST)) continue;
+        $v = trim((string)$_POST[$k]);
+        if (crm_saveSetting($k, $v, (int)$user['id'])) $saved++;
+    }
+    crm_log("integration_save uid={$user['id']} keys={$saved}");
+    header('Location: /crm/integrations.php?saved=1');
     exit;
 }
 

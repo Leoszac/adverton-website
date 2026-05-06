@@ -19,6 +19,6 @@
 # One-shot setup/import scripts and CLI cron jobs: blocked from web by default.
 # Webhooks (stripe, pandadoc, openphone, smartlead, push-subscribe) and the
 # pixel/redirector (t.php, r.php) MUST stay reachable — those are not blocked.
-<FilesMatch "^(seed-users|import-audit-log|cron-calendly|cron-client-triggers|cron-sequences|cron-health-score|cron-lost-reengagement|crm-config\.example)\.php$">
+<FilesMatch "^(seed-users|import-audit-log|cron-calendly|cron-client-triggers|cron-sequences|cron-health-score|cron-lost-reengagement|cron-backup|crm-config\.example)\.php$">
   Require all denied
 </FilesMatch>
