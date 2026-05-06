@@ -137,7 +137,7 @@ crm_renderHeader($user, '');
               <div style="display:flex;gap:6px">
                 <button type="button" class="row-btn" onclick="document.getElementById('dupForm').submit()">Duplicate</button>
                 <?php if (($user['role'] ?? '') === 'founder'): ?>
-                <button type="button" class="row-btn danger" onclick="if(confirm('Delete sequence &quot;<?= crm_h(addslashes((string)$editing['name'])) ?>&quot;?\n\nActive enrollments will be cascade-removed. This cannot be undone.')) document.getElementById('delForm').submit()">Delete</button>
+                <button type="button" class="row-btn danger" onclick="if(confirm('Delete this sequence?\n\nAll enrollments (active or finished) will be cascade-removed. This cannot be undone.')) document.getElementById('delForm').submit()">Delete</button>
                 <?php endif; ?>
               </div>
             <?php endif; ?>
