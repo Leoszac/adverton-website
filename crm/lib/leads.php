@@ -120,8 +120,34 @@ function crm_insertLead(array $data): ?int {
         // Best-effort webhook notification (Slack-compatible, Telegram via bot, etc.)
         crm_fireNewLeadWebhook($id, $values);
 
+        // HOT lead → bypass nurture, create immediate "call now" task.
+        // Nurture sequences are designed for cold/warm leads who need warming up.
+        // A hot lead (low audit score, core trade, valid phone) needs a human
+        // call within the hour, not a 14-day drip.
+        if (($values['temperature'] ?? '') === 'hot' && file_exists(__DIR__ . '/tasks.php')) {
+            require_once __DIR__ . '/tasks.php';
+            $score = $values['audit_score'] ?? null;
+            $title = 'CALL NOW — HOT lead' . ($score !== null ? " ({$score}/100)" : '');
+            $notes = 'Auto-created on lead intake. '
+                   . 'Source: ' . ($values['source'] ?? '?')
+                   . ' · Trade: ' . ($values['trade'] ?? '—')
+                   . ' · Phone: ' . ($values['phone'] ?? '—')
+                   . ' · Speed-to-lead: every minute past minute one is conversion left on the table.';
+            crm_createTask([
+                'lead_id'     => $id,
+                'assigned_to' => $assignedOwner,  // null if no routing rule matched — task still shows in unassigned bucket
+                'title'       => $title,
+                'notes'       => $notes,
+                'due_at'      => date('Y-m-d H:i:s', time() + 3600),  // +1 hour
+            ]);
+            crm_logActivity($id, null, 'system', 'hot_lead_routed',
+                'Bypassed nurture; created callback task due in 1 hour');
+            return $id;
+        }
+
         // Auto-enroll in active sequences scoped to this source
         // (audit_auto, audit_manual, ebook_growth_engine, contact_form, ...)
+        // Only WARM/COLD leads — HOT bypassed above.
         if (file_exists(__DIR__ . '/sequences.php')) {
             require_once __DIR__ . '/sequences.php';
             crm_dispatchSequenceTrigger('lead_created', $id, (string)($values['source'] ?? ''));
