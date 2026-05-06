@@ -76,7 +76,7 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 }
 .nav-logo { display: flex; align-items: center; gap: 8px; }
 .nav-logo img { height: 36px; }
-.nav-links { display: flex; gap: 28px; }
+.nav-links { display: flex; gap: 28px; align-items: center; }
 .nav-links a, .nav-links .dropdown-trigger {
   font-size: 14px; font-weight: 500; color: var(--ink-2); cursor: pointer;
   background: none; border: 0;
