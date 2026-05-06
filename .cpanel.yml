@@ -12,7 +12,4 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/audit-config.example.php
     - /bin/rm -f $DEPLOYPATH/crm-config.example.php
     - /bin/rm -f $DEPLOYPATH/crm/run-migration-v9.php
-    # seed-nurture-sequences.php intentionally NOT auto-deleted on first deploy —
-    # it's a one-shot seeder that has to run AFTER deploy. Re-enable this line
-    # in a follow-up commit once the seeder has run successfully.
-    # - /bin/rm -f $DEPLOYPATH/crm/seed-nurture-sequences.php
+    - /bin/rm -f $DEPLOYPATH/crm/seed-nurture-sequences.php
