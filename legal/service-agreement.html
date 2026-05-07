@@ -4,89 +4,210 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Adverton — Service Agreement</title>
+  <title>Adverton — Service Agreement v1.1</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    main{max-width:780px;margin:32px auto;padding:0 20px;line-height:1.65;color:#0e0d12}
-    h1{font-size:28px;margin:0 0 6px}
-    .meta{color:#6b6877;font-size:13px;margin-bottom:28px}
-    h2{font-size:18px;margin:32px 0 8px;border-top:1px solid #e7e4ee;padding-top:24px}
-    h2:first-of-type{border-top:0;padding-top:0}
+    main{max-width:820px;margin:32px auto;padding:0 22px;line-height:1.65;color:#0e0d12}
+    h1{font-size:30px;margin:0 0 6px;letter-spacing:-0.01em}
+    .meta{color:#6b6877;font-size:13px;margin-bottom:32px;border-bottom:1px solid #e7e4ee;padding-bottom:16px}
+    h2{font-size:19px;margin:32px 0 10px;color:#312e81;letter-spacing:-0.01em}
+    h3{font-size:15px;margin:18px 0 8px;color:#0e0d12;font-weight:600}
     p,li{font-size:15px}
-    code{background:#faf9ff;padding:2px 5px;border-radius:4px;font-size:13px}
+    ul,ol{padding-left:22px}
+    li{margin-bottom:6px}
+    code{background:#faf9ff;padding:2px 6px;border-radius:4px;font-size:13px;font-family:ui-monospace,monospace}
+    table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+    th{background:#312e81;color:#fff;text-align:left;padding:10px 12px;font-weight:600}
+    td{border:1px solid #e7e4ee;padding:9px 12px;vertical-align:top}
+    tr.section-row td{background:#f7f6fb;font-weight:600;color:#312e81}
+    tr.total-row td{background:#faf9ff;font-weight:600}
+    .net-zero{color:#16a34a;font-weight:600}
+    .net-paid{color:#0e0d12;font-weight:600}
+    .footer-note{margin-top:48px;padding-top:18px;border-top:1px solid #e7e4ee;color:#6b6877;font-size:13px}
   </style>
 </head>
 <body>
 <main>
   <h1>Service Agreement</h1>
-  <div class="meta">Effective version: <strong>v1.0</strong> · Last updated <strong>2026-05-07</strong></div>
-
-  <p><strong>This is a placeholder.</strong> Replace this file with the final legal
-  text reviewed by counsel before going live with paying clients. The pre-contract
-  flow (<code>pre-contract-submit.php</code>) and Stripe Checkout consent collection
-  link to <code>https://adverton.net/legal/service-agreement.html</code>; clients
-  must check "I have read and agree to Adverton's Service Agreement" before they
-  can complete payment, which Stripe records as click-wrap acceptance.</p>
+  <div class="meta">Effective version: <strong>v1.1</strong> · Last updated <strong>2026-05-07</strong></div>
 
   <h2>1. Parties</h2>
-  <p>This Service Agreement ("Agreement") is between <strong>MDS LLC</strong>
-  (Delaware), doing business as <strong>Adverton</strong> ("Adverton", "we"), and
-  the business identified in the Stripe Checkout session that accepts these terms
-  ("Client").</p>
+  <p>This Service Agreement (&ldquo;<strong>Agreement</strong>&rdquo;) is between <strong>MDS LLC</strong> (a Delaware limited liability company), doing business as <strong>Adverton</strong> (&ldquo;Adverton,&rdquo; &ldquo;we,&rdquo; or &ldquo;us&rdquo;), and the business identified in the Stripe Checkout session that accepts these terms (&ldquo;Client,&rdquo; &ldquo;you&rdquo;).</p>
 
   <h2>2. Services</h2>
-  <p>Adverton will provide the bundled growth-management package described at
-  <a href="https://adverton.net">adverton.net</a> at the monthly fee shown on the
-  Stripe Checkout page, including: a managed website with hosting, Google Business
-  Profile optimization, reputation/review management, and any add-ons selected at
-  checkout.</p>
+  <p>Adverton will deliver the following bundled growth-management services (the &ldquo;<strong>Services</strong>&rdquo;):</p>
+
+  <h3>2.1 Website Asset (one-time build)</h3>
+  <ul>
+    <li>A custom-built marketing website of up to five (5) pages, mobile-responsive, with online booking capability.</li>
+    <li>Migration of an existing website (if applicable) without loss of Google search ranking.</li>
+    <li>Domain registration (one) and configuration, business hosting, SSL, and one (1) business email mailbox.</li>
+  </ul>
+
+  <h3>2.2 Recurring Services (monthly)</h3>
+  <ul>
+    <li>Google Business Profile (GBP) setup, optimization, and monthly maintenance.</li>
+    <li>Google Local Services Ads (LSA) account setup, campaign management, and ongoing optimization within the Client&rsquo;s defined service area. (LSA media spend is paid directly by Client to Google &mdash; see Section 7.)</li>
+    <li>Reputation and review management, including automated review-request workflows after each completed job.</li>
+    <li>Tradio CRM access (online booking, mobile CRM, scheduling, GPS routing, quotes, invoices, payments, automated review requests, appointment reminders). Tradio is provided through a third-party partner &mdash; see Section 7.</li>
+    <li>One (1) monthly performance report and one (1) monthly strategy call (up to 30 minutes) with a dedicated account manager.</li>
+  </ul>
+
+  <h3>2.3 Optional Add-Ons</h3>
+  <p>Additional services may be selected at checkout or added during the term at the prices published at <a href="https://adverton.net">adverton.net</a> (e.g., AI Voice Receptionist, Meta Ads management, multi-location, Yelp setup, content updates, ad-spend management, call tracking, lead-marketplace management). Add-ons are billed separately and are not subject to the bonification structure in Section 4.</p>
 
   <h2>3. Term &amp; Renewal</h2>
-  <p>The initial term is <strong>twelve (12) months</strong> beginning on the date of
-  first successful payment. The Agreement auto-renews for additional 12-month terms
-  unless either party gives written notice at least <strong>90 days</strong> before
-  the end of the current term.</p>
+  <p>The initial term is <strong>twelve (12) months</strong> beginning on the date Adverton receives Client&rsquo;s first cleared payment (the &ldquo;<strong>Start Date</strong>&rdquo;). The Agreement auto-renews for additional twelve-month terms on each anniversary unless either party gives the other written notice of non-renewal at least <strong>ninety (90) days</strong> before the end of the then-current term.</p>
 
-  <h2>4. Fees &amp; Payment</h2>
-  <p>The monthly subscription fee is shown on the Stripe Checkout page at acceptance.
-  Adverton charges via Stripe on the same day each month. Failed payments after 7
-  days suspend service; after 30 days terminate the Agreement (Client remains
-  liable for the remainder of the 12-month commitment).</p>
+  <h2>4. Pricing &amp; Bonification</h2>
+  <p>The standard, unbonified value of the bundled Services is set forth in <strong>Schedule A</strong> (Service Components &amp; Values), attached to and incorporated into this Agreement.</p>
+  <p>In consideration of Client&rsquo;s full performance of the 12-month commitment, Adverton grants Client a <strong>100% bonification (waiver) of all recurring service charges</strong> set forth in Schedule A. As a result, Client&rsquo;s total monthly payment is <strong>$799 (USD)</strong>, which is allocated entirely as one of twelve (12) installments toward the Website Asset described in Section 5.</p>
+  <p><strong>The bonification is a conditional benefit.</strong> It applies only while Client is in full and continuing compliance with the 12-month commitment. If Client defaults or terminates early other than for Adverton&rsquo;s uncured material breach, the bonification is forfeited as provided in Sections 5 and 10, and the unbonified standard service value becomes calculable as a measure of damages.</p>
 
-  <h2>5. Website Asset</h2>
-  <p>The Adverton-built website is treated as a $9,588 asset paid through 12 monthly
-  installments included in the subscription. Client may buy out the website at any
-  time after month 6 for the remaining balance plus a buyout fee. Reversion-and-fee
-  language from earlier versions does not apply.</p>
+  <h2>5. Website Asset, Title &amp; Reversion</h2>
 
-  <h2>6. Intellectual Property</h2>
-  <p>Client retains ownership of trademarks, content provided to Adverton, and
-  customer data. Adverton retains ownership of all proprietary tools, processes,
-  templates, and code, including the underlying CRM system.</p>
+  <h3>5.1 Asset Value &amp; Installments</h3>
+  <p>The website built by Adverton is a fixed asset with a contract value of <strong>Nine Thousand Five Hundred Eighty-Eight U.S. Dollars ($9,588)</strong>, paid by Client through twelve (12) consecutive monthly installments of $799 each. The contract value is the price the parties have agreed for the website and is not contingent on Client&rsquo;s separate use or non-use of the bonified Services.</p>
 
-  <h2>7. Termination</h2>
-  <p>Either party may terminate for material breach with 30 days' written notice
-  if the breach is uncured. Early termination by Client during the 12-month
-  commitment requires payment of the remaining months.</p>
+  <h3>5.2 Title Retention</h3>
+  <p>Title to and full ownership of the website (including source code, design files, build templates, content management system access credentials, hosted domain name registration, and the underlying hosting account) shall <strong>remain exclusively with Adverton</strong> until Adverton has received and cleared all twelve (12) monthly installments. Until that moment, Client holds only a limited, revocable license to use the website for Client&rsquo;s own business purposes.</p>
 
-  <h2>8. Limitation of Liability</h2>
-  <p>Adverton's aggregate liability under this Agreement is capped at the fees
-  paid by Client in the 6 months preceding the claim. Adverton is not liable for
-  consequential, indirect, or lost-profit damages.</p>
+  <h3>5.3 Automatic Transfer Upon Completion</h3>
+  <p>Upon Adverton&rsquo;s receipt and clearance of the twelfth (12th) installment, title to the website transfers automatically to Client without further action. Within fourteen (14) days thereafter, Adverton will deliver to Client (a) an export of the website code and content in a portable archive (.zip), (b) administrative ownership of the domain name, and (c) a portable export of Client customer records held in Tradio CRM, subject to Section 7.</p>
 
-  <h2>9. Governing Law</h2>
-  <p>This Agreement is governed by Delaware law, with venue in New Castle County,
-  Delaware. The parties waive jury trial.</p>
+  <h3>5.4 Early Buyout</h3>
+  <p>Client may, at any time after the Start Date, elect to accelerate transfer by paying the <strong>Remaining Asset Balance</strong>, calculated as $9,588 minus all installments cleared to date, in a single non-refundable payment. Upon clearance, transfer occurs as provided in Section 5.3. No additional buyout fee applies.</p>
 
-  <h2>10. Acceptance</h2>
-  <p>Client accepts this Agreement by checking the consent box and completing
-  payment in the Stripe Checkout session. Stripe records the timestamp of the
-  acceptance; Adverton stores the acceptance record in <code>clients.tos_consented_at</code>
-  and <code>clients.contract_signed_at</code> for audit purposes.</p>
+  <h3>5.5 Reversion on Default or Early Termination</h3>
+  <p>If Client (a) fails to cure non-payment of any installment within thirty (30) days of its due date, or (b) terminates this Agreement before completing all twelve (12) installments other than for Adverton&rsquo;s uncured material breach, then, automatically and without further notice:</p>
+  <ul>
+    <li>Client&rsquo;s license to use the website terminates immediately;</li>
+    <li>Title to the website remains with, and reverts in full to, Adverton;</li>
+    <li>Adverton may take the website offline, redirect or transfer back the registered domain, suspend hosted services, and retain all build assets, code, and configurations;</li>
+    <li>The bonification granted in Section 4 is deemed forfeited as to all months remaining in the 12-month term; and</li>
+    <li>Client remains liable, as liquidated damages, for the lesser of (i) the sum of the remaining monthly installments through month 12, or (ii) the unbonified standard value of Services delivered through the date of termination plus the Remaining Asset Balance. Adverton shall elect between (i) and (ii) at its sole discretion.</li>
+  </ul>
+  <p><strong>For clarity:</strong> under no circumstance does the website transfer to Client before Adverton has been paid in full, whether through completion of the 12-month installments or through the Early Buyout in Section 5.4.</p>
 
-  <p style="margin-top:48px;color:#6b6877;font-size:13px">
-    Questions? Email <a href="mailto:legal@adverton.net">legal@adverton.net</a>.
-  </p>
+  <h2>6. Fees &amp; Payment</h2>
+  <p>The monthly subscription fee is <strong>$799 USD</strong>, charged via Stripe on the same day each month beginning on the Start Date. Failed payments suspend service after seven (7) days and may trigger termination and reversion under Section 5.5 after thirty (30) days. Add-on fees are charged on the same monthly cycle. All fees exclude sales, use, or value-added taxes, which are Client&rsquo;s responsibility where applicable.</p>
+
+  <h2>7. LSA Ad Spend &amp; Third-Party Services</h2>
+
+  <h3>7.1 Google LSA Media Spend</h3>
+  <p>Adverton manages Google Local Services Ads (LSA) campaigns on Client&rsquo;s behalf. The associated <strong>media spend (typically $1,000&ndash;$2,500 per month)</strong> is paid directly by Client to Google and is <strong>not</strong> included in the $799 monthly fee. Adverton has no control over Google&rsquo;s billing, lead pricing, or auction outcomes, and is not responsible for spend incurred under Client&rsquo;s Google account.</p>
+
+  <h3>7.2 Tradio CRM (Partner Platform)</h3>
+  <p>Tradio CRM is provided by an independent third-party partner (GrabTradio.com). Access to Tradio is bundled within the Services for the duration of this Agreement, but Adverton does not own or operate the Tradio platform. If Tradio modifies its terms, raises its prices, restricts functionality, or ceases operations, Adverton may, at its option, (a) substitute a comparable CRM, (b) pass through changed costs to Client with thirty (30) days&rsquo; notice, or (c) discontinue the CRM component without affecting Client&rsquo;s other obligations under this Agreement.</p>
+
+  <h3>7.3 Other Third Parties</h3>
+  <p>Hosting, domain registrar, email provider, and any other infrastructure providers are subject to their own terms. Adverton selects providers in good faith but does not warrant their uptime, security, or continued availability.</p>
+
+  <h2>8. Customer Data &amp; Migration</h2>
+  <p>Customer records, leads, contacts, and other Client business data entered into Tradio or otherwise provided to Adverton remain the property of Client. Upon completion of the 12-month term and full payment, or upon Early Buyout under Section 5.4, Adverton will provide Client with a one-time portable export (CSV) of Client&rsquo;s customer data within fourteen (14) days. Client is responsible for maintaining its own backups during the term. Adverton is not liable for data loss caused by third-party platforms outside of Adverton&rsquo;s reasonable control.</p>
+
+  <h2>9. Intellectual Property</h2>
+  <p>Client retains ownership of its trademarks, trade names, brand assets, content provided to Adverton, and customer data. Adverton retains exclusive ownership of its proprietary tools, processes, build templates, internal frameworks, dashboards, and any work product not specifically assigned to Client under Section 5. Upon transfer of the website under Section 5.3, Adverton grants Client a perpetual, non-exclusive license to use the delivered website code and content for Client&rsquo;s own business; no rights are granted in Adverton&rsquo;s underlying templates or framework code.</p>
+
+  <h2>10. Termination</h2>
+
+  <h3>10.1 Termination for Material Breach</h3>
+  <p>Either party may terminate this Agreement for the other party&rsquo;s uncured material breach upon thirty (30) days&rsquo; written notice specifying the breach. If the breach is cured within the notice period, termination does not take effect.</p>
+
+  <h3>10.2 Early Termination by Client</h3>
+  <p>Termination by Client during the 12-month commitment, other than for Adverton&rsquo;s uncured material breach, triggers reversion and damages as set forth in Section 5.5. There is no right to terminate for convenience during the initial term.</p>
+
+  <h3>10.3 Effect of Termination</h3>
+  <p>Sections 5 (Website Asset, Title &amp; Reversion), 9 (Intellectual Property), 11 (Limitation of Liability), 12 (Dispute Resolution), and any accrued payment obligations survive termination.</p>
+
+  <h2>11. Limitation of Liability</h2>
+  <p>Adverton&rsquo;s aggregate liability arising out of or relating to this Agreement is capped at the total fees paid by Client during the six (6) months immediately preceding the event giving rise to the claim. In no event shall Adverton be liable for consequential, indirect, incidental, special, exemplary, or lost-profit damages, even if advised of the possibility. Adverton makes no guarantee as to lead volume, conversion rates, or business outcomes.</p>
+
+  <h2>12. Dispute Resolution &amp; Governing Law</h2>
+  <p>This Agreement is governed by the laws of the State of Delaware, without regard to conflict-of-laws principles. Any dispute arising out of or relating to this Agreement that is not resolved through good-faith negotiation within thirty (30) days shall be finally resolved by <strong>binding arbitration</strong> administered by the American Arbitration Association under its Commercial Arbitration Rules, seated in New Castle County, Delaware, with one arbitrator. Each party waives any right to a jury trial. Notwithstanding the foregoing, Adverton may seek injunctive relief in any court of competent jurisdiction to enforce Sections 5 (reversion) and 9 (IP).</p>
+
+  <h2>13. Acceptance</h2>
+  <p>Client accepts this Agreement by checking the consent box (&ldquo;<em>I have read and agree to Adverton&rsquo;s Service Agreement</em>&rdquo;) and completing payment in the Stripe Checkout session. Stripe records the timestamp of acceptance; Adverton stores the acceptance record in <code>clients.tos_consented_at</code> and <code>clients.contract_signed_at</code> for audit purposes. The version accepted is identified by the &ldquo;Effective version&rdquo; field at the top of this document.</p>
+
+  <h2 style="border-top:2px solid #312e81;padding-top:32px;margin-top:48px">Schedule A &mdash; Service Components &amp; Values</h2>
+  <p>Adverton publishes the standalone monthly value of each Service component below. By committing to the 12-month term, Client receives the recurring services at a <strong>100% bonification (waiver)</strong>. Client&rsquo;s total monthly payment of $799 is allocated entirely to the Website Asset installment described in Section 5.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Standalone Value</th>
+        <th>Bonification</th>
+        <th>Net (12-mo commit)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-row"><td colspan="4">WEBSITE ASSET (one-time, amortized over 12 months)</td></tr>
+      <tr>
+        <td>5-page custom website + migration + SSL</td>
+        <td>$9,588 one-time</td>
+        <td>Amortized over 12 months</td>
+        <td class="net-paid">$799/mo &times; 12</td>
+      </tr>
+
+      <tr class="section-row"><td colspan="4">RECURRING SERVICES (bonified 100% with 12-month commitment)</td></tr>
+      <tr>
+        <td>Google LSA campaign management</td>
+        <td>$399/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr>
+        <td>Google Business Profile management</td>
+        <td>$199/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr>
+        <td>Tradio CRM access (partner platform)</td>
+        <td>$129/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr>
+        <td>Reputation &amp; review automation</td>
+        <td>$99/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr>
+        <td>Hosting, domain &amp; 1 business email</td>
+        <td>$49/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr>
+        <td>Monthly report + 30-min strategy call</td>
+        <td>$199/mo</td>
+        <td>&minus;100%</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr class="total-row">
+        <td>Total recurring services (standalone)</td>
+        <td>$1,074/mo</td>
+        <td>&minus;$1,074/mo (&minus;100%)</td>
+        <td class="net-zero">$0/mo</td>
+      </tr>
+      <tr class="total-row">
+        <td><strong>Total monthly payment by Client</strong></td>
+        <td colspan="2" style="text-align:right">Website asset installment only:</td>
+        <td class="net-paid"><strong>$799/mo</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Calculation note:</strong> Twelve installments of $799 equal $9,588, the full contract value of the Website Asset. The recurring service value of $1,074/mo &times; 12 = <strong>$12,888 over the term</strong> is granted as a bonification in exchange for Client&rsquo;s completion of the 12-month commitment. If the commitment is not completed, the bonification is forfeited and Section 5.5 governs the calculation of damages and reversion (Adverton may elect to recover either the remaining installments through month 12, or the unbonified standard service value delivered through termination plus the Remaining Asset Balance).</p>
+
+  <p><strong>Aggregate standalone value over the 12-month term</strong> (for reference in damages calculations under Section 5.5): $1,074/mo &times; 12 (recurring services) + $9,588 (Website Asset) = <strong>$22,476</strong>. With 12-month bonification, Client pays $9,588 total, a savings of $12,888.</p>
+
+  <p><strong>Out of scope of bonification:</strong> Google LSA media spend (Section 7.1), all add-ons (Section 2.3), and any sales, use, or value-added taxes.</p>
+
+  <p class="footer-note">Questions? Email <a href="mailto:legal@adverton.net">legal@adverton.net</a>.</p>
 </main>
 </body>
 </html>
