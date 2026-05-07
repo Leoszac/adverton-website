@@ -102,7 +102,27 @@ p.lede { font-size: 18px; color: var(--ink-2); }
   font-weight: 600 !important;
 }
 .nav-link-pill:hover { color: var(--purple-dark) !important; }
-@media (max-width: 800px) { .nav-links { display: none; } }
+
+/* Mobile nav: hide secondary links + dropdown, but KEEP the lead-magnet pill
+   visible. Without this the mobile visitor has no way to reach /growth-engine
+   from any other page on the site. */
+@media (max-width: 800px) {
+  .nav-links { gap: 0; }
+  .nav-links > a:not(.nav-link-pill),
+  .nav-links > .dropdown { display: none; }
+  .nav-link-pill {
+    background: var(--purple-tint);
+    padding: 7px 14px;
+    border-radius: 100px;
+    font-size: 13px !important;
+  }
+}
+@media (max-width: 480px) {
+  .nav-inner { height: 60px; }
+  .nav-logo img { height: 28px; }
+  .nav-cta .btn { padding: 9px 14px; font-size: 13px; }
+  .nav-link-pill { padding: 6px 11px; font-size: 12px !important; }
+}
 
 .hero {
   padding: 80px 0 64px;
