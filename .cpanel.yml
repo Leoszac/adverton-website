@@ -20,6 +20,12 @@ deployment:
     # after running successfully (verified 404 on server). Belt-and-suspenders rm
     # in case the file ever returns to the repo by accident.
     - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
+    # _run-v11.php — schema-v11 one-shot migration runner. Same pattern as
+    # _run-v10: do NOT auto-delete on first deploy (file must survive long
+    # enough for the founder to visit /crm/_run-v11.php). Once it self-
+    # destructs (logs say [ok] _run-v11.php self-destructed), uncomment the
+    # rm below in a follow-up commit so accidental re-deploys can't expose it.
+    # - /bin/rm -f $DEPLOYPATH/crm/_run-v11.php
     # _fix-cron.php same pattern: deploy → call → self-deletes.
     # Re-enable below once it's been triggered.
     # - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php

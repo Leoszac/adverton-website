@@ -16,6 +16,10 @@ const CRM_CRON_JOBS = [
     'lost_reengagement' => ['interval' => 86400, 'script' => 'cron-lost-reengagement.php'],
     'sequences'         => ['interval' => 1800,  'script' => 'cron-sequences.php'],
     'backup'            => ['interval' => 86400, 'script' => 'cron-backup.php'],
+    // Sprint 3: classify newly-arrived client photos. Every 5 min so a
+    // contractor who just emailed assets@adverton.net sees them organized
+    // by the next time they (or the operator) reload client.php.
+    'photo_classify'    => ['interval' => 300,   'script' => 'cron-photo-classify.php'],
 ];
 
 function crm_loadCronState(): array {
