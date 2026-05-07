@@ -25,6 +25,16 @@ const CRM_DB_BACKED_KEYS = [
     'RESEND_API_KEY',
     'CRM_FROM_ADDRESS',
     'CRM_REPLY_TO',
+    // Onboarding pipeline (Sprints 0–4): managed from /crm/integrations.php
+    // so the founder doesn't need shell/file-manager access to crm-config.php.
+    'ANTHROPIC_API_KEY',
+    'PANDADOC_API_KEY',
+    'PANDADOC_TEMPLATE_ID',
+    'CREDENTIALS_KEY',
+    'NAMECHEAP_API_USER',
+    'NAMECHEAP_API_KEY',
+    'NAMECHEAP_CLIENT_IP',
+    'NAMECHEAP_SANDBOX',
 ];
 
 function crm_loadDbSettings(): array {

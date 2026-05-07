@@ -1210,6 +1210,15 @@ case 'integration_save': {
             if ($k === 'NEW_LEAD_WEBHOOK_URL' && !filter_var($v, FILTER_VALIDATE_URL)) {
                 $errors[] = "{$k}: must be a valid URL"; continue;
             }
+            if ($k === 'ANTHROPIC_API_KEY' && !preg_match('/^sk-ant-/', $v)) {
+                $errors[] = "{$k}: must start with sk-ant-"; continue;
+            }
+            if ($k === 'CREDENTIALS_KEY' && !preg_match('/^[0-9a-fA-F]{64}$/', $v)) {
+                $errors[] = "{$k}: must be 64 hex chars (run: php -r 'echo bin2hex(random_bytes(32));')"; continue;
+            }
+            if ($k === 'NAMECHEAP_CLIENT_IP' && !filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                $errors[] = "{$k}: must be a valid IPv4 address"; continue;
+            }
         }
         if (crm_saveSetting($k, $v, (int)$user['id'])) $saved++;
     }

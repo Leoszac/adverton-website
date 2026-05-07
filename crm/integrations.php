@@ -218,6 +218,97 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
+    <!-- ============== Anthropic (AI generator + Vision) ============== -->
+    <div class="section">
+      <h2>Anthropic — AI copy generator + photo classification</h2>
+      <div class="desc">Used by the kickoff wizard to generate website copy from intake answers (<code>crm/lib/ai-generator.php</code>) and to classify photos sent to <code>assets@adverton.net</code> (<code>crm/lib/photos.php</code>). Sin esta key, ambas funciones devuelven error suave.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">Anthropic API key</div>
+          <div class="help">Anthropic Console → Settings → API keys. Empieza con <code>sk-ant-</code>. El modelo usado es <code>claude-sonnet-4-6</code> (mismo billing tier que Opus).</div>
+          <span class="badge <?= $cur['ANTHROPIC_API_KEY']['set']?'set':'unset' ?>"><?= $cur['ANTHROPIC_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="ANTHROPIC_API_KEY" value="<?= crm_h($cur['ANTHROPIC_API_KEY']['value']) ?>" placeholder="sk-ant-..." autocomplete="off"></div>
+      </div>
+    </div>
+
+    <!-- ============== PandaDoc API (auto-create contracts) ============== -->
+    <div class="section">
+      <h2>PandaDoc — auto-create contracts from pre-contract form</h2>
+      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton llama a la API de PandaDoc para generar el contrato con datos pre-rellenos (15 placeholders: legal name, billing, signer, etc.). Distinto del webhook de arriba — esto es para <em>crear</em> documentos, el webhook es para <em>recibir</em> notificaciones de firma.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">PandaDoc API key</div>
+          <div class="help">PandaDoc → Settings → Integrations → API key. Empieza con <code>API-Key</code>. Necesita scope para crear documents desde templates.</div>
+          <span class="badge <?= $cur['PANDADOC_API_KEY']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="PANDADOC_API_KEY" value="<?= crm_h($cur['PANDADOC_API_KEY']['value']) ?>" placeholder="API-Key your-key-here" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Contract template ID</div>
+          <div class="help">PandaDoc → Templates → abrí el template del contrato → copia el ID de la URL (es un UUID). El template debe tener estos 15 placeholders: <code>legal_entity_name</code>, <code>business_name</code>, <code>billing_email</code>, <code>billing_address</code>, <code>billing_city</code>, <code>billing_state</code>, <code>billing_zip</code>, <code>tax_id</code>, <code>authorized_signer</code>, <code>signer_role</code>, <code>primary_email</code>, <code>primary_phone</code>, <code>contract_date</code>, <code>monthly_amount</code>, <code>buyout_amount</code>.</div>
+          <span class="badge <?= $cur['PANDADOC_TEMPLATE_ID']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_TEMPLATE_ID']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="text" name="PANDADOC_TEMPLATE_ID" value="<?= crm_h($cur['PANDADOC_TEMPLATE_ID']['value']) ?>" placeholder="d3f2..." autocomplete="off"></div>
+      </div>
+    </div>
+
+    <!-- ============== Credentials vault master key ============== -->
+    <div class="section">
+      <h2>Credentials vault — master encryption key</h2>
+      <div class="desc">Usada por <code>crm/lib/credentials.php</code> para cifrar/descifrar passwords del cliente (cPanel, SFTP, GBP, LSA, etc.) con AES-256-CBC. Una vez seteada y con credenciales guardadas, <strong>no la cambies</strong> — perderías acceso a todo el vault.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">Master key (64-char hex)</div>
+          <div class="help">⚠️ <strong>Generala UNA vez y no la cambies después de guardar credenciales</strong>. Para generar una nueva: <code>php -r "echo bin2hex(random_bytes(32));"</code>. Si está vacía, podés guardar/leer todo en plaintext mientras evaluás — el vault está deshabilitado hasta que setees una.</div>
+          <span class="badge <?= $cur['CREDENTIALS_KEY']['set']?'set':'unset' ?>"><?= $cur['CREDENTIALS_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="CREDENTIALS_KEY" value="<?= crm_h($cur['CREDENTIALS_KEY']['value']) ?>" placeholder="64-char hex..." autocomplete="off"></div>
+      </div>
+    </div>
+
+    <!-- ============== Namecheap (optional fallback domain registrar) ============== -->
+    <div class="section">
+      <h2>Namecheap — fallback domain registrar (optional)</h2>
+      <div class="desc">Sólo necesario si Adverton va a comprar dominios para clientes que aún no tienen uno. Si todos tus clientes ya tienen su .com, dejá esto vacío.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">API user</div>
+          <div class="help">Namecheap → Profile → Tools → API Access. El "API User" suele ser igual al username de tu cuenta.</div>
+          <span class="badge <?= $cur['NAMECHEAP_API_USER']['set']?'set':'unset' ?>"><?= $cur['NAMECHEAP_API_USER']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="text" name="NAMECHEAP_API_USER" value="<?= crm_h($cur['NAMECHEAP_API_USER']['value']) ?>" placeholder="advertonnet" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">API key</div>
+          <span class="badge <?= $cur['NAMECHEAP_API_KEY']['set']?'set':'unset' ?>"><?= $cur['NAMECHEAP_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="NAMECHEAP_API_KEY" value="<?= crm_h($cur['NAMECHEAP_API_KEY']['value']) ?>" placeholder="..." autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Whitelisted client IP</div>
+          <div class="help">El IP saliente de adverton.net que tenés que whitelistar en Namecheap para que la API responda. Si lo dejás vacío, el lib usa <code>$_SERVER['SERVER_ADDR']</code> automáticamente.</div>
+          <span class="badge <?= $cur['NAMECHEAP_CLIENT_IP']['set']?'set':'unset' ?>"><?= $cur['NAMECHEAP_CLIENT_IP']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="text" name="NAMECHEAP_CLIENT_IP" value="<?= crm_h($cur['NAMECHEAP_CLIENT_IP']['value']) ?>" placeholder="123.45.67.89" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Use sandbox API</div>
+          <div class="help">Pone <code>1</code> mientras testeás (no compras reales). Vacío = producción.</div>
+          <span class="badge <?= $cur['NAMECHEAP_SANDBOX']['set']?'set':'unset' ?>"><?= $cur['NAMECHEAP_SANDBOX']['set']?'sandbox':'live' ?></span>
+        </div>
+        <div><input type="text" name="NAMECHEAP_SANDBOX" value="<?= crm_h($cur['NAMECHEAP_SANDBOX']['value']) ?>" placeholder="(empty = live, 1 = sandbox)" autocomplete="off"></div>
+      </div>
+    </div>
+
     <div class="actions">
       <button type="submit" class="primary">Save all integrations</button>
     </div>
