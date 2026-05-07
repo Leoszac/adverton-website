@@ -233,26 +233,26 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
-    <!-- ============== PandaDoc API (auto-create contracts) ============== -->
+    <!-- ============== Pre-contract → Stripe Checkout (click-wrap T&C) ============== -->
     <div class="section">
-      <h2>PandaDoc — auto-create contracts from pre-contract form</h2>
-      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton llama a la API de PandaDoc para generar el contrato con datos pre-rellenos (15 placeholders: legal name, billing, signer, etc.). Distinto del webhook de arriba — esto es para <em>crear</em> documentos, el webhook es para <em>recibir</em> notificaciones de firma.</div>
+      <h2>Pre-contract → Stripe Checkout (click-wrap)</h2>
+      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton arma una <strong>Stripe Checkout session</strong> con la casilla "I agree to the Service Agreement" requerida + el plan de subscription, y le manda el link por email. Click + payment = aceptación legalmente vinculante (clic-wrap, válido en US para SaaS sub-$1k/mo). Sin tools de eSignature externas mientras Adverton arranca.</div>
 
       <div class="row">
         <div class="meta">
-          <div class="name">PandaDoc API key</div>
-          <div class="help">PandaDoc → Settings → Integrations → API key. Empieza con <code>API-Key</code>. Necesita scope para crear documents desde templates.</div>
-          <span class="badge <?= $cur['PANDADOC_API_KEY']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_API_KEY']['set']?'configured':'not set' ?></span>
+          <div class="name">Service Agreement URL</div>
+          <div class="help">Configurá en <strong>Stripe Dashboard → Settings → Public details → Terms of Service</strong> y pegá: <code>https://adverton.net/legal/service-agreement.html</code>. Stripe muestra ese link en el checkout y exige check-in antes de cobrar.</div>
         </div>
-        <div><input type="password" name="PANDADOC_API_KEY" value="<?= crm_h($cur['PANDADOC_API_KEY']['value']) ?>" placeholder="API-Key your-key-here" autocomplete="off"></div>
+        <div>
+          <div class="copy"><span><?= $base ?>/legal/service-agreement.html</span><button type="button" onclick="copy(this,'<?= $base ?>/legal/service-agreement.html')">Copy</button></div>
+        </div>
       </div>
       <div class="row">
         <div class="meta">
-          <div class="name">Contract template ID</div>
-          <div class="help">PandaDoc → Templates → abrí el template del contrato → copia el ID de la URL (es un UUID). El template debe tener estos 15 placeholders: <code>legal_entity_name</code>, <code>business_name</code>, <code>billing_email</code>, <code>billing_address</code>, <code>billing_city</code>, <code>billing_state</code>, <code>billing_zip</code>, <code>tax_id</code>, <code>authorized_signer</code>, <code>signer_role</code>, <code>primary_email</code>, <code>primary_phone</code>, <code>contract_date</code>, <code>monthly_amount</code>, <code>buyout_amount</code>.</div>
-          <span class="badge <?= $cur['PANDADOC_TEMPLATE_ID']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_TEMPLATE_ID']['set']?'configured':'not set' ?></span>
+          <div class="name">Upgrade path</div>
+          <div class="help">Si en el futuro querés firma formal con audit trail granular (ej. cliente enterprise): el lib <code>crm/lib/opensign.php</code> queda dormido en el repo, listo para activarse pegando una API key de OpenSign Paid (~\$9.99/mo) o self-hosted.</div>
         </div>
-        <div><input type="text" name="PANDADOC_TEMPLATE_ID" value="<?= crm_h($cur['PANDADOC_TEMPLATE_ID']['value']) ?>" placeholder="d3f2..." autocomplete="off"></div>
+        <div style="font-size:13px;color:#6b6877;line-height:1.5">No fields needed — el flow usa la <code>STRIPE_API_KEY</code> ya configurada arriba.</div>
       </div>
     </div>
 

@@ -8,6 +8,7 @@ deployment:
     - /bin/sh -c "/bin/cp -Rf *.html *.php *.css *.svg *.ico *.png sitemap.xml robots.txt .htaccess $DEPLOYPATH/"
     - /bin/cp -Rf assets $DEPLOYPATH/
     - /bin/cp -Rf lib $DEPLOYPATH/
+    - /bin/cp -Rf legal $DEPLOYPATH/
     - /bin/cp -Rf crm $DEPLOYPATH/
     # email-pipe.php is invoked by cPanel mail forwarder via shebang;
     # needs +x so the kernel will exec it.
