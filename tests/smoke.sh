@@ -38,6 +38,7 @@ else
 fi
 probe "/crm/sequences.php"                 302 "Sequences UI requires auth"
 probe "/crm/lead.php?id=1"                 302 "Lead detail requires auth"
+probe "/crm/lead-import.php"               302 "Lead import requires auth"
 probe "/crm/clients.php"                   302 "Clients requires auth"
 probe "/crm/update.php"                    302 "Update endpoint requires auth"
 
