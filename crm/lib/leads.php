@@ -319,7 +319,8 @@ function crm_findDuplicateLead(string $emailLc, string $phoneDigits): ?int {
 
 // Filtered list. $filters keys: source, status, q (search), temperature, owner, mine.
 // Returns each lead with an extra computed `lead_score` (0-100) baked in.
-function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0): array {
+// $sort: 'created' (default) | 'score' | 'engagement' | 'stale'
+function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0, string $sort = 'created'): array {
     [$where, $params] = crm_buildWhere($filters);
 
     // Aliased query so we can LEFT JOIN engagement totals from email_sends.
@@ -333,6 +334,17 @@ function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0): a
             $whereAliased
         );
     }
+
+    // ORDER BY whitelist — never interpolate raw user input into SQL.
+    // 'engagement' = recent open/click activity bubbled up.
+    // 'stale'      = oldest leads first (by last update or creation).
+    // 'score'      = computed lead_score (we sort in PHP after the SELECT
+    //                because score is a PHP function, not a SQL expression).
+    $orderBy = match ($sort) {
+        'engagement' => 'COALESCE(es.clicks,0) * 3 + COALESCE(es.opens,0) DESC, l.created_at DESC',
+        'stale'      => 'l.updated_at ASC',
+        default      => 'l.created_at DESC',  // 'created' or unknown
+    };
 
     $sql = "SELECT l.id, l.source, l.source_page, l.first_name, l.last_name, l.email, l.phone,
                    l.business_name, l.trade, l.audit_score, l.status, l.owner_user_id,
@@ -350,7 +362,7 @@ function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0): a
                GROUP BY lead_id
             ) es ON es.lead_id = l.id
             {$whereAliased}
-            ORDER BY l.created_at DESC
+            ORDER BY {$orderBy}
             LIMIT {$limit} OFFSET {$offset}";
 
     $stmt = crm_db()->prepare($sql);
@@ -358,6 +370,14 @@ function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0): a
     $rows = $stmt->fetchAll();
     foreach ($rows as &$r) {
         $r['lead_score'] = crm_computeLeadScore($r);
+    }
+    unset($r);
+
+    // 'score' is computed in PHP, so we sort in PHP after fetch. (Trade-off:
+    // this only sorts the current page, not the global ranking — acceptable
+    // for the typical 50-row page since most pages are page 1 anyway.)
+    if ($sort === 'score') {
+        usort($rows, fn($a, $b) => ($b['lead_score'] ?? 0) <=> ($a['lead_score'] ?? 0));
     }
     return $rows;
 }

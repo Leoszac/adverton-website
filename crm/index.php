@@ -67,7 +67,7 @@ $sort = (string)($_GET['sort'] ?? 'created');
 if (!in_array($sort, ['created','score','engagement','stale'], true)) $sort = 'created';
 
 $total   = crm_countLeads($filters);
-$rows    = crm_listLeads($filters, $perPage, $offset);
+$rows    = crm_listLeads($filters, $perPage, $offset, $sort);
 crm_attachTagsToLeads($rows);
 
 $users   = crm_listUsers();
@@ -268,6 +268,15 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
         <?php foreach ($allTags as $tg): ?>
           <option value="<?= crm_h($tg['name']) ?>" <?= $filters['tag_name']===$tg['name']?'selected':'' ?>><?= crm_h($tg['name']) ?> (<?= (int)$tg['lead_count'] ?>)</option>
         <?php endforeach; ?>
+      </select>
+    </div>
+    <div>
+      <label>Sort</label>
+      <select name="sort" onchange="this.form.submit()">
+        <option value="created"    <?= $sort==='created'   ?'selected':'' ?>>Newest first</option>
+        <option value="score"      <?= $sort==='score'     ?'selected':'' ?>>Lead score (top first)</option>
+        <option value="engagement" <?= $sort==='engagement'?'selected':'' ?>>Engagement (clicks/opens)</option>
+        <option value="stale"      <?= $sort==='stale'     ?'selected':'' ?>>Stale (oldest update)</option>
       </select>
     </div>
     <div class="grow">
