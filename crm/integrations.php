@@ -233,26 +233,50 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
-    <!-- ============== PandaDoc API (auto-create contracts) ============== -->
+    <!-- ============== OpenSign API (auto-create contracts) ============== -->
     <div class="section">
-      <h2>PandaDoc — auto-create contracts from pre-contract form</h2>
-      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton llama a la API de PandaDoc para generar el contrato con datos pre-rellenos (15 placeholders: legal name, billing, signer, etc.). Distinto del webhook de arriba — esto es para <em>crear</em> documentos, el webhook es para <em>recibir</em> notificaciones de firma.</div>
+      <h2>OpenSign — auto-create contracts from pre-contract form</h2>
+      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton llama a la API de OpenSign para generar el contrato con datos pre-rellenos (15 placeholders: legal name, billing, signer, etc.) y se lo envía al cliente para firma. Free tier de OpenSign: 5 docs/mes con API.</div>
 
       <div class="row">
         <div class="meta">
-          <div class="name">PandaDoc API key</div>
-          <div class="help">PandaDoc → Settings → Integrations → API key. Empieza con <code>API-Key</code>. Necesita scope para crear documents desde templates.</div>
-          <span class="badge <?= $cur['PANDADOC_API_KEY']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_API_KEY']['set']?'configured':'not set' ?></span>
+          <div class="name">OpenSign API key</div>
+          <div class="help">OpenSign Dashboard → Settings → API → Create token. Se manda como header <code>x-api-token</code>.</div>
+          <span class="badge <?= $cur['OPENSIGN_API_KEY']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_API_KEY']['set']?'configured':'not set' ?></span>
         </div>
-        <div><input type="password" name="PANDADOC_API_KEY" value="<?= crm_h($cur['PANDADOC_API_KEY']['value']) ?>" placeholder="API-Key your-key-here" autocomplete="off"></div>
+        <div><input type="password" name="OPENSIGN_API_KEY" value="<?= crm_h($cur['OPENSIGN_API_KEY']['value']) ?>" placeholder="..." autocomplete="off"></div>
       </div>
       <div class="row">
         <div class="meta">
           <div class="name">Contract template ID</div>
-          <div class="help">PandaDoc → Templates → abrí el template del contrato → copia el ID de la URL (es un UUID). El template debe tener estos 15 placeholders: <code>legal_entity_name</code>, <code>business_name</code>, <code>billing_email</code>, <code>billing_address</code>, <code>billing_city</code>, <code>billing_state</code>, <code>billing_zip</code>, <code>tax_id</code>, <code>authorized_signer</code>, <code>signer_role</code>, <code>primary_email</code>, <code>primary_phone</code>, <code>contract_date</code>, <code>monthly_amount</code>, <code>buyout_amount</code>.</div>
-          <span class="badge <?= $cur['PANDADOC_TEMPLATE_ID']['set']?'set':'unset' ?>"><?= $cur['PANDADOC_TEMPLATE_ID']['set']?'configured':'not set' ?></span>
+          <div class="help">OpenSign → Templates → abrí el template → copiá el ID (UUID). El template debe tener estos 15 placeholders (drag-and-drop sobre el PDF): <code>{{Client.LegalName}}</code>, <code>{{Client.BusinessName}}</code>, <code>{{Client.Trade}}</code>, <code>{{Client.SignerName}}</code>, <code>{{Client.SignerRole}}</code>, <code>{{Client.Email}}</code>, <code>{{Client.Phone}}</code>, <code>{{Client.Address}}</code>, <code>{{Client.City}}</code>, <code>{{Client.State}}</code>, <code>{{Client.Zip}}</code>, <code>{{Client.TaxId}}</code>, <code>{{Contract.MonthlyFee}}</code>, <code>{{Contract.StartDate}}</code>, <code>{{Contract.EndDate}}</code>.</div>
+          <span class="badge <?= $cur['OPENSIGN_TEMPLATE_ID']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_TEMPLATE_ID']['set']?'configured':'not set' ?></span>
         </div>
-        <div><input type="text" name="PANDADOC_TEMPLATE_ID" value="<?= crm_h($cur['PANDADOC_TEMPLATE_ID']['value']) ?>" placeholder="d3f2..." autocomplete="off"></div>
+        <div><input type="text" name="OPENSIGN_TEMPLATE_ID" value="<?= crm_h($cur['OPENSIGN_TEMPLATE_ID']['value']) ?>" placeholder="UUID del template" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Webhook URL (paste en OpenSign)</div>
+          <div class="help">OpenSign → Settings → Webhooks → Add. Append <code>?token=YOUR_SECRET</code> al URL. Suscribite al evento de firma (signature.completed o equivalente).</div>
+        </div>
+        <div>
+          <div class="copy"><span><?= $base ?>/crm/opensign-webhook.php?token=YOUR_SECRET</span><button type="button" onclick="copy(this,'<?= $base ?>/crm/opensign-webhook.php?token=YOUR_SECRET')">Copy</button></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Webhook shared token (any random 32+ chars)</div>
+          <span class="badge <?= $cur['OPENSIGN_WEBHOOK_SECRET']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_WEBHOOK_SECRET']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="OPENSIGN_WEBHOOK_SECRET" value="<?= crm_h($cur['OPENSIGN_WEBHOOK_SECRET']['value']) ?>" placeholder="random-32-chars" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Custom base URL (only if self-hosted)</div>
+          <div class="help">Dejalo vacío si usás OpenSign Cloud. Setealo a <code>https://sign.tudominio.com</code> el día que migres a self-host.</div>
+          <span class="badge <?= $cur['OPENSIGN_BASE_URL']['set']?'set':'cloud' ?>"><?= $cur['OPENSIGN_BASE_URL']['set']?'self-hosted':'cloud' ?></span>
+        </div>
+        <div><input type="text" name="OPENSIGN_BASE_URL" value="<?= crm_h($cur['OPENSIGN_BASE_URL']['value']) ?>" placeholder="(empty = OpenSign Cloud)" autocomplete="off"></div>
       </div>
     </div>
 

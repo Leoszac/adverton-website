@@ -12,7 +12,7 @@ require_once __DIR__ . '/crm/lib/leads.php';
 require_once __DIR__ . '/crm/lib/clients.php';
 require_once __DIR__ . '/crm/lib/magic-tokens.php';
 require_once __DIR__ . '/crm/lib/activities.php';
-require_once __DIR__ . '/crm/lib/pandadoc.php';
+require_once __DIR__ . '/crm/lib/opensign.php';
 
 function preContractFail(string $token, string $userMsg, int $status = 400): void {
     http_response_code($status);
@@ -104,25 +104,17 @@ try {
 crm_logActivity($leadId, null, 'system', 'pre_contract_completed',
     'Pre-contract form completed; client #' . $clientId . ' created/updated; PandaDoc contract triggered');
 
-// Kick off the PandaDoc contract. If it fails, we DON'T rollback the
-// client save — the operator can retry from /crm/client.php manually.
-$pd = crm_pandadocCreateContract($clientId);
-if (!$pd['ok']) {
-    error_log('[pre-contract-submit pandadoc] ' . ($pd['error'] ?? 'unknown'));
-    crm_logActivity($leadId, null, 'system', 'pandadoc_create_failed',
-        'PandaDoc contract create failed: ' . ($pd['error'] ?? 'unknown'));
+// Kick off the OpenSign contract (creates AND emails signer in one call).
+// If it fails, we DON'T rollback the client save — the operator can retry
+// from /crm/client.php manually.
+$os = crm_opensignCreateContract($clientId);
+if (!$os['ok']) {
+    error_log('[pre-contract-submit opensign] ' . ($os['error'] ?? 'unknown'));
+    crm_logActivity($leadId, null, 'system', 'opensign_create_failed',
+        'OpenSign contract create failed: ' . ($os['error'] ?? 'unknown'));
 } else {
-    crm_logActivity($leadId, null, 'system', 'pandadoc_doc_created',
-        'PandaDoc draft created: ' . ($pd['view_url'] ?? $pd['doc_id']));
-    // Best-effort: try to send right away. PandaDoc usually needs ~3-10s
-    // to transition draft → sendable, so we may have to retry from the UI.
-    sleep(2);
-    $send = crm_pandadocSendContract((string)$pd['doc_id']);
-    if (!$send['ok']) {
-        error_log('[pre-contract-submit pandadoc send] ' . ($send['error'] ?? 'unknown'));
-        crm_logActivity($leadId, null, 'system', 'pandadoc_send_pending',
-            'Document created but send failed (try again in a moment): ' . ($send['error'] ?? 'unknown'));
-    }
+    crm_logActivity($leadId, null, 'system', 'opensign_doc_created',
+        'OpenSign contract sent: ' . ($os['view_url'] ?? $os['doc_id']));
 }
 
 // Done — redirect to a thank-you. Reuses the audit thank-you page since the

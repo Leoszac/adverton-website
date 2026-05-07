@@ -333,9 +333,11 @@ sections, and paste:
 | Section | Field | Value |
 |---|---|---|
 | Anthropic | API key | `sk-ant-...` (Console → Settings → API keys) |
-| PandaDoc API | API key | (Settings → Integrations → API key) |
-| PandaDoc API | Template ID | UUID from template URL (see step C) |
-| Credentials vault | Master key | `aecec1101fcab4169bd78f3a8ee30d78a8308e92d88cbf67f1b8234ed2caae46` (or generate with `php -r 'echo bin2hex(random_bytes(32));'`) |
+| OpenSign API | API key | OpenSign → Settings → API → Create token |
+| OpenSign API | Template ID | UUID from template URL (see step C) |
+| OpenSign API | Webhook shared token | random 32+ chars; paste same value into OpenSign's webhook URL as `?token=` |
+| OpenSign API | Base URL | leave empty (OpenSign Cloud); set only if self-hosted later |
+| Credentials vault | Master key | already inserted by `_bootstrap-v11.php`; verify badge says "configured" |
 | Namecheap | All four fields | only if Adverton will buy domains for clients |
 
 Click **Save all integrations**. Values are stored encrypted in the
@@ -344,11 +346,12 @@ Click **Save all integrations**. Values are stored encrypted in the
 ⚠ **CREDENTIALS_KEY**: do NOT change once you've saved any client
 credentials — rotation requires re-encrypting every row first.
 
-## C. PandaDoc template (~10 minutes)
+## C. OpenSign template (~10–15 minutes)
 
-PandaDoc dashboard → **Templates** → **New** → design the contract. Use
-**these exact placeholders** (double curly braces) where each piece of data
-should appear:
+OpenSign Cloud (free tier: 5 docs/mo with API) → sign up at
+https://www.opensignlabs.com → **Templates** → **New Template** → upload
+your contract PDF → drag-and-drop **these 15 placeholders** onto the
+correct positions:
 
 ```
 {{Client.LegalName}}      {{Client.BusinessName}}    {{Client.Trade}}
@@ -359,7 +362,13 @@ should appear:
 ```
 
 After saving, copy the template UUID from the URL and paste it into
-`/crm/integrations.php` → PandaDoc API → Template ID.
+`/crm/integrations.php` → OpenSign API → Template ID.
+
+Then OpenSign → **Settings** → **Webhooks** → Add → URL =
+`https://adverton.net/crm/opensign-webhook.php?token=YOUR_RANDOM_SECRET`,
+event = signature.completed (or whatever name your OpenSign version
+emits on signature). Paste the same `YOUR_RANDOM_SECRET` into
+`/crm/integrations.php` → OpenSign API → Webhook shared token.
 
 ## D. Email intake `assets@adverton.net` (~5 minutes)
 

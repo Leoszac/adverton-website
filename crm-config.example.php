@@ -54,18 +54,18 @@ return [
     // customer.subscription.deleted, customer.subscription.updated.
     'STRIPE_WEBHOOK_SECRET' => '',
 
-    // PandaDoc shared token. We don't validate the request body cryptographically
-    // (PandaDoc free tier doesn't HMAC), so use ?token=<this> on the webhook URL.
-    // Endpoint URL: https://adverton.net/crm/pandadoc-webhook.php?token=...
+    // PandaDoc legacy webhook (kept for any historical sender — Adverton's
+    // pre-contract flow now uses OpenSign instead). Safe to leave empty.
     'PANDADOC_WEBHOOK_SECRET' => '',
 
-    // PandaDoc API key — used by crm/lib/pandadoc.php to CREATE + SEND the
-    // service agreement after a client completes the pre-contract form.
-    // Settings → Integrations → API key. Different from the webhook secret.
-    'PANDADOC_API_KEY'    => '',
-    // The PandaDoc template UUID containing {{Client.LegalName}} etc. tokens
-    // matching crm_pandadocTokensFromClient() in crm/lib/pandadoc.php.
-    'PANDADOC_TEMPLATE_ID' => '',
+    // OpenSign — used by crm/lib/opensign.php to CREATE + SEND the service
+    // agreement after a client completes the pre-contract form. ALL FOUR
+    // values are managed from /crm/integrations.php (DB-backed); the entries
+    // here are just documentation and act as fallback if the DB is empty.
+    'OPENSIGN_API_KEY'        => '',  // Settings → API → Create token
+    'OPENSIGN_TEMPLATE_ID'    => '',  // Templates → your contract template UUID
+    'OPENSIGN_WEBHOOK_SECRET' => '',  // shared token, append ?token=… to webhook URL
+    'OPENSIGN_BASE_URL'       => '',  // empty = OpenSign Cloud; set if self-hosted
 
     // Anthropic API key — used by crm/lib/ai-generator.php to draft client
     // website copy from kickoff intake answers. Console → Settings → API keys.
