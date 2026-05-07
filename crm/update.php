@@ -439,6 +439,56 @@ case 'routing_save': {
     exit;
 }
 
+case 'send_pre_contract': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/magic-tokens.php';
+    require_once __DIR__ . '/lib/email_track.php';
+
+    $leadId = (int)($_POST['lead_id'] ?? 0);
+    $lead = $leadId > 0 ? crm_getLead($leadId) : null;
+    if (!$lead) { http_response_code(404); header('Location: /crm/'); exit; }
+    if (empty($lead['email'])) {
+        header('Location: /crm/lead.php?id=' . $leadId . '&sendError=' . urlencode('Lead has no email'));
+        exit;
+    }
+
+    $token = crm_setLeadMagicToken($leadId, 14);
+    $url   = 'https://adverton.net/pre-contract?t=' . urlencode($token);
+
+    $firstName = htmlspecialchars((string)($lead['first_name'] ?? 'there'), ENT_QUOTES);
+    $businessName = htmlspecialchars((string)($lead['business_name'] ?? 'your business'), ENT_QUOTES);
+    $bodyHtml = "<p>Hi {$firstName},</p>"
+              . "<p>Thanks for moving forward with Adverton. Before we send the service agreement, "
+              . "we need a few details about {$businessName} so the contract is correct on the first try.</p>"
+              . "<p style='margin:24px 0'><a href=\"{$url}\" "
+              . "style=\"display:inline-block;background:#6d28d9;color:#fff;padding:12px 24px;"
+              . "border-radius:8px;text-decoration:none;font-weight:600\">Open the pre-contract form →</a></p>"
+              . "<p style='font-size:13px;color:#6b6877'>Takes about 5 minutes. Link expires in 14 days. "
+              . "Once you submit, we'll generate the contract via PandaDoc and send it to your billing email.</p>"
+              . "<p style='font-size:13px;color:#6b6877'>Reply to this email with any questions.</p>";
+
+    $r = crm_sendTrackedEmail($leadId, $lead, null, (int)$user['id'],
+        'Quick details before we send your contract', $bodyHtml);
+
+    if ($r['ok']) {
+        try {
+            $stmt = crm_db()->prepare(
+                'UPDATE leads SET pre_contract_sent_at = NOW() WHERE id = ?'
+            );
+            $stmt->execute([$leadId]);
+        } catch (Throwable $e) { error_log('[send_pre_contract mark sent_at] ' . $e->getMessage()); }
+        crm_logActivity($leadId, (int)$user['id'], 'system', 'pre_contract_sent',
+            'Pre-contract form link sent to ' . $lead['email']);
+        header('Location: /crm/lead.php?id=' . $leadId . '&saved=1');
+    } else {
+        crm_logActivity($leadId, (int)$user['id'], 'system', 'pre_contract_send_failed',
+            'Send failed: ' . ($r['error'] ?? 'unknown'));
+        header('Location: /crm/lead.php?id=' . $leadId
+            . '&sendError=' . urlencode((string)($r['error'] ?? 'Send failed')));
+    }
+    exit;
+}
+
 case 'proposal_send': {
     $leadId = (int)($_POST['lead_id'] ?? 0);
     $lead = $leadId > 0 ? crm_getLead($leadId) : null;

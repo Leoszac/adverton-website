@@ -67,8 +67,12 @@ function crm_createClient(array $data, ?int $actorUserId = null): ?int {
                                   contract_start_at, contract_end_at,
                                   monthly_fee, ad_budget, mgmt_fee_pct,
                                   status, payment_status, installment_count,
-                                  account_manager_id, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                                  account_manager_id, notes,
+                                  legal_entity_name, billing_email, billing_address,
+                                  billing_city, billing_state, billing_zip, tax_id,
+                                  authorized_signer, signer_role, pre_contract_completed_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             !empty($data['lead_id']) ? (int)$data['lead_id'] : null,
@@ -86,6 +90,17 @@ function crm_createClient(array $data, ?int $actorUserId = null): ?int {
             isset($data['installment_count']) ? max(0, min(12, (int)$data['installment_count'])) : 0,
             !empty($data['account_manager_id']) ? (int)$data['account_manager_id'] : $actorUserId,
             $data['notes'] ?? null,
+            // schema-v11 billing fields (pre-contract form output)
+            $data['legal_entity_name']        ?? null,
+            $data['billing_email']            ?? null,
+            $data['billing_address']          ?? null,
+            $data['billing_city']             ?? null,
+            $data['billing_state']            ?? null,
+            $data['billing_zip']              ?? null,
+            $data['tax_id']                   ?? null,
+            $data['authorized_signer']        ?? null,
+            $data['signer_role']              ?? null,
+            $data['pre_contract_completed_at'] ?? null,
         ]);
         $id = (int) crm_db()->lastInsertId();
         crm_logClientEvent($id, $actorUserId, 'status_change', 'Created manually (no lead source)');
@@ -183,6 +198,10 @@ function crm_updateClient(int $id, array $patch, ?int $actorUserId = null): bool
         'buyout_eligible','cancellation_reason','cancellation_note',
         'account_manager_id','stripe_customer_id','stripe_subscription_id',
         'pandadoc_doc_id','health_score','notes','addons',
+        // schema-v11: billing fields populated by the pre-contract form
+        'legal_entity_name','billing_email','billing_address',
+        'billing_city','billing_state','billing_zip','tax_id',
+        'authorized_signer','signer_role','pre_contract_completed_at',
     ];
     $current = crm_getClient($id);
     if (!$current) return false;

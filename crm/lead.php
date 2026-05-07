@@ -197,6 +197,13 @@ crm_renderHeader($user, '');
       <?php if ($telHref):   ?><a class="qa primary" href="<?= crm_h($telHref) ?>">📞 Call <?= crm_h($lead['phone']) ?></a><?php endif; ?>
       <?php if (in_array($lead['status'], ['qualified','proposal'], true) && !empty($lead['email'])): ?>
         <a class="qa" href="/crm/proposal-send.php?lead_id=<?= (int)$lead['id'] ?>" style="background:#fae8ff;color:#6b21a8;border-color:#e9d5ff">📋 Send proposal</a>
+        <form method="post" action="/crm/update.php" style="display:inline"
+              onsubmit="return confirm('Send pre-contract form link to <?= crm_h($lead['email']) ?>?\n\nThe lead will fill in billing/legal data; on submit, a PandaDoc contract is auto-generated.')">
+          <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+          <input type="hidden" name="mode" value="send_pre_contract">
+          <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
+          <button type="submit" class="qa" style="background:#dcfce7;color:#166534;border-color:#bbf7d0">📝 Send pre-contract</button>
+        </form>
       <?php endif; ?>
       <?php if ($emailHref): ?>
         <div class="templ-menu" id="tm">

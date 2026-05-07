@@ -59,6 +59,14 @@ return [
     // Endpoint URL: https://adverton.net/crm/pandadoc-webhook.php?token=...
     'PANDADOC_WEBHOOK_SECRET' => '',
 
+    // PandaDoc API key — used by crm/lib/pandadoc.php to CREATE + SEND the
+    // service agreement after a client completes the pre-contract form.
+    // Settings → Integrations → API key. Different from the webhook secret.
+    'PANDADOC_API_KEY'    => '',
+    // The PandaDoc template UUID containing {{Client.LegalName}} etc. tokens
+    // matching crm_pandadocTokensFromClient() in crm/lib/pandadoc.php.
+    'PANDADOC_TEMPLATE_ID' => '',
+
     // OpenPhone webhook secret (HMAC-SHA256 over the raw body).
     // Endpoint URL: https://adverton.net/crm/openphone-webhook.php
     'OPENPHONE_WEBHOOK_SECRET' => '',
