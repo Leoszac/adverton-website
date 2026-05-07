@@ -1,8 +1,9 @@
 <?php
 // POST handler for /pre-contract.php form.
 // Validates the magic token, persists the billing data into clients,
-// invalidates the token, kicks off the PandaDoc contract creation, and
-// redirects the client to a "thank you, contract on its way" page.
+// invalidates the token, kicks off Stripe Checkout creation with the
+// click-wrap T&C consent, and redirects to a "payment link on its way"
+// thank-you page.
 
 declare(strict_types=1);
 
@@ -103,7 +104,7 @@ try {
 
 // Audit trail on the lead — sales VA can see what happened
 crm_logActivity($leadId, null, 'system', 'pre_contract_completed',
-    'Pre-contract form completed; client #' . $clientId . ' created/updated; PandaDoc contract triggered');
+    'Pre-contract form completed; client #' . $clientId . ' created/updated; Stripe checkout link triggered');
 
 // Build the Stripe Checkout session with required ToS consent and email
 // the link to the client. Click-wrap (consent_collection[terms_of_service]

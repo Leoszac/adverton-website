@@ -1,7 +1,8 @@
 <?php
 // Pre-contract form — public, magic-link gated.
 // The lead receives an email with /pre-contract?t=TOKEN and fills in the
-// billing/legal data we need to generate the PandaDoc service agreement.
+// billing/legal data we need to generate the Stripe Checkout link with
+// the click-wrap Service Agreement consent.
 //
 // On GET: validate the token, render the form pre-filled with what we
 // already know about the lead (name, email, phone, business_name).
@@ -178,7 +179,7 @@ $flash = trim((string)($_GET['err'] ?? ''));
     <button type="submit" class="primary">Submit and send me the contract</button>
   </form>
 
-  <p class="footer-note">By submitting, you confirm the legal entity above is authorized to enter a service agreement with Adverton (MDS LLC, Delaware). The contract will be sent to your billing email via PandaDoc for review and electronic signature.</p>
+  <p class="footer-note">By submitting, you confirm the legal entity above is authorized to enter a service agreement with Adverton (MDS LLC, Delaware). We'll email a Stripe Checkout link to your billing address — you'll review the Service Agreement, confirm acceptance with one click, and enter payment details to activate.</p>
 </main>
 </body>
 </html>

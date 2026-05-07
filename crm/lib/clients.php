@@ -202,6 +202,12 @@ function crm_updateClient(int $id, array $patch, ?int $actorUserId = null): bool
         'legal_entity_name','billing_email','billing_address',
         'billing_city','billing_state','billing_zip','tax_id',
         'authorized_signer','signer_role','pre_contract_completed_at',
+        // schema-v11: click-wrap T&C consent (captured by stripe-webhook.php
+        // on checkout.session.completed when consent_collection.terms_of_service
+        // = "accepted") + vendor-agnostic sign-doc fields (used by the dormant
+        // OpenSign lib when reactivated in the future)
+        'sign_provider','sign_doc_id',
+        'contract_signed_at','tos_consented_at','tos_consented_ip',
     ];
     $current = crm_getClient($id);
     if (!$current) return false;

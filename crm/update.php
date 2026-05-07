@@ -788,17 +788,18 @@ case 'send_pre_contract': {
     $firstName = htmlspecialchars((string)($lead['first_name'] ?? 'there'), ENT_QUOTES);
     $businessName = htmlspecialchars((string)($lead['business_name'] ?? 'your business'), ENT_QUOTES);
     $bodyHtml = "<p>Hi {$firstName},</p>"
-              . "<p>Thanks for moving forward with Adverton. Before we send the service agreement, "
+              . "<p>Thanks for moving forward with Adverton. Before we send the payment + service agreement, "
               . "we need a few details about {$businessName} so the contract is correct on the first try.</p>"
               . "<p style='margin:24px 0'><a href=\"{$url}\" "
               . "style=\"display:inline-block;background:#6d28d9;color:#fff;padding:12px 24px;"
               . "border-radius:8px;text-decoration:none;font-weight:600\">Open the pre-contract form →</a></p>"
               . "<p style='font-size:13px;color:#6b6877'>Takes about 5 minutes. Link expires in 14 days. "
-              . "Once you submit, we'll generate the contract via PandaDoc and send it to your billing email.</p>"
+              . "Once you submit, we'll email you a secure Stripe Checkout link with the Service Agreement — "
+              . "click the consent box, enter payment, and you're set.</p>"
               . "<p style='font-size:13px;color:#6b6877'>Reply to this email with any questions.</p>";
 
     $r = crm_sendTrackedEmail($leadId, $lead, null, (int)$user['id'],
-        'Quick details before we send your contract', $bodyHtml);
+        'Quick details before we send your service agreement', $bodyHtml);
 
     if ($r['ok']) {
         try {

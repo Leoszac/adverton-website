@@ -109,7 +109,18 @@ crm_renderHeader($user, 'clients');
       <div><div class="k">Installments paid</div><div class="v"><?= (int)$client['installment_count'] ?> / 12</div></div>
       <div><div class="k">Buyout amount</div><div class="v"><?= crm_h(crm_fmtMoney($buyout)) ?></div></div>
       <div><div class="k">Stripe customer</div><div class="v"><?= crm_h($client['stripe_customer_id'] ?? '—') ?></div></div>
-      <div><div class="k">PandaDoc ID</div><div class="v"><?= crm_h($client['pandadoc_doc_id'] ?? '—') ?></div></div>
+      <?php
+        // Show whichever signing-vendor identifier is populated (legacy
+        // pandadoc_doc_id from earlier flows OR the new sign_doc_id from
+        // OpenSign-when-reactivated). Hide entirely if both empty.
+        $signId = $client['sign_doc_id'] ?? $client['pandadoc_doc_id'] ?? '';
+        $signProv = $client['sign_provider'] ?? ($client['pandadoc_doc_id'] ? 'pandadoc' : '');
+        if ($signId): ?>
+          <div><div class="k"><?= $signProv ? crm_h(ucfirst($signProv)) . ' ID' : 'Sign doc ID' ?></div><div class="v"><?= crm_h($signId) ?></div></div>
+      <?php endif; ?>
+      <?php if ($client['contract_signed_at'] ?? null): ?>
+          <div><div class="k">Contract signed</div><div class="v"><?= crm_h(substr((string)$client['contract_signed_at'], 0, 16)) ?></div></div>
+      <?php endif; ?>
     </div>
 
     <label style="margin-top:18px">Active add-ons</label>
