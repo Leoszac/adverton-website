@@ -55,8 +55,12 @@ $statements = [
        ADD COLUMN magic_token_expires_at   DATETIME     NULL,
        ADD COLUMN sign_provider            VARCHAR(20)  NULL,
        ADD COLUMN sign_doc_id              VARCHAR(120) NULL,
+       ADD COLUMN contract_signed_at       DATETIME     NULL,
+       ADD COLUMN tos_consented_at         DATETIME     NULL,
+       ADD COLUMN tos_consented_ip         VARCHAR(45)  NULL,
        ADD UNIQUE KEY uk_clients_magic_token (magic_token),
-       ADD INDEX idx_pre_contract_status   (pre_contract_completed_at)",
+       ADD INDEX idx_pre_contract_status   (pre_contract_completed_at),
+       ADD INDEX idx_contract_signed       (contract_signed_at)",
 
     "CREATE TABLE IF NOT EXISTS client_intake (
        id                       INT AUTO_INCREMENT PRIMARY KEY,

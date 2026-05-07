@@ -333,12 +333,11 @@ sections, and paste:
 | Section | Field | Value |
 |---|---|---|
 | Anthropic | API key | `sk-ant-...` (Console → Settings → API keys) |
-| OpenSign API | API key | OpenSign → Settings → API → Create token |
-| OpenSign API | Template ID | UUID from template URL (see step C) |
-| OpenSign API | Webhook shared token | random 32+ chars; paste same value into OpenSign's webhook URL as `?token=` |
-| OpenSign API | Base URL | leave empty (OpenSign Cloud); set only if self-hosted later |
 | Credentials vault | Master key | already inserted by `_bootstrap-v11.php`; verify badge says "configured" |
 | Namecheap | All four fields | only if Adverton will buy domains for clients |
+
+The pre-contract flow uses **Stripe Checkout + click-wrap T&C** instead of a
+separate eSignature tool — see step C below.
 
 Click **Save all integrations**. Values are stored encrypted in the
 `settings` DB table; `crm_config()` reads them automatically.
@@ -346,29 +345,49 @@ Click **Save all integrations**. Values are stored encrypted in the
 ⚠ **CREDENTIALS_KEY**: do NOT change once you've saved any client
 credentials — rotation requires re-encrypting every row first.
 
-## C. OpenSign template (~10–15 minutes)
+## C. Stripe click-wrap setup (~5 minutes)
 
-OpenSign Cloud (free tier: 5 docs/mo with API) → sign up at
-https://www.opensignlabs.com → **Templates** → **New Template** → upload
-your contract PDF → drag-and-drop **these 15 placeholders** onto the
-correct positions:
+The pre-contract form (`/pre-contract.php`) auto-builds a Stripe Checkout
+session with a required ToS checkbox. Click + payment = legally binding
+acceptance for sub-$1k SaaS in US (replaces a separate eSignature tool).
 
-```
-{{Client.LegalName}}      {{Client.BusinessName}}    {{Client.Trade}}
-{{Client.SignerName}}     {{Client.SignerRole}}      {{Client.Email}}
-{{Client.Phone}}          {{Client.Address}}         {{Client.City}}
-{{Client.State}}          {{Client.Zip}}             {{Client.TaxId}}
-{{Contract.MonthlyFee}}   {{Contract.StartDate}}     {{Contract.EndDate}}
-```
+### One-time setup
 
-After saving, copy the template UUID from the URL and paste it into
-`/crm/integrations.php` → OpenSign API → Template ID.
+1. **Edit the Service Agreement.** Open
+   `legal/service-agreement.html` in the repo and replace the placeholder
+   sections with the final legal text reviewed by counsel. The auto-deploy
+   copies this file to `https://adverton.net/legal/service-agreement.html`.
 
-Then OpenSign → **Settings** → **Webhooks** → Add → URL =
-`https://adverton.net/crm/opensign-webhook.php?token=YOUR_RANDOM_SECRET`,
-event = signature.completed (or whatever name your OpenSign version
-emits on signature). Paste the same `YOUR_RANDOM_SECRET` into
-`/crm/integrations.php` → OpenSign API → Webhook shared token.
+2. **Set the Terms URL in Stripe.** Stripe Dashboard → Settings → Public
+   details → "Terms of Service" → paste:
+   `https://adverton.net/legal/service-agreement.html` → Save. Stripe
+   shows the link on the Checkout page next to the consent checkbox.
+
+3. **Verify the Stripe webhook captures consent.** In a test session,
+   complete a checkout with the box ticked; the webhook handler
+   (`crm/stripe-webhook.php`) writes `contract_signed_at` and
+   `tos_consented_at` to the `clients` row.
+
+### What runs automatically
+
+When a lead completes `/pre-contract.php?t=TOKEN`:
+- billing fields persist on the matching `clients` row
+- magic token invalidates (single-use)
+- Stripe Checkout session generated via `crm_stripeCreatePaymentLink()`
+- email with the Checkout URL goes out via `crm_sendTrackedEmail()`
+- when the client checks the box + pays, the existing
+  `checkout.session.completed` webhook bumps the client to
+  `status='active'`, `payment_status='current'`, `contract_signed_at=NOW()`
+
+### Future eSignature upgrade (when needed)
+
+If volume grows or a client asks for formal eSignature with audit trail,
+the dormant lib at `crm/lib/opensign.php` is ready to activate:
+1. Sign up for OpenSign Paid (~$9.99/mo) or self-host
+2. Add `OPENSIGN_*` keys back to the whitelist in `crm/lib/settings.php`
+3. Restore the OpenSign section in `/crm/integrations.php`
+4. Swap the Stripe-link block in `pre-contract-submit.php` for a call to
+   `crm_opensignCreateContract($clientId)`
 
 ## D. Email intake `assets@adverton.net` (~5 minutes)
 

@@ -233,50 +233,26 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
-    <!-- ============== OpenSign API (auto-create contracts) ============== -->
+    <!-- ============== Pre-contract → Stripe Checkout (click-wrap T&C) ============== -->
     <div class="section">
-      <h2>OpenSign — auto-create contracts from pre-contract form</h2>
-      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton llama a la API de OpenSign para generar el contrato con datos pre-rellenos (15 placeholders: legal name, billing, signer, etc.) y se lo envía al cliente para firma. Free tier de OpenSign: 5 docs/mes con API.</div>
+      <h2>Pre-contract → Stripe Checkout (click-wrap)</h2>
+      <div class="desc">Cuando el cliente completa el pre-contract form, Adverton arma una <strong>Stripe Checkout session</strong> con la casilla "I agree to the Service Agreement" requerida + el plan de subscription, y le manda el link por email. Click + payment = aceptación legalmente vinculante (clic-wrap, válido en US para SaaS sub-$1k/mo). Sin tools de eSignature externas mientras Adverton arranca.</div>
 
       <div class="row">
         <div class="meta">
-          <div class="name">OpenSign API key</div>
-          <div class="help">OpenSign Dashboard → Settings → API → Create token. Se manda como header <code>x-api-token</code>.</div>
-          <span class="badge <?= $cur['OPENSIGN_API_KEY']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_API_KEY']['set']?'configured':'not set' ?></span>
-        </div>
-        <div><input type="password" name="OPENSIGN_API_KEY" value="<?= crm_h($cur['OPENSIGN_API_KEY']['value']) ?>" placeholder="..." autocomplete="off"></div>
-      </div>
-      <div class="row">
-        <div class="meta">
-          <div class="name">Contract template ID</div>
-          <div class="help">OpenSign → Templates → abrí el template → copiá el ID (UUID). El template debe tener estos 15 placeholders (drag-and-drop sobre el PDF): <code>{{Client.LegalName}}</code>, <code>{{Client.BusinessName}}</code>, <code>{{Client.Trade}}</code>, <code>{{Client.SignerName}}</code>, <code>{{Client.SignerRole}}</code>, <code>{{Client.Email}}</code>, <code>{{Client.Phone}}</code>, <code>{{Client.Address}}</code>, <code>{{Client.City}}</code>, <code>{{Client.State}}</code>, <code>{{Client.Zip}}</code>, <code>{{Client.TaxId}}</code>, <code>{{Contract.MonthlyFee}}</code>, <code>{{Contract.StartDate}}</code>, <code>{{Contract.EndDate}}</code>.</div>
-          <span class="badge <?= $cur['OPENSIGN_TEMPLATE_ID']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_TEMPLATE_ID']['set']?'configured':'not set' ?></span>
-        </div>
-        <div><input type="text" name="OPENSIGN_TEMPLATE_ID" value="<?= crm_h($cur['OPENSIGN_TEMPLATE_ID']['value']) ?>" placeholder="UUID del template" autocomplete="off"></div>
-      </div>
-      <div class="row">
-        <div class="meta">
-          <div class="name">Webhook URL (paste en OpenSign)</div>
-          <div class="help">OpenSign → Settings → Webhooks → Add. Append <code>?token=YOUR_SECRET</code> al URL. Suscribite al evento de firma (signature.completed o equivalente).</div>
+          <div class="name">Service Agreement URL</div>
+          <div class="help">Configurá en <strong>Stripe Dashboard → Settings → Public details → Terms of Service</strong> y pegá: <code>https://adverton.net/legal/service-agreement.html</code>. Stripe muestra ese link en el checkout y exige check-in antes de cobrar.</div>
         </div>
         <div>
-          <div class="copy"><span><?= $base ?>/crm/opensign-webhook.php?token=YOUR_SECRET</span><button type="button" onclick="copy(this,'<?= $base ?>/crm/opensign-webhook.php?token=YOUR_SECRET')">Copy</button></div>
+          <div class="copy"><span><?= $base ?>/legal/service-agreement.html</span><button type="button" onclick="copy(this,'<?= $base ?>/legal/service-agreement.html')">Copy</button></div>
         </div>
       </div>
       <div class="row">
         <div class="meta">
-          <div class="name">Webhook shared token (any random 32+ chars)</div>
-          <span class="badge <?= $cur['OPENSIGN_WEBHOOK_SECRET']['set']?'set':'unset' ?>"><?= $cur['OPENSIGN_WEBHOOK_SECRET']['set']?'configured':'not set' ?></span>
+          <div class="name">Upgrade path</div>
+          <div class="help">Si en el futuro querés firma formal con audit trail granular (ej. cliente enterprise): el lib <code>crm/lib/opensign.php</code> queda dormido en el repo, listo para activarse pegando una API key de OpenSign Paid (~\$9.99/mo) o self-hosted.</div>
         </div>
-        <div><input type="password" name="OPENSIGN_WEBHOOK_SECRET" value="<?= crm_h($cur['OPENSIGN_WEBHOOK_SECRET']['value']) ?>" placeholder="random-32-chars" autocomplete="off"></div>
-      </div>
-      <div class="row">
-        <div class="meta">
-          <div class="name">Custom base URL (only if self-hosted)</div>
-          <div class="help">Dejalo vacío si usás OpenSign Cloud. Setealo a <code>https://sign.tudominio.com</code> el día que migres a self-host.</div>
-          <span class="badge <?= $cur['OPENSIGN_BASE_URL']['set']?'set':'cloud' ?>"><?= $cur['OPENSIGN_BASE_URL']['set']?'self-hosted':'cloud' ?></span>
-        </div>
-        <div><input type="text" name="OPENSIGN_BASE_URL" value="<?= crm_h($cur['OPENSIGN_BASE_URL']['value']) ?>" placeholder="(empty = OpenSign Cloud)" autocomplete="off"></div>
+        <div style="font-size:13px;color:#6b6877;line-height:1.5">No fields needed — el flow usa la <code>STRIPE_API_KEY</code> ya configurada arriba.</div>
       </div>
     </div>
 

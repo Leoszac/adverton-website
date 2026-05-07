@@ -1,4 +1,14 @@
 <?php
+// ⏸ DORMANT — not invoked anywhere right now. The pre-contract flow uses
+// Stripe Checkout + click-wrap T&C (see crm/lib/stripe.php and
+// pre-contract-submit.php). Activate this lib by:
+//   1. Sign up for OpenSign Paid (~\$9.99/mo) OR self-host
+//   2. Add OPENSIGN_API_KEY/TEMPLATE_ID/WEBHOOK_SECRET/BASE_URL to the
+//      whitelist in crm/lib/settings.php
+//   3. Restore the OpenSign section in /crm/integrations.php
+//   4. Swap the Stripe-link block in pre-contract-submit.php back to a
+//      crm_opensignCreateContract($clientId) call.
+//
 // OpenSign API wrapper — create + send contracts from an OpenSign template.
 //
 // Pairs with crm/opensign-webhook.php (inbound: receives "signed" events

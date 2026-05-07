@@ -12,7 +12,8 @@ require_once __DIR__ . '/crm/lib/leads.php';
 require_once __DIR__ . '/crm/lib/clients.php';
 require_once __DIR__ . '/crm/lib/magic-tokens.php';
 require_once __DIR__ . '/crm/lib/activities.php';
-require_once __DIR__ . '/crm/lib/opensign.php';
+require_once __DIR__ . '/crm/lib/stripe.php';
+require_once __DIR__ . '/crm/lib/email_track.php';
 
 function preContractFail(string $token, string $userMsg, int $status = 400): void {
     http_response_code($status);
@@ -104,17 +105,54 @@ try {
 crm_logActivity($leadId, null, 'system', 'pre_contract_completed',
     'Pre-contract form completed; client #' . $clientId . ' created/updated; PandaDoc contract triggered');
 
-// Kick off the OpenSign contract (creates AND emails signer in one call).
-// If it fails, we DON'T rollback the client save — the operator can retry
-// from /crm/client.php manually.
-$os = crm_opensignCreateContract($clientId);
-if (!$os['ok']) {
-    error_log('[pre-contract-submit opensign] ' . ($os['error'] ?? 'unknown'));
-    crm_logActivity($leadId, null, 'system', 'opensign_create_failed',
-        'OpenSign contract create failed: ' . ($os['error'] ?? 'unknown'));
-} else {
-    crm_logActivity($leadId, null, 'system', 'opensign_doc_created',
-        'OpenSign contract sent: ' . ($os['view_url'] ?? $os['doc_id']));
+// Build the Stripe Checkout session with required ToS consent and email
+// the link to the client. Click-wrap (consent_collection[terms_of_service]
+// = required) makes payment + checkbox legally binding for a sub-$1k SaaS
+// agreement — replaces a separate eSignature tool until Adverton scales.
+//
+// Best-effort: if Stripe or Resend isn't configured, the client save still
+// succeeds and the operator can resend the link manually from client.php.
+$client = crm_getClient($clientId);
+if ($client) {
+    $pl = crm_stripeCreatePaymentLink($client);
+    if (!$pl['ok']) {
+        error_log('[pre-contract-submit stripe] ' . ($pl['error'] ?? 'unknown'));
+        crm_logActivity($leadId, null, 'system', 'stripe_link_failed',
+            'Stripe payment link create failed: ' . ($pl['error'] ?? 'unknown'));
+    } else {
+        $url = (string)$pl['url'];
+        $monthly = number_format((float)$pl['monthly'], 2);
+        crm_logActivity($leadId, null, 'system', 'stripe_link_created',
+            "Stripe payment link created · monthly \${$monthly}", ['url' => $url]);
+
+        $subject = 'Your Adverton service agreement — review + activate';
+        $bodyHtml =
+            '<p>Hi ' . htmlspecialchars((string)($client['authorized_signer'] ?: $client['business_name']), ENT_QUOTES) . ',</p>'
+          . '<p>Your Adverton subscription is ready to activate. The link below opens a secure Stripe checkout where you can:</p>'
+          . '<ul>'
+          . '<li>Review the <a href="https://adverton.net/legal/service-agreement.html">Service Agreement</a> (12-month term, $799/mo + add-ons)</li>'
+          . '<li>Confirm acceptance with one click</li>'
+          . '<li>Enter your payment details</li>'
+          . '</ul>'
+          . '<p style="margin:24px 0"><a href="' . htmlspecialchars($url, ENT_QUOTES) . '" '
+          . 'style="background:#6d28d9;color:#fff;padding:12px 22px;text-decoration:none;border-radius:8px;font-weight:600">'
+          . 'Review and activate — $' . $monthly . '/mo</a></p>'
+          . '<p>By clicking the agreement checkbox + paying, you’re entering into a binding 12-month service agreement with Adverton. The checkout records your acceptance with timestamp.</p>'
+          . '<p>Reply to this email if anything looks off.</p>'
+          . '<p>— Adverton</p>';
+
+        $leadForEmail = $lead;
+        $leadForEmail['email'] = $client['billing_email'] ?: $client['primary_email'] ?: ($lead['email'] ?? '');
+        $send = crm_sendTrackedEmail($leadId, $leadForEmail, null, null, $subject, $bodyHtml);
+        if (!$send['ok']) {
+            error_log('[pre-contract-submit email] ' . ($send['error'] ?? 'unknown'));
+            crm_logActivity($leadId, null, 'system', 'stripe_link_email_failed',
+                'Stripe link generated but email send failed: ' . ($send['error'] ?? 'unknown'));
+        } else {
+            crm_logActivity($leadId, null, 'email', 'stripe_link_emailed',
+                'Stripe checkout link emailed to ' . $leadForEmail['email']);
+        }
+    }
 }
 
 // Done — redirect to a thank-you. Reuses the audit thank-you page since the

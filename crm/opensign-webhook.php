@@ -1,4 +1,9 @@
 <?php
+// ⏸ DORMANT — Adverton currently uses Stripe click-wrap T&C, not OpenSign.
+// This file stays in the repo for the day the user upgrades to OpenSign
+// Paid. Until OPENSIGN_WEBHOOK_SECRET is set, requests get 503'd; URL is
+// not advertised anywhere.
+//
 // OpenSign webhook — receives document.signed events and bumps the matching
 // client to contract_signed. Paired with crm/lib/opensign.php (outbound).
 //

@@ -28,15 +28,17 @@ const CRM_DB_BACKED_KEYS = [
     // Onboarding pipeline (Sprints 0–4): managed from /crm/integrations.php
     // so the founder doesn't need shell/file-manager access to crm-config.php.
     'ANTHROPIC_API_KEY',
-    'OPENSIGN_API_KEY',
-    'OPENSIGN_TEMPLATE_ID',
-    'OPENSIGN_WEBHOOK_SECRET',
-    'OPENSIGN_BASE_URL',
     'CREDENTIALS_KEY',
     'NAMECHEAP_API_USER',
     'NAMECHEAP_API_KEY',
     'NAMECHEAP_CLIENT_IP',
     'NAMECHEAP_SANDBOX',
+    // OpenSign keys are intentionally NOT whitelisted right now — the lib
+    // (crm/lib/opensign.php) is dormant pending a paid OpenSign plan. The
+    // pre-contract flow uses Stripe Checkout + click-wrap T&C instead.
+    // To activate OpenSign later: add OPENSIGN_API_KEY, OPENSIGN_TEMPLATE_ID,
+    // OPENSIGN_WEBHOOK_SECRET, OPENSIGN_BASE_URL here + restore the section
+    // in /crm/integrations.php.
 ];
 
 function crm_loadDbSettings(): array {

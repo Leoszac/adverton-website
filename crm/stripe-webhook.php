@@ -57,9 +57,25 @@ case 'checkout.session.completed': {
         'stripe_customer_id'     => $custId ?: $client['stripe_customer_id'],
         'stripe_subscription_id' => $subId,
     ];
+
+    // Click-wrap acceptance: capture the consent record from the session.
+    // consent.terms_of_service = "accepted" iff the user checked the
+    // required ToS box in Checkout. This + payment = binding contract
+    // for sub-$1k SaaS in US (replaces a separate eSignature tool).
+    $consent = $obj['consent']['terms_of_service'] ?? '';
+    if ($consent === 'accepted') {
+        $patch['contract_signed_at'] = date('Y-m-d H:i:s');
+        $patch['tos_consented_at']   = date('Y-m-d H:i:s');
+        // Stripe puts the customer's IP on the session as customer_details.address
+        // is post-billing; the IP itself comes through on the PaymentIntent.
+        // For audit-trail purposes the session_id + Stripe-side log is enough.
+        $patch['tos_consented_ip']   = (string)($obj['customer_details']['ip'] ?? '');
+    }
+
     crm_updateClient((int)$client['id'], $patch, null);
     crm_logClientEvent((int)$client['id'], null, 'payment_succeeded',
-        "Checkout completed · sub {$subId}", ['session_id' => $sessionId]);
+        "Checkout completed · sub {$subId}" . ($consent === 'accepted' ? ' · ToS accepted' : ''),
+        ['session_id' => $sessionId, 'consent_tos' => $consent]);
     break;
 }
 
