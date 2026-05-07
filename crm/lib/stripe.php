@@ -100,7 +100,21 @@ function crm_stripeEnsureCustomer(array $client): array {
 
 // Build the Stripe subscription line items based on a client's plan.
 // Each item uses inline price_data (no upfront product/price creation needed).
-function crm_clientStripeLineItems(array $client): array {
+//
+// When $overrideMonthly is passed (≥0.50, Stripe min), bypass the regular
+// pricing entirely — return a single line at that amount. Used by the
+// founder's "test in production with $1" override on /crm/client.php so
+// the real Stripe + webhook path can be validated without a $799 charge.
+// The persisted client.monthly_fee stays at $799.
+function crm_clientStripeLineItems(array $client, ?float $overrideMonthly = null): array {
+    if ($overrideMonthly !== null && $overrideMonthly >= 0.50) {
+        return [[
+            'name'     => CRM_STRIPE_BASE_PLAN['name'] . ' — TEST',
+            'monthly'  => round($overrideMonthly, 2),
+            'quantity' => 1,
+        ]];
+    }
+
     $items = [];
 
     // Base plan — always included
@@ -186,7 +200,10 @@ function crm_clientStripeMonthlyTotal(array $items): float {
 }
 
 // Create a Checkout Session in subscription mode and return the hosted URL.
-function crm_stripeCreatePaymentLink(array $client): array {
+// $overrideMonthly: optional one-shot price override (no DB persist). When
+// set, the resulting subscription bills that amount instead of the regular
+// base+addons. Used by the founder's "test in production with $1" workflow.
+function crm_stripeCreatePaymentLink(array $client, ?float $overrideMonthly = null): array {
     if (empty($client['primary_email'])) {
         return ['ok' => false, 'error' => 'Client has no primary_email'];
     }
@@ -197,7 +214,7 @@ function crm_stripeCreatePaymentLink(array $client): array {
     $customerId = $cust['data']['id'];
 
     // Build line items
-    $items = crm_clientStripeLineItems($client);
+    $items = crm_clientStripeLineItems($client, $overrideMonthly);
     if (!$items) return ['ok' => false, 'error' => 'No items to bill (no base + no addons)'];
 
     $params = [

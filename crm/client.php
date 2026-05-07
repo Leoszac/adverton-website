@@ -258,12 +258,20 @@ crm_renderHeader($user, 'clients');
             <?php endif; ?>
           <?php endif; ?>
         <?php else: ?>
-          <form method="post" action="/crm/update.php" style="margin:0">
+          <form method="post" action="/crm/update.php" style="margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <input type="hidden" name="mode" value="client_send_payment_link">
             <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
             <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <?php if (($user['role'] ?? '') === 'founder'): ?>
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#6b6877">
+                Override $
+                <input type="number" name="override_monthly" step="0.01" min="0.50" placeholder="(blank = real)"
+                       style="width:90px;padding:6px 8px;border:1px solid #e7e4ee;border-radius:6px;font-size:13px"
+                       onchange="this.form.querySelector('button').textContent = this.value ? '🧪 Send TEST link — $' + this.value + '/mo' : '💳 <?= $linkSentAt ? 'Resend' : 'Send' ?> payment link'">
+              </label>
+            <?php endif; ?>
             <button type="submit" style="background:#6d28d9;color:#fff;border:0;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer"
-                    onclick="return confirm('Create a Stripe Checkout link for <?= crm_h(crm_fmtMoney($previewMonthly)) ?>/mo and email it to <?= crm_h($client['primary_email'] ?? '?') ?>?')">
+                    onclick="return confirm('Create a Stripe Checkout link and email it to <?= crm_h($client['primary_email'] ?? '?') ?>?\n\nIf you set an Override, the subscription will bill that amount monthly until you cancel it from Stripe Dashboard. Real $799/mo applies on the next clean send.')">
               💳 <?= $linkSentAt ? 'Resend payment link' : 'Send payment link' ?>
             </button>
           </form>

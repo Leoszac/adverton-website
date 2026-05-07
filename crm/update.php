@@ -881,7 +881,20 @@ case 'client_send_payment_link': {
     $client = $clientId > 0 ? crm_getClient($clientId) : null;
     if (!$client) { http_response_code(404); header('Location: /crm/clients.php'); exit; }
 
-    $r = crm_stripeCreatePaymentLink($client);
+    // Founder-only: one-shot price override for production smoke tests.
+    // When set (≥ Stripe's 50¢ minimum), the next checkout session bills
+    // that amount instead of the client's real monthly_fee. The persisted
+    // monthly_fee is untouched. Use case: $1 end-to-end verification of
+    // the live Stripe → webhook → DB flow without a real $799 charge.
+    $overrideMonthly = null;
+    if (($user['role'] ?? '') === 'founder') {
+        $raw = trim((string)($_POST['override_monthly'] ?? ''));
+        if ($raw !== '' && is_numeric($raw) && (float)$raw >= 0.50) {
+            $overrideMonthly = (float)$raw;
+        }
+    }
+
+    $r = crm_stripeCreatePaymentLink($client, $overrideMonthly);
     if (!$r['ok']) {
         crm_logClientEvent($clientId, (int)$user['id'], 'note',
             'Payment link creation failed: ' . $r['error']);
