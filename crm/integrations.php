@@ -240,8 +240,8 @@ crm_renderHeader($user, '');
 
       <div class="row">
         <div class="meta">
-          <div class="name">Service Agreement URL</div>
-          <div class="help">Configurá en <strong>Stripe Dashboard → Settings → Public details → Terms of Service</strong> y pegá: <code>https://adverton.net/legal/service-agreement.html</code>. Stripe muestra ese link en el checkout y exige check-in antes de cobrar.</div>
+          <div class="name">Service Agreement link</div>
+          <div class="help">Embedded directly in Stripe's consent checkbox via markdown — no Dashboard setting needed. Edit <code>legal/service-agreement.html</code> in the repo to update the actual agreement text.</div>
         </div>
         <div>
           <div class="copy"><span><?= $base ?>/legal/service-agreement.html</span><button type="button" onclick="copy(this,'<?= $base ?>/legal/service-agreement.html')">Copy</button></div>

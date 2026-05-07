@@ -358,10 +358,12 @@ acceptance for sub-$1k SaaS in US (replaces a separate eSignature tool).
    sections with the final legal text reviewed by counsel. The auto-deploy
    copies this file to `https://adverton.net/legal/service-agreement.html`.
 
-2. **Set the Terms URL in Stripe.** Stripe Dashboard → Settings → Public
-   details → "Terms of Service" → paste:
-   `https://adverton.net/legal/service-agreement.html` → Save. Stripe
-   shows the link on the Checkout page next to the consent checkbox.
+2. **No Stripe Dashboard setting required.** The Service Agreement link
+   is embedded directly in the Checkout consent message via markdown
+   (see `crm_stripeCreatePaymentLink` in `crm/lib/stripe.php`). Customer
+   sees: *"I have read and agree to Adverton's [Service Agreement](URL)
+   (12-month commitment...)"* — no dependency on the (well-hidden,
+   recently-renamed) account-level Terms of Service Dashboard setting.
 
 3. **Verify the Stripe webhook captures consent.** In a test session,
    complete a checkout with the box ticked; the webhook handler

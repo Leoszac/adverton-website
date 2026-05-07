@@ -212,15 +212,16 @@ function crm_stripeCreatePaymentLink(array $client): array {
         // Force the client to accept the Service Agreement before they
         // can pay. This is the click-wrap mechanism that makes the
         // checkout legally binding without a separate eSignature tool.
-        // Stripe records consent timestamp + IP on the session payload
+        // Stripe records consent timestamp on the session payload
         // (data.object.consent.terms_of_service = "accepted") which we
         // capture in stripe-webhook.php and store on clients.
         //
-        // The actual ToS URL is configured globally in Stripe Dashboard
-        // → Settings → Public details → "Terms of Service" → point at
-        // https://adverton.net/legal/service-agreement.html
+        // The Service Agreement link is embedded directly in the consent
+        // message via markdown — no dependency on the (well-hidden,
+        // recently-renamed) account-level Terms of Service Dashboard
+        // setting. Stripe's Checkout custom_text supports markdown links.
         'consent_collection[terms_of_service]'                => 'required',
-        'custom_text[terms_of_service_acceptance][message]'   => 'I have read and agree to Adverton’s Service Agreement (12-month commitment).',
+        'custom_text[terms_of_service_acceptance][message]'   => 'I have read and agree to Adverton’s [Service Agreement](https://adverton.net/legal/service-agreement.html) (12-month commitment, $9,588 website asset paid monthly per Section 5).',
     ];
     $i = 0;
     foreach ($items as $it) {
