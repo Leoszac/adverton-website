@@ -295,3 +295,151 @@ Create a cron job that mysqldumps + tar's the file storage:
 - **Logs**: auth events are logged to `/home2/advertonnet/logs/crm.log`.
 - **Forgot password**: easiest path is to re-seed (see above) — the seeder
   upserts on conflict, so it overwrites the existing hash.
+
+---
+
+# Client onboarding pipeline (Sprints 0–5) — manual steps
+
+The 5-sprint onboarding pipeline (pre-contract → kickoff → AI draft →
+preview/approve → deploy to client hosting) needs a one-time setup of
+external services. Everything below is done from cPanel UI or external
+dashboards — none of it can be code-only.
+
+## A. Apply the v11 schema (~30 seconds)
+
+The schema brings billing fields, `client_intake`, `client_credentials`,
+`client_assets`. There's a one-shot runner — no phpMyAdmin needed.
+
+1. Make sure the latest deploy succeeded (`bash tests/run.sh smoke` from
+   any machine confirms).
+2. **Log in as founder** at https://adverton.net/crm/.
+3. **In the SAME browser tab**, visit:
+   ```
+   https://adverton.net/crm/_run-v11.php
+   ```
+4. You'll see a per-statement log ending with
+   `[ok] _run-v11.php self-destructed.` — the file is gone after one run.
+5. If the visit shows "Forbidden", log in as founder first.
+6. Idempotent: re-running on a partially-applied schema reports
+   `[skip] stmt #N — already applied` and finishes clean.
+
+## B. crm-config.php additions (~5 minutes)
+
+Edit `/home2/advertonnet/crm-config.php` (cPanel File Manager). Add these
+keys to the `return [...]` array:
+
+```php
+// Anthropic — for AI website copy + photo classification
+'ANTHROPIC_API_KEY' => 'sk-ant-...',
+   // Console Anthropic → Settings → API keys → Create Key
+
+// PandaDoc — for auto-generating contracts after pre-contract form
+'PANDADOC_API_KEY'     => '',
+'PANDADOC_TEMPLATE_ID' => '',
+   // PandaDoc Settings → Integrations → API key
+   // Template UUID = the URL after creating the template (see step C)
+
+// Credentials vault master key — for /crm/client-credentials.php
+'CREDENTIALS_KEY' => '',
+   // Use THIS pre-generated value (or generate your own with
+   //   php -r "echo bin2hex(random_bytes(32));"  )
+   // ⚠ DO NOT change this once you've saved any credentials —
+   //   rotation requires re-encrypting every row first.
+
+// Namecheap Domain API — only if you'll buy domains for clients
+'NAMECHEAP_API_USER'  => '',
+'NAMECHEAP_API_KEY'   => '',
+'NAMECHEAP_CLIENT_IP' => '',  // Adverton's outbound IP, whitelisted on Namecheap first
+'NAMECHEAP_SANDBOX'   => false,  // true while testing
+```
+
+## C. PandaDoc template (~10 minutes)
+
+PandaDoc dashboard → **Templates** → **New** → design the contract. Use
+**these exact placeholders** (double curly braces) where each piece of data
+should appear:
+
+```
+{{Client.LegalName}}      {{Client.BusinessName}}    {{Client.Trade}}
+{{Client.SignerName}}     {{Client.SignerRole}}      {{Client.Email}}
+{{Client.Phone}}          {{Client.Address}}         {{Client.City}}
+{{Client.State}}          {{Client.Zip}}             {{Client.TaxId}}
+{{Contract.MonthlyFee}}   {{Contract.StartDate}}     {{Contract.EndDate}}
+```
+
+After saving, copy the template UUID from the URL and paste into
+`PANDADOC_TEMPLATE_ID` in `crm-config.php`.
+
+## D. Email intake `assets@adverton.net` (~5 minutes)
+
+Lets clients email photos that auto-flow into `client_assets` + AI
+classification.
+
+1. cPanel → **Email Accounts** → Create Account → `assets@adverton.net`
+   (any password — the inbox is never logged into).
+2. cPanel → **Forwarders** → Add Forwarder.
+   - Address: `assets@adverton.net`
+   - Forward to: **Pipe to a Program**:
+     ```
+     /usr/local/bin/php /home2/advertonnet/public_html/crm/email-pipe.php
+     ```
+3. Test: send an image to `assets@adverton.net` from a known
+   client's `primary_email`. Within ~5 minutes the row appears in
+   `client_assets` and (if `ANTHROPIC_API_KEY` is set) gets classified.
+
+## E. Cron jobs
+
+The CRM has an **in-process dispatcher** (`crm/lib/cron_dispatcher.php`) that
+runs cron-style jobs whenever an authed page loads. **Most jobs need no
+cPanel cron** — they fire automatically on page loads.
+
+Photo classification runs every 5 min via the in-process dispatcher
+(added in Sprint 3 commit). If the CRM has zero traffic for hours, no
+photos get classified — that case is rare with an active operator. If you
+want a hard guarantee anyway, also add this cPanel cron:
+
+```
+*/5 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-photo-classify.php >> /home2/advertonnet/logs/cron-photo-classify.log 2>&1
+```
+
+## F. Per-client setup (deploy time)
+
+When a client gets to the deploy step:
+
+### If the client already has hosting
+1. /crm/client-credentials.php?id=N → Add credential.
+2. Pick **kind** = `cpanel` (or `sftp` / `wordpress`).
+3. Fill **url** (`ftp.client.com`, no `ftps://` prefix), **username**,
+   **value** (password, gets encrypted on save).
+4. Optional **notes** are stored unencrypted (good for MFA backup codes,
+   recovery email, etc.).
+
+### If the client has nothing
+1. Buy domain at Namecheap to the client's name (use their billing data
+   from `/crm/client.php?id=N`).
+2. Create a cPanel account on Hostingheroes reseller for them.
+3. Save both sets of credentials in /crm/client-credentials.php so future
+   deploys/rotations are programmatic.
+
+### Then deploy
+1. Click **🚀 Deploy** on `/crm/client-review.php?id=N` (only enabled
+   after status = `approved`).
+2. The adapter uploads the rendered HTML via FTPS / WP-REST.
+3. 5 follow-up tasks auto-appear in `/crm/today.php` (GBP / LSA / Tradio /
+   cold-email / DNS+SSL).
+
+## G. Verification (end-to-end)
+
+After A–E are done, run a single client through the whole pipeline:
+
+1. /crm/lead.php?id=N → click **📝 Send pre-contract**
+2. (As the lead) open the email → fill the form → submit
+3. PandaDoc receives a populated draft. Sign it.
+4. (As founder) /crm/client.php?id=N → **📧 Email link to client**
+5. (As the client) open the kickoff email → fill the 8 steps
+6. Email a few test photos to `assets@adverton.net`
+7. (As founder) /crm/client-review.php?id=N → **✨ Generate AI copy**
+8. Send preview to client → wait for OK → **✓ Approve**
+9. Add credentials → **🚀 Deploy** → site lands on client's hosting.
+
+Smoke at any point: `bash tests/run.sh smoke` from any machine.
