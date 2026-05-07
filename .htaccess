@@ -53,11 +53,10 @@ RewriteRule ^([^.]+)$ $1.html [L]
 
 # email-pipe.php is invoked by cPanel's mail forwarder (CLI/exec, NOT web).
 # It needs chmod 755 so the kernel will exec it via shebang — but Apache then
-# tries to serve it as CGI on direct HTTP hits, which 500s. Block web access
-# entirely. Forwarder pipe still works (it doesn't go through Apache).
-<Files "email-pipe.php">
-  Require all denied
-</Files>
+# tries to serve it as CGI on direct HTTP hits, which 500s. Return 404 (not
+# 403) so we don't leak that the file exists. Forwarder pipe still works
+# (it doesn't go through Apache).
+RedirectMatch 404 ^/crm/email-pipe\.php$
 
 # Real 404 page (returns proper 404 status, no soft-404 redirect to /)
 ErrorDocument 404 /404.html
