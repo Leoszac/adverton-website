@@ -107,6 +107,23 @@ probe "/crm/t.php"                         200 "open-pixel returns 200 unconditi
 probe "/crm/r.php"                         400 "click-redirect rejects missing params"
 
 echo
+echo "Pre-contract magic-link form (Sprint 0):"
+# /pre-contract without token → 410 Gone (link expired/invalid page)
+probe "/pre-contract"                      410 "pre-contract without token = expired"
+probe "/pre-contract.php"                  410 "pre-contract.php direct also gates on token"
+probe "/pre-contract?t=invalidhex"         410 "pre-contract with bad token = expired"
+# POST endpoint without payload → 405 (method handler exists, GET not allowed)
+code=$(curl -sS -X POST -o /dev/null -w '%{http_code}' "${HOST}/pre-contract-submit.php")
+if [ "$code" = "410" ] || [ "$code" = "400" ]; then
+  printf "  \e[32mok\e[0m  %-50s POST → %s (rejected as expected)\n" "pre-contract-submit rejects empty POST" "$code"
+  ok=$((ok+1))
+else
+  printf "  \e[31mFAIL\e[0m %-50s POST → %s (want 410 or 400)\n" "pre-contract-submit rejects empty POST" "$code"
+  fail=$((fail+1))
+fi
+probe "/pre-contract-thank-you.html"       200 "pre-contract thank-you page reachable"
+
+echo
 if [ "$fail" -gt 0 ]; then
     echo "FAILED: $fail failure(s), $ok ok"
     exit 1
