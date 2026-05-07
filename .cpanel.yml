@@ -15,3 +15,4 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/seed-nurture-sequences.php
     - /bin/rm -f $DEPLOYPATH/crm/patch-nurture-tail-task.php
     - /bin/rm -f $DEPLOYPATH/crm/_cleanup-files.php
+    - /bin/rm -f $DEPLOYPATH/crm/setup-cron.php
