@@ -35,13 +35,23 @@ foreach ($crons as $name => $schedule) {
     printf("%-15s  %s bytes\n", $ageStr, number_format($size));
 }
 
-echo "\n=== Recent cron-sequences activity (tail) ===\n";
-$seqLog = "{$logsDir}/cron-sequences.log";
-if (file_exists($seqLog)) {
-    $lines = @file($seqLog, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-    foreach (array_slice($lines, -10) as $l) {
+// Show last 5 log lines for each cron, with a hint if the log looks like
+// HTML-error garbage from a curl-based cron hitting a WAF block.
+foreach ($crons as $name => $schedule) {
+    $log = "{$logsDir}/{$name}.log";
+    echo "\n=== {$name} (tail) ===\n";
+    if (!file_exists($log)) {
+        echo "  (no log yet)\n";
+        continue;
+    }
+    $head = (string) @file_get_contents($log, false, null, 0, 200);
+    if (strpos($head, '403 Forbidden') !== false || strpos($head, '<!DOCTYPE html>') !== false) {
+        echo "  ⚠️  log contains HTML — cron is being blocked at the web layer (Imunify/mod_security).\n";
+        echo "     Switch this cron to PHP CLI (run /crm/_fix-cron.php?go=1 once).\n";
+        continue;
+    }
+    $lines = @file($log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+    foreach (array_slice($lines, -5) as $l) {
         echo "  " . substr($l, 0, 200) . "\n";
     }
-} else {
-    echo "  (no log yet — first run pending or blocked)\n";
 }
