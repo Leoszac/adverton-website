@@ -325,11 +325,14 @@ function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0, st
 
     // Aliased query so we can LEFT JOIN engagement totals from email_sends.
     // `crm_buildWhere` returns column refs without table aliases, so re-prefix
-    // the ones that exist on `leads` to avoid ambiguous-column errors.
+    // the ones that exist on `leads` to avoid ambiguous-column errors. The
+    // negative lookbehind `(?<!\.)` prevents matching inside an already-qualified
+    // reference like `leads.status` (which would produce `leads.l.status` and
+    // throw "Column not found").
     $whereAliased = $where;
     if ($whereAliased !== '') {
         $whereAliased = preg_replace(
-            '/\b(source|status|temperature|owner_user_id|trade|business_name|email|phone|first_name|last_name|notes)\b/',
+            '/(?<!\.)\b(source|status|temperature|owner_user_id|trade|business_name|email|phone|first_name|last_name|notes)\b/',
             'l.\1',
             $whereAliased
         );

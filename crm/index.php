@@ -67,24 +67,7 @@ $sort = (string)($_GET['sort'] ?? 'created');
 if (!in_array($sort, ['created','score','engagement','stale'], true)) $sort = 'created';
 
 $total   = crm_countLeads($filters);
-try {
-    $rows = crm_listLeads($filters, $perPage, $offset, $sort);
-} catch (Throwable $e) {
-    // Founder-visible debug — surface the real error instead of a blank 500.
-    // Removed once the regression is identified.
-    if (($user['role'] ?? '') === 'founder') {
-        header('Content-Type: text/plain; charset=utf-8');
-        http_response_code(500);
-        echo "crm_listLeads failed.\n\n";
-        echo "Sort: " . var_export($sort, true) . "\n";
-        echo "Filters: " . var_export($filters, true) . "\n\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "File:  " . $e->getFile() . ":" . $e->getLine() . "\n\n";
-        echo "Trace:\n" . $e->getTraceAsString() . "\n";
-        exit;
-    }
-    throw $e;
-}
+$rows    = crm_listLeads($filters, $perPage, $offset, $sort);
 crm_attachTagsToLeads($rows);
 
 $users   = crm_listUsers();
