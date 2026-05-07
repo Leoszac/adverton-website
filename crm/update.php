@@ -439,6 +439,90 @@ case 'routing_save': {
     exit;
 }
 
+case 'intake_save': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/intake.php';
+    require_once __DIR__ . '/lib/intake-wizard.php';
+
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $step     = (int)($_POST['step']      ?? 0);
+    if ($clientId <= 0 || $step < 1 || $step > CRM_INTAKE_TOTAL_STEPS) {
+        http_response_code(400); exit('bad request');
+    }
+    $payload = crm_intakeNormalizePost($_POST, $step);
+    crm_saveIntakeStep($clientId, $step, $payload);
+
+    if ($step === CRM_INTAKE_TOTAL_STEPS) {
+        $r = crm_markIntakeReady($clientId);
+        if (!$r['ok']) {
+            $first = $r['missing'][0] ?? 'something';
+            header('Location: /crm/client-kickoff.php?id=' . $clientId
+                . '&step=1&err=' . urlencode("Missing: {$first}"));
+            exit;
+        }
+        crm_logActivity(null, (int)$user['id'], 'system', 'kickoff_completed',
+            'Operator completed kickoff intake for client #' . $clientId);
+        header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
+    } else {
+        header('Location: /crm/client-kickoff.php?id=' . $clientId . '&step=' . ($step + 1));
+    }
+    exit;
+}
+
+case 'intake_send_link': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/magic-tokens.php';
+    require_once __DIR__ . '/lib/email_track.php';
+
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); exit; }
+    $email = $client['billing_email'] ?: $client['primary_email'] ?: '';
+    if (!$email) {
+        header('Location: /crm/client.php?id=' . $clientId
+            . '&sendError=' . urlencode('Client has no billing/primary email'));
+        exit;
+    }
+
+    $token = crm_setClientMagicToken($clientId, 14);
+    $url   = 'https://adverton.net/kickoff?t=' . urlencode($token);
+
+    // crm_sendTrackedEmail wants a "lead" array; we synthesize one from the
+    // client. tracking pixels still record opens/clicks even if there is
+    // no leads.id — we pass 0 and the email_sends row gets logged as
+    // global. (Future: extend email_track to handle clients natively.)
+    $synthLead = [
+        'email'      => $email,
+        'first_name' => trim(explode(' ', (string)$client['authorized_signer'])[0] ?? ''),
+    ];
+    $name      = htmlspecialchars((string)($synthLead['first_name'] ?: 'there'), ENT_QUOTES);
+    $business  = htmlspecialchars((string)($client['business_name'] ?? 'your business'), ENT_QUOTES);
+    $bodyHtml  = "<p>Hi {$name},</p>"
+               . "<p>Welcome to Adverton — we're excited to start working on {$business}.</p>"
+               . "<p>To get the website rolling, we need a few details about your business. "
+               . "Use the link below — it's a short wizard, you can pause and resume anytime.</p>"
+               . "<p style='margin:24px 0'><a href=\"{$url}\" "
+               . "style=\"display:inline-block;background:#6d28d9;color:#fff;padding:12px 24px;"
+               . "border-radius:8px;text-decoration:none;font-weight:600\">Start kickoff →</a></p>"
+               . "<p style='font-size:13px;color:#6b6877'>Prefer to do it on a call? Reply to this email "
+               . "and we'll book 30 minutes — your account manager can fill it in while you talk.</p>";
+
+    $r = crm_sendTrackedEmail(0, $synthLead, null, (int)$user['id'],
+        'Your Adverton kickoff — quick details to get started', $bodyHtml);
+
+    if ($r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Kickoff link sent to ' . $email);
+        header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
+    } else {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Kickoff link send failed: ' . ($r['error'] ?? 'unknown'));
+        header('Location: /crm/client.php?id=' . $clientId
+            . '&sendError=' . urlencode((string)($r['error'] ?? 'Send failed')));
+    }
+    exit;
+}
+
 case 'send_pre_contract': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     require_once __DIR__ . '/lib/magic-tokens.php';

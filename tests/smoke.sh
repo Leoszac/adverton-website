@@ -129,6 +129,13 @@ fi
 probe "/pre-contract-thank-you"            200 "pre-contract thank-you (clean URL)"
 
 echo
+echo "Kickoff wizard (Sprint 1):"
+probe "/crm/client-kickoff.php"            302 "client-kickoff (operator) requires login"
+probe "/kickoff"                           410 "kickoff without token = expired"
+probe "/kickoff?t=invalidhex"              410 "kickoff with bad token = expired"
+probe "/kickoff-thank-you"                 200 "kickoff thank-you (clean URL)"
+
+echo
 if [ "$fail" -gt 0 ]; then
     echo "FAILED: $fail failure(s), $ok ok"
     exit 1
