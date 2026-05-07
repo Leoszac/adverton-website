@@ -12,7 +12,11 @@ require_once __DIR__ . '/lib/commissions.php';
 header('Content-Type: text/plain');
 
 $secret = crm_config('STRIPE_WEBHOOK_SECRET');
-if (!$secret) { http_response_code(500); echo "STRIPE_WEBHOOK_SECRET not configured"; exit; }
+if (!$secret) {
+    http_response_code(503);
+    error_log('[stripe-webhook] STRIPE_WEBHOOK_SECRET not configured');
+    exit("Webhook receiver not configured.\n");
+}
 
 $payload = file_get_contents('php://input');
 $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';

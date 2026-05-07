@@ -12,7 +12,11 @@ require_once __DIR__ . '/lib/sequences.php';
 header('Content-Type: text/plain');
 
 $secret = crm_config('SMARTLEAD_WEBHOOK_SECRET');
-if (!$secret) { http_response_code(500); echo "SMARTLEAD_WEBHOOK_SECRET not configured"; exit; }
+if (!$secret) {
+    http_response_code(503);
+    error_log('[smartlead-webhook] SMARTLEAD_WEBHOOK_SECRET not configured');
+    exit("Webhook receiver not configured.\n");
+}
 
 $got = $_GET['token'] ?? ($_SERVER['HTTP_X_SMARTLEAD_TOKEN'] ?? '');
 if (!hash_equals((string)$secret, (string)$got)) {

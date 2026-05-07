@@ -10,7 +10,11 @@ require_once __DIR__ . '/lib/activities.php';
 header('Content-Type: text/plain');
 
 $secret = crm_config('OPENPHONE_WEBHOOK_SECRET');
-if (!$secret) { http_response_code(500); echo "OPENPHONE_WEBHOOK_SECRET not configured"; exit; }
+if (!$secret) {
+    http_response_code(503);
+    error_log('[openphone-webhook] OPENPHONE_WEBHOOK_SECRET not configured');
+    exit("Webhook receiver not configured.\n");
+}
 
 // OpenPhone signs with HMAC-SHA256 over the raw body; header is openphone-signature
 $payload = file_get_contents('php://input');

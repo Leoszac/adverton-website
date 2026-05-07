@@ -49,9 +49,28 @@ probe "/crm/seed-nurture-sequences.php"    404 "Nurture seeder removed"
 probe "/crm/run-migration-v9.php"          404 "v9 migration removed"
 
 echo
-echo "Token-protected endpoints (no token = 403, not 200):"
+echo "Token-protected crons (no token = 403, never 200/500):"
 probe "/crm/cron-sequences.php"            403 "cron-sequences requires token"
+probe "/crm/cron-calendly.php"             403 "cron-calendly requires token"
+probe "/crm/cron-client-triggers.php"      403 "cron-client-triggers requires token"
+probe "/crm/cron-health-score.php"         403 "cron-health-score requires token"
+probe "/crm/cron-lost-reengagement.php"    403 "cron-lost-reengagement requires token"
+probe "/crm/cron-backup.php"               403 "cron-backup requires token"
 probe "/crm/setup-cron.php"                403 "setup-cron requires token"
+
+echo
+echo "Webhooks (GET = 4xx/503, never 500 with stack info):"
+# Stripe is configured (secret present) → 400 (bad signature)
+# Other 3 are not configured yet → 503 (not configured), expressly NOT 500
+probe "/crm/stripe-webhook.php"            400 "stripe-webhook rejects bad signature"
+probe "/crm/pandadoc-webhook.php"          503 "pandadoc-webhook missing secret returns 503 not 500"
+probe "/crm/openphone-webhook.php"         503 "openphone-webhook missing secret returns 503 not 500"
+probe "/crm/smartlead-webhook.php"         503 "smartlead-webhook missing secret returns 503 not 500"
+
+echo
+echo "Email tracking (public, by design — called from prospect inboxes):"
+probe "/crm/t.php"                         200 "open-pixel returns 200 unconditionally"
+probe "/crm/r.php"                         400 "click-redirect rejects missing params"
 
 echo
 if [ "$fail" -gt 0 ]; then
