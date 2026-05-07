@@ -198,7 +198,7 @@ crm_renderHeader($user, '');
       <?php if (in_array($lead['status'], ['qualified','proposal'], true) && !empty($lead['email'])): ?>
         <a class="qa" href="/crm/proposal-send.php?lead_id=<?= (int)$lead['id'] ?>" style="background:#fae8ff;color:#6b21a8;border-color:#e9d5ff">📋 Send proposal</a>
         <form method="post" action="/crm/update.php" style="display:inline"
-              onsubmit="return confirm('Send pre-contract form link to <?= crm_h($lead['email']) ?>?\n\nThe lead will fill in billing/legal data; on submit, a PandaDoc contract is auto-generated.')">
+              onsubmit="return confirm('Send pre-contract form link to <?= crm_h($lead['email']) ?>?\n\nThe lead will fill in billing/legal data; on submit, a Stripe Checkout link with the Service Agreement consent checkbox is auto-emailed to them.')">
           <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
           <input type="hidden" name="mode" value="send_pre_contract">
           <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
