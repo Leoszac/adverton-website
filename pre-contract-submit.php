@@ -144,7 +144,28 @@ if ($client) {
 
         $leadForEmail = $lead;
         $leadForEmail['email'] = $client['billing_email'] ?: $client['primary_email'] ?: ($lead['email'] ?? '');
-        $send = crm_sendTrackedEmail($leadId, $leadForEmail, null, null, $subject, $bodyHtml);
+
+        // Match the sender to whoever clicked "Send pre-contract" so the
+        // invitation email and the follow-up Stripe-checkout email come
+        // from the same person ("Leo from Adverton" instead of one being
+        // "Leo" and the next one falling back to the global default
+        // "Adverton <leandro@>"). Looks up the most recent
+        // `pre_contract_sent` activity actor.
+        $senderUserId = null;
+        try {
+            $stmt = crm_db()->prepare(
+                "SELECT user_id FROM lead_activities
+                 WHERE lead_id = ? AND type = 'system' AND disposition = 'pre_contract_sent'
+                 ORDER BY created_at DESC LIMIT 1"
+            );
+            $stmt->execute([$leadId]);
+            $row = $stmt->fetchColumn();
+            if ($row) $senderUserId = (int)$row;
+        } catch (Throwable $e) {
+            error_log('[pre-contract-submit sender lookup] ' . $e->getMessage());
+        }
+
+        $send = crm_sendTrackedEmail($leadId, $leadForEmail, null, $senderUserId, $subject, $bodyHtml);
         if (!$send['ok']) {
             error_log('[pre-contract-submit email] ' . ($send['error'] ?? 'unknown'));
             crm_logActivity($leadId, null, 'system', 'stripe_link_email_failed',
