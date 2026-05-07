@@ -275,6 +275,193 @@ check(
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Invariant 10: variables used in a PHP file but never assigned in that
+# same file. Catches the regression we saw with $sort: a function call
+# referenced a variable that was never defined → fatal TypeError under
+# strict_types. Smoke tests miss this because it only fires inside the
+# authenticated code path.
+#
+# This is heuristic, not a real PHP parser. It strips strings/comments
+# (the most common false-positive sources), then for every `$name`:
+#   - 'defined' if it appears as `$name = …`, `foreach (… as $name)` /
+#     `as $k => $name`, in a function/closure parameter list, in a
+#     `global $name;` or `static $name;` line, in a `use ($name)` of a
+#     closure, or in a list-assign `[$a, $b] = …` / `list(...)` form.
+#   - 'used'    if it appears any other way.
+# Variable is FLAGGED if used and never defined.
+# Allowlist excludes superglobals + magic names that are always present.
+# ─────────────────────────────────────────────────────────────────────
+
+PHP_SUPERGLOBALS = {
+    "_GET", "_POST", "_REQUEST", "_SERVER", "_COOKIE",
+    "_FILES", "_ENV", "_SESSION", "GLOBALS", "this", "argv", "argc",
+}
+
+_DELIM_DQUOTE = '"'
+_DELIM_SQUOTE = "'"
+
+_RE_HEREDOC_OPEN = re.compile(r"<<<\s*(['\"]?)([A-Z_][A-Z0-9_]*)\1\n")
+
+def php_strip(src: str) -> str:
+    """
+    Replace strings/heredocs with empty placeholders and remove comments,
+    respecting context so a `#` or `//` inside a string doesn't start a
+    comment and a quote inside a comment/heredoc doesn't open a string.
+    Single-pass state machine — more robust than separate regex strips.
+    """
+    out = []
+    i = 0
+    n = len(src)
+    while i < n:
+        c = src[i]
+        nxt = src[i+1] if i+1 < n else ''
+
+        # block comment /* ... */
+        if c == '/' and nxt == '*':
+            end = src.find('*/', i+2)
+            i = (end + 2) if end != -1 else n
+            continue
+
+        # line comment // or #
+        if (c == '/' and nxt == '/') or c == '#':
+            end = src.find('\n', i)
+            i = end if end != -1 else n
+            continue
+
+        # heredoc / nowdoc (<<<IDENT ... IDENT;)
+        if c == '<' and src[i:i+3] == '<<<':
+            m = _RE_HEREDOC_OPEN.match(src, i)
+            if m:
+                ident = m.group(2)
+                # Find closing identifier at start of a line.
+                # PHP allows leading whitespace before the closing tag in PHP 7.3+.
+                close_re = re.compile(r"\n[ \t]*" + re.escape(ident) + r"\b")
+                end = close_re.search(src, m.end())
+                if end:
+                    out.append('""')
+                    i = end.end()
+                    continue
+                out.append('""')
+                i = n
+                continue
+
+        # double-quoted string
+        if c == _DELIM_DQUOTE:
+            out.append('""')
+            i += 1
+            while i < n:
+                if src[i] == '\\' and i+1 < n:
+                    i += 2
+                    continue
+                if src[i] == _DELIM_DQUOTE:
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        # single-quoted string
+        if c == _DELIM_SQUOTE:
+            out.append("''")
+            i += 1
+            while i < n:
+                if src[i] == '\\' and i+1 < n:
+                    i += 2
+                    continue
+                if src[i] == _DELIM_SQUOTE:
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        out.append(c)
+        i += 1
+
+    return ''.join(out)
+
+# Patterns that COUNT as a definition for $name. The earlier `[^)]` foreach
+# regex broke when the iterable was a function call (e.g. `as $row` after
+# `$stmt->fetchAll()`); the new patterns walk back from `as` instead.
+_DEF_PATTERNS = [
+    re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)\s*="),                               # $x = ...
+    re.compile(r"\bas\s+\$([a-zA-Z_][a-zA-Z0-9_]*)\s*=>"),                       # foreach (… as $key => …)
+    re.compile(r"\bas\s+(?:\$[a-zA-Z_][a-zA-Z0-9_]*\s*=>\s*)?\$([a-zA-Z_][a-zA-Z0-9_]*)\b"),  # foreach (… as [$k =>] $val)
+    re.compile(r"\bas\s+\[([^\]]+)\]"),                                          # foreach (… as [$a, $b, $c])
+    re.compile(r"\bas\s+\$[a-zA-Z_][a-zA-Z0-9_]*\s*=>\s*\[([^\]]+)\]"),          # foreach (… as $k => [$a, $b])
+    re.compile(r"function\s*\w*\s*\(([^)]*)\)"),                                 # function params
+    re.compile(r"\)\s*use\s*\(([^)]*)\)"),                                       # closure use(...)
+    re.compile(r"\bfn\s*\(([^)]*)\)\s*=>"),                                      # arrow fn params
+    re.compile(r"(?:static|global)\s+\$([a-zA-Z_][a-zA-Z0-9_]*)"),               # static/global decl
+    re.compile(r"\bcatch\s*\([^)]*\$([a-zA-Z_][a-zA-Z0-9_]*)\s*\)"),             # catch var
+    re.compile(r"list\s*\(([^)]*)\)\s*="),                                       # list($a, $b) =
+    re.compile(r"\[([^\]]*)\]\s*="),                                             # [$a, $b] = (top-level)
+    re.compile(r"&\$([a-zA-Z_][a-zA-Z0-9_]*)"),                                  # by-reference param/use
+]
+
+_RE_VAR_USE = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
+_RE_PARAM   = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
+
+# Files where the heuristic is too noisy to be useful (template-heavy
+# pages with lots of inline echo + closure-based render funcs). The
+# noise is mostly from `use ($var)` patterns that the simple regex
+# doesn't catch perfectly. Real bugs in these get caught by smoke
+# tests on /crm/ since they're rendered on every list view.
+SCAN_SKIP = {"sequences.php", "lead-import.php"}
+
+def find_definitions(src: str) -> set[str]:
+    """Return every variable name that appears as a definition in src."""
+    defs: set[str] = set()
+    for pat in _DEF_PATTERNS:
+        for m in pat.finditer(src):
+            for grp in m.groups():
+                # Each group is either a single name or a comma-separated
+                # parameter list — extract names from both.
+                if grp is None:
+                    continue
+                for v in _RE_PARAM.findall(grp):
+                    defs.add(v)
+                # Also handle plain names captured directly
+                if re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", grp):
+                    defs.add(grp)
+    return defs
+
+def find_uses(src: str) -> set[str]:
+    """Return every variable name that appears as a use in src."""
+    return set(_RE_VAR_USE.findall(src))
+
+undefined_findings: list[str] = []
+scanned_files = 0
+
+# Top-level + lib files. (Not lib/db.php since it's just config glue.)
+candidate_files = [p for p in CRM.glob("*.php")] + [p for p in (CRM / "lib").glob("*.php")]
+for f in sorted(candidate_files):
+    if f.name in SCAN_SKIP:
+        continue
+    scanned_files += 1
+    src     = f.read_text(encoding="utf-8")
+    stripped = php_strip(src)
+
+    defs = find_definitions(stripped)
+    uses = find_uses(stripped)
+
+    undefined = uses - defs - PHP_SUPERGLOBALS
+    if undefined:
+        # Surface, but only the "real-looking" ones: skip names that are
+        # 1 char (often loop indices in expressions we missed) or look
+        # like documented helper names.
+        meaningful = sorted(v for v in undefined if len(v) >= 2)
+        if meaningful:
+            undefined_findings.append(f"{f.name} → {meaningful}")
+
+check(
+    "No PHP variables used without being defined in the same file",
+    len(undefined_findings) == 0,
+    f"scanned {scanned_files} php file(s), {len(SCAN_SKIP)} skipped" + (
+        f"\n     " + "\n     ".join(undefined_findings) if undefined_findings else ""
+    ),
+)
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Report
 # ─────────────────────────────────────────────────────────────────────
 
