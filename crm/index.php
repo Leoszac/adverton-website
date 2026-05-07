@@ -59,6 +59,13 @@ if ($filters['tag_name']) {
 $page    = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 50;
 $offset  = ($page - 1) * $perPage;
+
+// Sort key — whitelist against allowed values; 'created' is the default.
+// Defining it here prevents the undefined-variable fatal that crm_render_list
+// would throw under strict_types when receiving null for `string $sort`.
+$sort = (string)($_GET['sort'] ?? 'created');
+if (!in_array($sort, ['created','score','engagement','stale'], true)) $sort = 'created';
+
 $total   = crm_countLeads($filters);
 $rows    = crm_listLeads($filters, $perPage, $offset);
 crm_attachTagsToLeads($rows);
