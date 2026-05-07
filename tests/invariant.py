@@ -240,6 +240,41 @@ check(
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Invariant 9: PHP CRM_LEAD_SOURCES constant matches the latest schema's
+# ENUM definition. Out-of-sync values cause `crm_insertLead` to silently
+# reject leads (PHP-side check) or DB to throw on insert (DB-side check),
+# depending on which is stricter.
+# ─────────────────────────────────────────────────────────────────────
+
+leads_lib = (CRM / "lib" / "leads.php").read_text(encoding="utf-8")
+m = re.search(r"const\s+CRM_LEAD_SOURCES\s*=\s*\[([^\]]+)\]", leads_lib)
+php_sources = set(re.findall(r"'([^']+)'", m.group(1))) if m else set()
+
+# Find the latest schema's source ENUM (look in all schema-v*.sql files)
+schema_files = sorted(CRM.glob("schema-v*.sql"), key=lambda p: int(re.search(r"v(\d+)", p.name).group(1)))
+db_sources: set[str] = set()
+for sf in schema_files:
+    src = sf.read_text(encoding="utf-8")
+    em = re.search(r"MODIFY COLUMN source ENUM\s*\(([^)]+)\)", src, re.IGNORECASE | re.DOTALL)
+    if em:
+        db_sources = set(re.findall(r"'([^']+)'", em.group(1)))
+
+missing_in_db   = php_sources - db_sources
+missing_in_php  = db_sources - php_sources
+in_sync = not (missing_in_db or missing_in_php)
+detail = f"php has {len(php_sources)} values, db ENUM has {len(db_sources)}"
+if missing_in_db:
+    detail += f"; in PHP but not yet in DB (need migration): {sorted(missing_in_db)}"
+if missing_in_php:
+    detail += f"; in DB but missing from PHP const: {sorted(missing_in_php)}"
+check(
+    "CRM_LEAD_SOURCES const matches latest schema's source ENUM",
+    in_sync,
+    detail,
+)
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Report
 # ─────────────────────────────────────────────────────────────────────
 

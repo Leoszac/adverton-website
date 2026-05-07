@@ -210,6 +210,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
     <a href="<?= crm_h($qs(['temperature'=>'hot','page'=>null])) ?>">🔥 Hot</a>
     <a href="<?= crm_h($qs(['stale_days'=>'7','page'=>null])) ?>">Stale 7d+</a>
     </div>
+    <a href="/crm/lead-import.php" style="background:#fff;color:#6d28d9;border:1px solid #6d28d9;padding:5px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;margin-right:6px">↥ Import CSV</a>
     <a href="/crm/lead-new.php" style="background:#6d28d9;color:#fff;border-color:#6d28d9;padding:5px 14px">+ New lead</a>
   </div>
 
