@@ -402,7 +402,7 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 }
 
 .growth-engine { background: #fff; padding-top: 64px; padding-bottom: 80px; }
-.growth-engine .wheel { max-width: 600px; margin: 0 auto; padding: 0 24px; }
+.growth-engine .wheel { max-width: 440px; margin: 0 auto; padding: 0 24px; }
 .growth-engine .wheel-svg { width: 100%; height: auto; display: block; }
 .growth-engine .wheel-caption {
   margin: 32px auto 0; max-width: 660px; text-align: center;
