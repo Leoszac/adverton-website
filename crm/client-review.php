@@ -145,7 +145,7 @@ crm_renderHeader($user, '');
           <?php endif; ?>
 
           <form method="post" action="/crm/update.php"
-                onsubmit="return confirm('Mark this draft as APPROVED?\n\nDeploy to client hosting still requires the Sprint 4 deploy adapter.')">
+                onsubmit="return confirm('Mark this draft as APPROVED?\n\nThis unlocks the Deploy button — the site will be uploaded to the client hosting on the next click.')">
             <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
             <input type="hidden" name="mode" value="intake_approve">
             <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
@@ -154,6 +154,23 @@ crm_renderHeader($user, '');
               ✓ Approve draft
             </button>
           </form>
+
+          <form method="post" action="/crm/update.php"
+                onsubmit="return confirm('Deploy to client hosting NOW?\n\nThis uploads the rendered HTML to the credential on file (cPanel/SFTP/Wordpress). After success, follow-up tasks (GBP/LSA/Tradio) auto-appear in Today.\n\nMake sure the credential is in /crm/client-credentials.php first.')">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <input type="hidden" name="mode" value="intake_deploy">
+            <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+            <button type="submit" class="btn-primary"
+                    <?= !in_array($status, ['approved','deployed'], true) ? 'disabled' : '' ?>>
+              🚀 Deploy to client hosting
+            </button>
+          </form>
+
+          <a class="btn-secondary" href="/crm/client-credentials.php?id=<?= (int)$client['id'] ?>">🔑 Manage credentials</a>
+
+          <?php if (!empty($intake['deployed_url'])): ?>
+            <a class="btn-secondary" href="<?= crm_h($intake['deployed_url']) ?>" target="_blank">↗ Visit deployed site</a>
+          <?php endif; ?>
         </div>
       </div>
     </div>

@@ -560,6 +560,74 @@ case 'intake_approve': {
     exit;
 }
 
+case 'credential_save': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/credentials.php';
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    try {
+        crm_storeCredential(
+            $clientId,
+            (string)($_POST['kind']     ?? ''),
+            ($_POST['label']    ?? '') !== '' ? (string)$_POST['label']    : null,
+            ($_POST['url']      ?? '') !== '' ? (string)$_POST['url']      : null,
+            ($_POST['username'] ?? '') !== '' ? (string)$_POST['username'] : null,
+            ($_POST['value']    ?? '') !== '' ? (string)$_POST['value']    : null,
+            ($_POST['notes']    ?? '') !== '' ? (string)$_POST['notes']    : null,
+            (int)$user['id']
+        );
+        header('Location: /crm/client-credentials.php?id=' . $clientId . '&saved=1');
+    } catch (Throwable $e) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'credential_save error: ' . substr($e->getMessage(), 0, 200));
+        header('Location: /crm/client-credentials.php?id=' . $clientId);
+    }
+    exit;
+}
+
+case 'credential_delete': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/credentials.php';
+    $credId   = (int)($_POST['id']        ?? 0);
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($credId > 0) crm_deleteCredential($credId, (int)$user['id']);
+    header('Location: /crm/client-credentials.php?id=' . $clientId);
+    exit;
+}
+
+case 'intake_deploy': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/deploy.php';
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    $r = crm_deployToClient($clientId, (int)$user['id']);
+    if ($r['ok']) {
+        // Auto-create operator follow-up tasks for the post-deploy work
+        // that still has to be done by hand (GBP, LSA, Tradio account).
+        // crm_createTask only knows about lead_id today; clients carry lead_id
+        // back from when they were promoted, so we reuse it. Title carries
+        // the business name so the task is still scannable in /today.
+        $client = crm_getClient($clientId);
+        $bizName = (string)($client['business_name'] ?? ('Client #' . $clientId));
+        $leadIdForTasks = !empty($client['lead_id']) ? (int)$client['lead_id'] : null;
+        foreach (crm_postDeployTaskTitles() as $title) {
+            crm_createTask([
+                'lead_id'     => $leadIdForTasks,
+                'assigned_to' => (int)$user['id'],
+                'created_by'  => (int)$user['id'],
+                'title'       => $title . ' — ' . $bizName,
+                'notes'       => 'Auto-created on deploy. Client: ' . $bizName . ' (#' . $clientId . ')',
+                'due_at'      => date('Y-m-d 10:00:00', strtotime('+1 day')),
+            ]);
+        }
+        header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1');
+    } else {
+        header('Location: /crm/client-review.php?id=' . $clientId
+            . '&genErr=' . urlencode('Deploy failed: ' . ($r['error'] ?? 'unknown')));
+    }
+    exit;
+}
+
 case 'asset_upload': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     require_once __DIR__ . '/lib/photos.php';

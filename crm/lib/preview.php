@@ -25,9 +25,16 @@ function crm_templateRegistry(): array {
             'fn'   => 'crm_renderTemplate_trust_first',
             'label'=> 'Trust-First',
         ],
-        // Sprint 5 will fill these in:
-        // 'speed_first' => ['file' => …, 'fn' => 'crm_renderTemplate_speed_first', …],
-        // 'story_first' => ['file' => …, 'fn' => 'crm_renderTemplate_story_first', …],
+        'speed_first' => [
+            'file' => __DIR__ . '/../web-templates/speed-first.php',
+            'fn'   => 'crm_renderTemplate_speed_first',
+            'label'=> 'Speed-First',
+        ],
+        'story_first' => [
+            'file' => __DIR__ . '/../web-templates/story-first.php',
+            'fn'   => 'crm_renderTemplate_story_first',
+            'label'=> 'Story-First',
+        ],
     ];
 }
 

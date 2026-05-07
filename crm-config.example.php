@@ -71,6 +71,22 @@ return [
     // website copy from kickoff intake answers. Console → Settings → API keys.
     'ANTHROPIC_API_KEY'   => '',
 
+    // Master encryption key for crm/lib/credentials.php. 64-character hex
+    // (32 raw bytes). Generate locally:
+    //     php -r "echo bin2hex(random_bytes(32));"
+    // ROTATE means: generate new key, decrypt-then-reencrypt every row in
+    // client_credentials with both keys side-by-side. Document procedure
+    // before changing this in production.
+    'CREDENTIALS_KEY' => '',
+
+    // Namecheap Domain API — for buying domains on behalf of clients when
+    // they don't bring their own. Account: Profile → Tools → Namecheap API
+    // Access. Whitelist outbound IP first or every call returns 1011102.
+    'NAMECHEAP_API_USER'  => '',
+    'NAMECHEAP_API_KEY'   => '',
+    'NAMECHEAP_CLIENT_IP' => '',     // outbound IP whitelisted on Namecheap
+    'NAMECHEAP_SANDBOX'   => false,  // true while testing
+
     // OpenPhone webhook secret (HMAC-SHA256 over the raw body).
     // Endpoint URL: https://adverton.net/crm/openphone-webhook.php
     'OPENPHONE_WEBHOOK_SECRET' => '',
