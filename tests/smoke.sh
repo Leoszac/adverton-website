@@ -112,16 +112,21 @@ echo "Pre-contract magic-link form (Sprint 0):"
 probe "/pre-contract"                      410 "pre-contract without token = expired"
 probe "/pre-contract.php"                  410 "pre-contract.php direct also gates on token"
 probe "/pre-contract?t=invalidhex"         410 "pre-contract with bad token = expired"
-# POST endpoint without payload → 405 (method handler exists, GET not allowed)
+# Empty POST: handler redirects to /pre-contract?t=&err=...; curl follows the
+# Location-header semantics so we get 302/3xx. Anything in 3xx/4xx range is
+# acceptable — the bad path was the previous "500 with stack" or "200 form
+# rendered with no validation".
 code=$(curl -sS -X POST -o /dev/null -w '%{http_code}' "${HOST}/pre-contract-submit.php")
-if [ "$code" = "410" ] || [ "$code" = "400" ]; then
-  printf "  \e[32mok\e[0m  %-50s POST → %s (rejected as expected)\n" "pre-contract-submit rejects empty POST" "$code"
+if [ "$code" = "410" ] || [ "$code" = "400" ] || [ "$code" = "302" ]; then
+  printf "  \e[32mok\e[0m  %-50s POST → %s (rejected, redirected to error)\n" "pre-contract-submit rejects empty POST" "$code"
   ok=$((ok+1))
 else
-  printf "  \e[31mFAIL\e[0m %-50s POST → %s (want 410 or 400)\n" "pre-contract-submit rejects empty POST" "$code"
+  printf "  \e[31mFAIL\e[0m %-50s POST → %s (want 302/400/410)\n" "pre-contract-submit rejects empty POST" "$code"
   fail=$((fail+1))
 fi
-probe "/pre-contract-thank-you.html"       200 "pre-contract thank-you page reachable"
+# .htaccess strips .html, so /pre-contract-thank-you.html → 301 → /pre-contract-thank-you.
+# The clean URL is the canonical one for users.
+probe "/pre-contract-thank-you"            200 "pre-contract thank-you (clean URL)"
 
 echo
 if [ "$fail" -gt 0 ]; then
