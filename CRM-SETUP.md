@@ -323,35 +323,26 @@ The schema brings billing fields, `client_intake`, `client_credentials`,
 6. Idempotent: re-running on a partially-applied schema reports
    `[skip] stmt #N — already applied` and finishes clean.
 
-## B. crm-config.php additions (~5 minutes)
+## B. Paste keys at /crm/integrations.php (~3 minutes)
 
-Edit `/home2/advertonnet/crm-config.php` (cPanel File Manager). Add these
-keys to the `return [...]` array:
+All onboarding-pipeline keys are managed from the CRM UI — no need to
+edit `crm-config.php`. Login as founder, open
+`https://adverton.net/crm/integrations.php`, scroll to the bottom four
+sections, and paste:
 
-```php
-// Anthropic — for AI website copy + photo classification
-'ANTHROPIC_API_KEY' => 'sk-ant-...',
-   // Console Anthropic → Settings → API keys → Create Key
+| Section | Field | Value |
+|---|---|---|
+| Anthropic | API key | `sk-ant-...` (Console → Settings → API keys) |
+| PandaDoc API | API key | (Settings → Integrations → API key) |
+| PandaDoc API | Template ID | UUID from template URL (see step C) |
+| Credentials vault | Master key | `aecec1101fcab4169bd78f3a8ee30d78a8308e92d88cbf67f1b8234ed2caae46` (or generate with `php -r 'echo bin2hex(random_bytes(32));'`) |
+| Namecheap | All four fields | only if Adverton will buy domains for clients |
 
-// PandaDoc — for auto-generating contracts after pre-contract form
-'PANDADOC_API_KEY'     => '',
-'PANDADOC_TEMPLATE_ID' => '',
-   // PandaDoc Settings → Integrations → API key
-   // Template UUID = the URL after creating the template (see step C)
+Click **Save all integrations**. Values are stored encrypted in the
+`settings` DB table; `crm_config()` reads them automatically.
 
-// Credentials vault master key — for /crm/client-credentials.php
-'CREDENTIALS_KEY' => '',
-   // Use THIS pre-generated value (or generate your own with
-   //   php -r "echo bin2hex(random_bytes(32));"  )
-   // ⚠ DO NOT change this once you've saved any credentials —
-   //   rotation requires re-encrypting every row first.
-
-// Namecheap Domain API — only if you'll buy domains for clients
-'NAMECHEAP_API_USER'  => '',
-'NAMECHEAP_API_KEY'   => '',
-'NAMECHEAP_CLIENT_IP' => '',  // Adverton's outbound IP, whitelisted on Namecheap first
-'NAMECHEAP_SANDBOX'   => false,  // true while testing
-```
+⚠ **CREDENTIALS_KEY**: do NOT change once you've saved any client
+credentials — rotation requires re-encrypting every row first.
 
 ## C. PandaDoc template (~10 minutes)
 
@@ -367,8 +358,8 @@ should appear:
 {{Contract.MonthlyFee}}   {{Contract.StartDate}}     {{Contract.EndDate}}
 ```
 
-After saving, copy the template UUID from the URL and paste into
-`PANDADOC_TEMPLATE_ID` in `crm-config.php`.
+After saving, copy the template UUID from the URL and paste it into
+`/crm/integrations.php` → PandaDoc API → Template ID.
 
 ## D. Email intake `assets@adverton.net` (~5 minutes)
 
