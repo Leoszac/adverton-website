@@ -9,6 +9,9 @@ deployment:
     - /bin/cp -Rf assets $DEPLOYPATH/
     - /bin/cp -Rf lib $DEPLOYPATH/
     - /bin/cp -Rf crm $DEPLOYPATH/
+    # email-pipe.php is invoked by cPanel mail forwarder via shebang;
+    # needs +x so the kernel will exec it.
+    - /bin/chmod 755 $DEPLOYPATH/crm/email-pipe.php
     - /bin/rm -f $DEPLOYPATH/audit-config.example.php
     - /bin/rm -f $DEPLOYPATH/crm-config.example.php
     - /bin/rm -f $DEPLOYPATH/crm/run-migration-v9.php

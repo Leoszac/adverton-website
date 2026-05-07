@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 // Reads a raw email from stdin (cPanel "Pipe to Program" forwarder), parses
 // it, matches sender against clients.primary_email/billing_email, saves
@@ -6,11 +7,11 @@
 // CPANEL SETUP (one-time, run by founder):
 //   1. cPanel → Email Accounts → Create assets@adverton.net
 //   2. cPanel → Forwarders → Add Forwarder → "Pipe to a Program"
-//      Program: /usr/local/bin/php /home2/advertonnet/public_html/crm/email-pipe.php
+//      Path (relative to home): public_html/crm/email-pipe.php
 //
-// No shebang on the file itself — explicit /usr/local/bin/php avoids the
-// double-opener parse error that comes from prefixing with `#!/usr/bin/env php`
-// followed by `<?php` (PHP treats the shebang line as code).
+// The shebang above lets cPanel invoke us as `/path/to/email-pipe.php`
+// directly (cPanel docs explicitly say to omit /usr/bin/php from the
+// program field). Script must be chmod +x — handled by .cpanel.yml.
 //
 // Hardening:
 //   - Senders that don't match a client are dropped + logged (never bounce)
