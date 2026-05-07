@@ -272,7 +272,10 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
     </div>
     <div>
       <label>Sort</label>
-      <select name="sort" onchange="this.form.submit()">
+      <!-- requestSubmit() (not form.submit()) is required so the onsubmit
+           handler runs — otherwise empty params leak into the URL and the
+           WAF flags it as a bot. Fallback to .submit() for older browsers. -->
+      <select name="sort" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
         <option value="created"    <?= $sort==='created'   ?'selected':'' ?>>Newest first</option>
         <option value="score"      <?= $sort==='score'     ?'selected':'' ?>>Lead score (top first)</option>
         <option value="engagement" <?= $sort==='engagement'?'selected':'' ?>>Engagement (clicks/opens)</option>
