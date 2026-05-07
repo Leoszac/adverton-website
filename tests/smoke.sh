@@ -146,6 +146,15 @@ probe "/preview.php?id=1&t=invalidhex"     410 "preview with bad token = expired
 probe "/preview/1?t=invalidhex"            410 "/preview/{id} URL alias works"
 
 echo
+echo "Photo intake + classification (Sprint 3):"
+# email-pipe.php is CLI-only; must refuse any HTTP visit
+probe "/crm/email-pipe.php"                404 "email-pipe.php blocks HTTP access"
+# asset.php requires auth (login or magic token)
+probe "/crm/asset.php?id=1"                401 "asset.php blocks unauthorized access"
+# cron-photo-classify requires SEED_TOKEN
+probe "/crm/cron-photo-classify.php"       403 "cron-photo-classify requires token"
+
+echo
 if [ "$fail" -gt 0 ]; then
     echo "FAILED: $fail failure(s), $ok ok"
     exit 1

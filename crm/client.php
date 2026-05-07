@@ -11,6 +11,7 @@ require_once __DIR__ . '/lib/activities.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/files.php';
 require_once __DIR__ . '/lib/intake.php';
+require_once __DIR__ . '/lib/photos.php';
 require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireLogin();
@@ -474,5 +475,100 @@ crm_renderHeader($user, 'clients');
     <button type="submit" style="background:#dc2626;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🗑 Delete client<?= $hasActiveSub ? ' + cancel subscription' : '' ?></button>
   </form>
   <?php endif; ?>
+
+  <?php
+    $assets    = crm_listAssetsForClient((int)$client['id']);
+    $byCat     = [];
+    foreach ($assets as $a) { $byCat[$a['category']][] = $a; }
+    $totalAssets   = count($assets);
+    $pendingClass  = count(array_filter($assets, fn($a) => empty($a['ai_description'])));
+    $approved      = count(array_filter($assets, fn($a) => !empty($a['approved'])));
+  ?>
+  <div class="card" id="assets" style="border-color:#dbeafe">
+    <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">
+      Photos &amp; assets
+      <span style="font-size:11px;color:#6b6877;font-weight:500;margin-left:8px;text-transform:none;letter-spacing:0">
+        <?= $totalAssets ?> total · <?= $approved ?> approved · <?= $pendingClass ?> awaiting AI
+      </span>
+    </h2>
+
+    <form method="post" action="/crm/update.php" enctype="multipart/form-data" style="margin-bottom:14px">
+      <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+      <input type="hidden" name="mode" value="asset_upload">
+      <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/gif" required style="flex:1;min-width:220px">
+        <button type="submit" style="background:#6d28d9;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">↥ Upload photos</button>
+      </div>
+      <div style="font-size:12px;color:#6b6877;margin-top:6px">
+        Or have the client email photos to <strong>assets@adverton.net</strong> — they'll show up here automatically once cPanel piping is configured.
+      </div>
+    </form>
+
+    <?php if (!$assets): ?>
+      <div style="padding:24px;text-align:center;color:#6b6877;font-size:13px;background:#faf9ff;border-radius:10px">No photos yet.</div>
+    <?php else: ?>
+      <?php foreach (CRM_PHOTO_CATEGORIES as $cat):
+        $rows = $byCat[$cat] ?? [];
+        if (!$rows) continue; ?>
+        <h3 style="margin:18px 0 8px;font-size:13px;color:#0e0d12;text-transform:capitalize"><?= crm_h(str_replace('_',' ',$cat)) ?> <span style="color:#6b6877;font-weight:500">(<?= count($rows) ?>)</span></h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+          <?php foreach ($rows as $a): ?>
+            <div style="border:1px solid #e7e4ee;border-radius:10px;overflow:hidden;background:#fff">
+              <a href="/crm/asset.php?id=<?= (int)$a['id'] ?>" target="_blank">
+                <img src="/crm/asset.php?id=<?= (int)$a['id'] ?>" loading="lazy"
+                     style="width:100%;height:120px;object-fit:cover;display:block;background:#f3f1f8" alt="">
+              </a>
+              <div style="padding:8px 10px;font-size:11px;color:#6b6877;line-height:1.35">
+                <?php if (!empty($a['ai_description'])): ?>
+                  <div style="color:#0e0d12;font-size:12px;margin-bottom:4px"><?= crm_h(mb_substr($a['ai_description'], 0, 80)) ?></div>
+                <?php else: ?>
+                  <div style="color:#92400e;font-size:11px;margin-bottom:4px;font-style:italic">Not classified yet</div>
+                <?php endif; ?>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">
+                  <form method="post" action="/crm/update.php" style="margin:0">
+                    <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                    <input type="hidden" name="mode" value="asset_approve">
+                    <input type="hidden" name="asset_id" value="<?= (int)$a['id'] ?>">
+                    <?php if (empty($a['approved'])): ?>
+                      <input type="hidden" name="approve" value="1">
+                      <button type="submit" title="Mark approved for use on website" style="background:#dcfce7;color:#166534;border:0;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✓</button>
+                    <?php else: ?>
+                      <button type="submit" title="Unapprove" style="background:#16a34a;color:#fff;border:0;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✓ Approved</button>
+                    <?php endif; ?>
+                  </form>
+                  <form method="post" action="/crm/update.php" style="margin:0">
+                    <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                    <input type="hidden" name="mode" value="asset_recategorize">
+                    <input type="hidden" name="asset_id" value="<?= (int)$a['id'] ?>">
+                    <select name="category" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()" style="font-size:10px;padding:2px 4px;border-radius:4px;border:1px solid #e7e4ee">
+                      <?php foreach (CRM_PHOTO_CATEGORIES as $cOpt): ?>
+                        <option value="<?= crm_h($cOpt) ?>" <?= $cOpt===$a['category']?'selected':'' ?>><?= crm_h(str_replace('_',' ',$cOpt)) ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                  </form>
+                  <?php if (empty($a['ai_description'])): ?>
+                    <form method="post" action="/crm/update.php" style="margin:0">
+                      <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                      <input type="hidden" name="mode" value="asset_classify_now">
+                      <input type="hidden" name="asset_id" value="<?= (int)$a['id'] ?>">
+                      <button type="submit" title="Run AI classify now" style="background:#fae8ff;color:#6b21a8;border:0;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✨</button>
+                    </form>
+                  <?php endif; ?>
+                  <form method="post" action="/crm/update.php" style="margin:0"
+                        onsubmit="return confirm('Delete this photo?')">
+                    <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+                    <input type="hidden" name="mode" value="asset_delete">
+                    <input type="hidden" name="asset_id" value="<?= (int)$a['id'] ?>">
+                    <button type="submit" title="Delete" style="background:#fee2e2;color:#991b1b;border:0;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer">✕</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php endforeach; ?>
+    <?php endif; ?>
+  </div>
 </main>
 </body></html>
