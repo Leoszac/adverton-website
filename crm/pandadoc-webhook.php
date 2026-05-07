@@ -13,7 +13,11 @@ require_once __DIR__ . '/lib/tasks.php';
 header('Content-Type: text/plain');
 
 $secret = crm_config('PANDADOC_WEBHOOK_SECRET');
-if (!$secret) { http_response_code(500); echo "PANDADOC_WEBHOOK_SECRET not configured"; exit; }
+if (!$secret) {
+    http_response_code(503);
+    error_log('[pandadoc-webhook] PANDADOC_WEBHOOK_SECRET not configured');
+    exit("Webhook receiver not configured.\n");
+}
 
 $got = $_GET['token'] ?? ($_SERVER['HTTP_X_PANDADOC_SIGNATURE'] ?? '');
 if (!hash_equals((string)$secret, (string)$got)) {

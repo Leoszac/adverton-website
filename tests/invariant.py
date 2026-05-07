@@ -161,6 +161,85 @@ check(
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Invariant 6: webhook receivers never use HTTP 500 for the
+# "secret not configured" case — should be 503 with a generic message,
+# not 500 with the env-var name.
+# ─────────────────────────────────────────────────────────────────────
+
+webhook_files = sorted(CRM.glob("*-webhook.php"))
+secret_500_violators = []
+for f in webhook_files:
+    src = f.read_text(encoding="utf-8")
+    # look for the bad pattern: 500 + WEBHOOK_SECRET in same line/block
+    bad = re.search(
+        r"http_response_code\(500\)[^;]*;\s*echo[^;]*WEBHOOK_SECRET",
+        src, re.IGNORECASE | re.DOTALL,
+    )
+    if bad:
+        secret_500_violators.append(f.name)
+
+check(
+    "Webhooks return 503 (not 500) when secret is missing",
+    len(secret_500_violators) == 0,
+    f"checked {len(webhook_files)} webhook(s)" + (
+        f"; still using 500: {', '.join(secret_500_violators)}" if secret_500_violators else ""
+    ),
+)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Invariant 7: no live secrets hardcoded in tracked PHP source
+# (sk_live_, whsec_, re_ for Resend, etc.). They must come from
+# crm_config() which reads crm-config.php (gitignored).
+# ─────────────────────────────────────────────────────────────────────
+
+scanned = 0
+hardcoded = []
+for php in CRM.glob("**/*.php"):
+    # crm-config.example.php is allowed to show placeholder shapes
+    if php.name == "crm-config.example.php":
+        continue
+    scanned += 1
+    src = php.read_text(encoding="utf-8")
+    # Patterns that are real secret prefixes, not placeholder text
+    for pat in [
+        r"sk_live_[A-Za-z0-9]{20,}",
+        r"whsec_[A-Za-z0-9]{20,}",
+        r"re_[A-Za-z0-9]{20,}",
+    ]:
+        if re.search(pat, src):
+            hardcoded.append(f"{php.name} ({pat.split('_')[0]}_…)")
+
+check(
+    "No live API secrets hardcoded in PHP source",
+    len(hardcoded) == 0,
+    f"scanned {scanned} php file(s)" + (
+        f"; secrets found in: {', '.join(hardcoded)}" if hardcoded else ""
+    ),
+)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Invariant 8: every webhook validates a secret/signature before
+# acting on the payload (defense against unauth POST flooding).
+# ─────────────────────────────────────────────────────────────────────
+
+unverified_webhooks = []
+for f in webhook_files:
+    src = f.read_text(encoding="utf-8")
+    if "hash_equals" not in src and "hash_hmac" not in src and "stripeVerifySignature" not in src:
+        unverified_webhooks.append(f.name)
+
+check(
+    "All webhooks verify signature/token before processing payload",
+    len(unverified_webhooks) == 0,
+    f"checked {len(webhook_files)} webhook(s)" + (
+        f"; missing verify: {', '.join(unverified_webhooks)}" if unverified_webhooks else ""
+    ),
+)
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Report
 # ─────────────────────────────────────────────────────────────────────
 
