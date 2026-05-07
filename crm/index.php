@@ -221,7 +221,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
     <a href="/crm/lead-new.php" style="background:#6d28d9;color:#fff;border-color:#6d28d9;padding:5px 14px">+ New lead</a>
   </div>
 
-  <form class="filters" method="get">
+  <form class="filters" method="get" onsubmit="return crmStripEmptyParams(this)">
     <div>
       <label>Source</label>
       <select name="source">
@@ -410,6 +410,19 @@ function confirmBulk(form){
   const n = form.querySelectorAll('input[name="ids[]"]:checked').length;
   if (action === 'delete') {
     return confirm('Delete ' + n + ' lead' + (n===1?'':'s') + ' permanently?\n\nThis removes all activities, tasks, files, tags, and email tracking for the selected leads. Linked clients survive but lose lead history reference.\n\nThis cannot be undone.');
+  }
+  return true;
+}
+// Disable empty inputs so the GET URL doesn't pile up "?source=&status=&temp=…"
+// LiteSpeed/Imunify360 fingerprints 3+ consecutive empty params as a bot and
+// returns 403 Forbidden. Disabling at submit time leaves the form values intact
+// for the user but excludes them from the URL.
+function crmStripEmptyParams(form){
+  for (const el of form.elements) {
+    if (!el.name || el.disabled) continue;
+    if (typeof el.value === 'string' && el.value === '') {
+      el.disabled = true;
+    }
   }
   return true;
 }
