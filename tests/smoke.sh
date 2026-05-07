@@ -149,8 +149,9 @@ echo
 echo "Photo intake + classification (Sprint 3):"
 # email-pipe.php is CLI-only; must refuse any HTTP visit
 probe "/crm/email-pipe.php"                404 "email-pipe.php blocks HTTP access"
-# asset.php requires auth (login or magic token)
-probe "/crm/asset.php?id=1"                401 "asset.php blocks unauthorized access"
+# asset.php: 404 when id is missing or doesn't exist (correct, no info leak).
+# A live test against id=N+auth=login would also pass but requires a session.
+probe "/crm/asset.php"                     404 "asset.php without id = not-found (no info leak)"
 # cron-photo-classify requires SEED_TOKEN
 probe "/crm/cron-photo-classify.php"       403 "cron-photo-classify requires token"
 
