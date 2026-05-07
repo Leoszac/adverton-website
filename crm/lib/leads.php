@@ -323,20 +323,13 @@ function crm_findDuplicateLead(string $emailLc, string $phoneDigits): ?int {
 function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0, string $sort = 'created'): array {
     [$where, $params] = crm_buildWhere($filters);
 
-    // Aliased query so we can LEFT JOIN engagement totals from email_sends.
-    // `crm_buildWhere` returns column refs without table aliases, so re-prefix
-    // the ones that exist on `leads` to avoid ambiguous-column errors. The
-    // negative lookbehind `(?<!\.)` prevents matching inside an already-qualified
-    // reference like `leads.status` (which would produce `leads.l.status` and
-    // throw "Column not found").
-    $whereAliased = $where;
-    if ($whereAliased !== '') {
-        $whereAliased = preg_replace(
-            '/(?<!\.)\b(source|status|temperature|owner_user_id|trade|business_name|email|phone|first_name|last_name|notes)\b/',
-            'l.\1',
-            $whereAliased
-        );
-    }
+    // crm_buildWhere returns refs qualified as `leads.col` (works when
+    // FROM leads has no alias, e.g. crm_countLeads). Here we use `FROM leads l`
+    // so MySQL requires the alias — convert every `leads.` → `l.` in the
+    // WHERE clause. This handles ambiguous columns from the email_sends JOIN
+    // and is robust against future buildWhere changes (any new `leads.col`
+    // automatically picks up the alias).
+    $whereAliased = str_replace('leads.', 'l.', $where);
 
     // ORDER BY whitelist — never interpolate raw user input into SQL.
     // 'engagement' = recent open/click activity bubbled up.
