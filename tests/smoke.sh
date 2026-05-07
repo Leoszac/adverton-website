@@ -156,6 +156,10 @@ probe "/crm/asset.php"                     404 "asset.php without id = not-found
 probe "/crm/cron-photo-classify.php"       403 "cron-photo-classify requires token"
 
 echo
+echo "Credentials vault + deploy (Sprint 4):"
+probe "/crm/client-credentials.php"        302 "client-credentials requires login"
+
+echo
 if [ "$fail" -gt 0 ]; then
     echo "FAILED: $fail failure(s), $ok ok"
     exit 1

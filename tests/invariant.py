@@ -138,6 +138,7 @@ write_re = re.compile(r"prepare\(\s*['\"]?\s*(?:INSERT|UPDATE|DELETE)", re.IGNOR
 UPSERT_NAMES = {  # documented save-or-update funcs that are semantically 1 write
     "crm_saveTemplate", "crm_saveRoutingRule", "crm_saveSequence",
     "crm_saveLead", "crm_recordOpen", "crm_bumpTemperatureOnEngagement",
+    "crm_storeCredential",  # UPDATE-or-INSERT keyed by (client_id, kind, label)
 }
 
 for f in multi_write_files:
