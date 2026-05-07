@@ -16,3 +16,4 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/patch-nurture-tail-task.php
     - /bin/rm -f $DEPLOYPATH/crm/_cleanup-files.php
     - /bin/rm -f $DEPLOYPATH/crm/setup-cron.php
+    - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
