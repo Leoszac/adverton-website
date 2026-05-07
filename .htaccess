@@ -13,8 +13,9 @@ RewriteRule ^ /%1 [R=301,L]
 # Magic-link public forms: clean URLs that map to .php files (no .html exists).
 # Each one is registered explicitly so the generic .html rewriter below stays
 # untouched and can't accidentally serve the wrong file.
-RewriteRule ^pre-contract/?$ pre-contract.php [L]
-RewriteRule ^kickoff/?$      kickoff.php      [L]
+RewriteRule ^pre-contract/?$  pre-contract.php   [L]
+RewriteRule ^kickoff/?$       kickoff.php        [L]
+RewriteRule ^payment-thanks/?$ payment-thanks.html [L]
 RewriteRule ^preview/(\d+)/?$ preview.php?id=$1 [L,QSA]
 
 # Internally route /hvac → /hvac.html (so the file actually loads)
