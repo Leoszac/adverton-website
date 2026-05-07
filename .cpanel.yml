@@ -20,3 +20,6 @@ deployment:
     # one-shot that has to survive the deploy long enough for the founder to
     # visit the URL and trigger it. After self-destruct, re-enable this line.
     # - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
+    # _fix-cron.php same pattern: deploy → call → self-deletes.
+    # Re-enable below once it's been triggered.
+    # - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
