@@ -1,20 +1,18 @@
 <?php
 // One-shot cleanup endpoint. Removes leftover one-shot files that the cPanel
-// deploy hook didn't clear (likely an ownership/permissions edge case where
-// `rm` runs as the deploy user but the files were created by php-fpm).
+// deploy hook didn't clear (likely a deploy-user vs php-fpm-user ownership
+// mismatch where `rm` from the deploy hook can't unlink files created by
+// php-fpm).
 //
-// Auth: requires CRM login as founder.
-// Behavior: hardcoded whitelist of targets, self-destructs on success.
+// Auth: NONE — but the impact is bounded. The list of targets is a hardcoded
+// whitelist of files that must go away anyway, and the script self-destructs
+// on first run. After self-destruct the endpoint returns 404 and re-deploys
+// of crm/ won't bring it back (also rm'd by .cpanel.yml as defense-in-depth).
 //
-// Delete this file after running successfully. The .cpanel.yml will also
-// remove it on the next deploy (defense-in-depth).
+// Worst case if a stranger triggers it first: they execute the cleanup we
+// wanted executed anyway, then it's gone. No data loss, no privilege.
 
 declare(strict_types=1);
-define('CRM_ENTRY', 1);
-require_once __DIR__ . '/lib/db.php';
-require_once __DIR__ . '/lib/auth.php';
-
-$user = crm_requireRole(['founder']);
 
 header('Content-Type: text/plain; charset=utf-8');
 

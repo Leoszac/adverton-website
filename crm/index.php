@@ -70,7 +70,7 @@ $allTags = crm_listAllTags();
 // Mark this user as "saw up to the latest lead id" so the badge resets
 crm_markLeadsSeen((int)$user['id']);
 
-crm_render_list($user, $users, $rows, $filters, $page, $perPage, $total, $userMap, $allTags);
+crm_render_list($user, $users, $rows, $filters, $page, $perPage, $total, $userMap, $allTags, $sort);
 
 // ====================================================================
 
@@ -147,11 +147,12 @@ function crm_render_login(string $error): void {
 </body></html><?php
 }
 
-function crm_render_list(array $user, array $users, array $rows, array $filters, int $page, int $perPage, int $total, array $userMap, array $allTags): void {
+function crm_render_list(array $user, array $users, array $rows, array $filters, int $page, int $perPage, int $total, array $userMap, array $allTags, string $sort = 'created'): void {
     $totalPages = max(1, (int)ceil($total / $perPage));
-    $qs = function(array $overrides) use ($filters, $page) {
-        $params = array_merge($filters, ['page'=>$page], $overrides);
+    $qs = function(array $overrides) use ($filters, $page, $sort) {
+        $params = array_merge($filters, ['page'=>$page, 'sort'=>$sort], $overrides);
         unset($params['tag']); // internal id, don't expose
+        if (($params['sort'] ?? '') === 'created') unset($params['sort']);
         $params = array_filter($params, fn($v) => $v !== '' && $v !== null);
         return '?' . http_build_query($params);
     };
