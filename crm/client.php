@@ -175,6 +175,11 @@ crm_renderHeader($user, 'clients');
       <a class="primary" href="/crm/client-kickoff.php?id=<?= (int)$client['id'] ?>" style="background:#6d28d9;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">
         <?= $intakeStatus === 'not_started' ? 'Start kickoff' : 'Continue kickoff' ?>
       </a>
+      <?php if (in_array($intakeStatus, ['ready_for_ai','ai_generated','pending_approval','approved','provisioning_pending','deployed'], true)): ?>
+        <a href="/crm/client-review.php?id=<?= (int)$client['id'] ?>" style="background:#fae8ff;color:#6b21a8;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:1px solid #e9d5ff">
+          ✨ Review &amp; generate
+        </a>
+      <?php endif; ?>
       <?php if (!empty($client['billing_email']) || !empty($client['primary_email'])): ?>
         <form method="post" action="/crm/update.php" style="margin:0"
               onsubmit="return confirm('Email a kickoff link to <?= crm_h($client['billing_email'] ?: $client['primary_email']) ?>?\n\nThe client can fill the wizard async on their phone.')">

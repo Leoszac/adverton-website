@@ -67,6 +67,10 @@ return [
     // matching crm_pandadocTokensFromClient() in crm/lib/pandadoc.php.
     'PANDADOC_TEMPLATE_ID' => '',
 
+    // Anthropic API key — used by crm/lib/ai-generator.php to draft client
+    // website copy from kickoff intake answers. Console → Settings → API keys.
+    'ANTHROPIC_API_KEY'   => '',
+
     // OpenPhone webhook secret (HMAC-SHA256 over the raw body).
     // Endpoint URL: https://adverton.net/crm/openphone-webhook.php
     'OPENPHONE_WEBHOOK_SECRET' => '',
