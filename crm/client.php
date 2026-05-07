@@ -10,6 +10,7 @@ require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/activities.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/files.php';
+require_once __DIR__ . '/lib/intake.php';
 require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireLogin();
@@ -143,6 +144,47 @@ crm_renderHeader($user, 'clients');
       <input type="number" step="0.01" name="price" placeholder="Override $" style="width:120px">
       <button type="submit" class="primary" style="margin-top:0">+ Add</button>
     </form>
+  </div>
+
+  <?php
+    $intake = crm_getIntake((int)$client['id']);
+    $intakeStatus = $intake['status'] ?? 'not_started';
+    $intakeStep   = (int)($intake['current_step'] ?? 1);
+    $intakeBadge  = match ($intakeStatus) {
+        'not_started'           => ['Not started',  '#fee2e2', '#991b1b'],
+        'in_progress'           => ['In progress',  '#fef3c7', '#92400e'],
+        'ready_for_ai'          => ['Ready for AI', '#dbeafe', '#1e40af'],
+        'ai_generated'          => ['AI generated', '#fae8ff', '#6b21a8'],
+        'pending_approval'      => ['Pending approval','#fae8ff','#6b21a8'],
+        'approved'              => ['Approved',     '#dcfce7', '#166534'],
+        'provisioning_pending'  => ['Provisioning', '#dbeafe', '#1e40af'],
+        'deployed'              => ['Live',         '#dcfce7', '#166534'],
+        default                 => [$intakeStatus,  '#e7e4ee', '#6b6877'],
+    };
+  ?>
+  <div class="card" style="border-color:#dbeafe">
+    <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Kickoff intake</h2>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <span style="background:<?= $intakeBadge[1] ?>;color:<?= $intakeBadge[2] ?>;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px"><?= crm_h($intakeBadge[0]) ?></span>
+      <span style="color:#6b6877;font-size:13px">Step <?= $intakeStep ?> of <?= CRM_INTAKE_TOTAL_STEPS ?></span>
+      <?php if (!empty($intake['kickoff_completed_at'])): ?>
+        <span style="color:#6b6877;font-size:13px">· Submitted <?= crm_h(crm_fmtRelative($intake['kickoff_completed_at'])) ?></span>
+      <?php endif; ?>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a class="primary" href="/crm/client-kickoff.php?id=<?= (int)$client['id'] ?>" style="background:#6d28d9;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">
+        <?= $intakeStatus === 'not_started' ? 'Start kickoff' : 'Continue kickoff' ?>
+      </a>
+      <?php if (!empty($client['billing_email']) || !empty($client['primary_email'])): ?>
+        <form method="post" action="/crm/update.php" style="margin:0"
+              onsubmit="return confirm('Email a kickoff link to <?= crm_h($client['billing_email'] ?: $client['primary_email']) ?>?\n\nThe client can fill the wizard async on their phone.')">
+          <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+          <input type="hidden" name="mode" value="intake_send_link">
+          <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+          <button type="submit" style="background:#fff;border:1px solid #e7e4ee;color:#383640;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📧 Email link to client</button>
+        </form>
+      <?php endif; ?>
+    </div>
   </div>
 
   <div class="card" style="background:#faf9ff;border-color:#e0d6f5">
