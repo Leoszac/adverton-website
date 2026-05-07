@@ -469,6 +469,97 @@ case 'intake_save': {
     exit;
 }
 
+case 'intake_generate': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/ai-generator.php';
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    $r = crm_aiGenerateClientCopy($clientId);
+    if ($r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note', 'AI website copy generated');
+        header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1');
+    } else {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'AI generation failed: ' . substr((string)($r['error'] ?? 'unknown'), 0, 250));
+        header('Location: /crm/client-review.php?id=' . $clientId
+            . '&genErr=' . urlencode((string)($r['error'] ?? 'unknown')));
+    }
+    exit;
+}
+
+case 'intake_send_preview': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/magic-tokens.php';
+    require_once __DIR__ . '/lib/email_track.php';
+
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); exit; }
+    $email = $client['billing_email'] ?: $client['primary_email'] ?: '';
+    if (!$email) {
+        header('Location: /crm/client-review.php?id=' . $clientId
+            . '&sendErr=' . urlencode('Client has no email'));
+        exit;
+    }
+
+    $token = crm_setClientMagicToken($clientId, 14);
+    $url   = 'https://adverton.net/preview/' . $clientId . '?t=' . urlencode($token);
+
+    $synthLead = [
+        'email'      => $email,
+        'first_name' => trim(explode(' ', (string)$client['authorized_signer'])[0] ?? ''),
+    ];
+    $name     = htmlspecialchars((string)($synthLead['first_name'] ?: 'there'), ENT_QUOTES);
+    $business = htmlspecialchars((string)($client['business_name'] ?? 'your business'), ENT_QUOTES);
+    $bodyHtml = "<p>Hi {$name},</p>"
+              . "<p>Your website draft for {$business} is ready. Take a look on your phone:</p>"
+              . "<p style='margin:24px 0'><a href=\"{$url}\" "
+              . "style=\"display:inline-block;background:#6d28d9;color:#fff;padding:12px 24px;"
+              . "border-radius:8px;text-decoration:none;font-weight:600\">Review the draft →</a></p>"
+              . "<p style='font-size:14px;color:#383640'>Reply to this email with anything you want changed — typos, "
+              . "wording, photos to swap, services missing. Once you're happy, we'll publish it to your domain.</p>";
+
+    $r = crm_sendTrackedEmail(0, $synthLead, null, (int)$user['id'],
+        'Your Adverton website draft is ready', $bodyHtml);
+
+    if ($r['ok']) {
+        try {
+            $stmt = crm_db()->prepare(
+                "UPDATE client_intake SET status = 'pending_approval' WHERE client_id = ? AND status = 'ai_generated'"
+            );
+            $stmt->execute([$clientId]);
+        } catch (Throwable $e) { error_log('[intake_send_preview status] ' . $e->getMessage()); }
+        crm_logClientEvent($clientId, (int)$user['id'], 'note', 'Preview link sent to ' . $email);
+        header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1');
+    } else {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Preview send failed: ' . ($r['error'] ?? 'unknown'));
+        header('Location: /crm/client-review.php?id=' . $clientId
+            . '&sendErr=' . urlencode((string)($r['error'] ?? 'Send failed')));
+    }
+    exit;
+}
+
+case 'intake_approve': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    try {
+        $stmt = crm_db()->prepare(
+            "UPDATE client_intake
+             SET status = 'approved', approved_at = NOW(), approved_by = ?
+             WHERE client_id = ?
+               AND status IN ('ai_generated','pending_approval')"
+        );
+        $stmt->execute([(int)$user['id'], $clientId]);
+        crm_logClientEvent($clientId, (int)$user['id'], 'note', 'Website draft approved by ' . ($user['display_name'] ?? 'operator'));
+    } catch (Throwable $e) {
+        error_log('[intake_approve] ' . $e->getMessage());
+    }
+    header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1');
+    exit;
+}
+
 case 'intake_send_link': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     require_once __DIR__ . '/lib/magic-tokens.php';

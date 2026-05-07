@@ -136,6 +136,16 @@ probe "/kickoff?t=invalidhex"              410 "kickoff with bad token = expired
 probe "/kickoff-thank-you"                 200 "kickoff thank-you (clean URL)"
 
 echo
+echo "AI generation + preview (Sprint 2):"
+probe "/crm/client-review.php"             302 "client-review (operator) requires login"
+# /preview without id → 400 (handled by previewError before token check)
+probe "/preview.php"                       400 "preview without id = 400"
+# /preview with id but bad token → 410
+probe "/preview.php?id=1&t=invalidhex"     410 "preview with bad token = expired"
+# rewritten /preview/{id} should also reach the same handler
+probe "/preview/1?t=invalidhex"            410 "/preview/{id} URL alias works"
+
+echo
 if [ "$fail" -gt 0 ]; then
     echo "FAILED: $fail failure(s), $ok ok"
     exit 1
