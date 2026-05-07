@@ -8,6 +8,9 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/commissions.php';
+require_once __DIR__ . '/lib/magic-tokens.php';
+require_once __DIR__ . '/lib/email_track.php';
+require_once __DIR__ . '/lib/leads.php';
 
 header('Content-Type: text/plain');
 
@@ -76,6 +79,80 @@ case 'checkout.session.completed': {
     crm_logClientEvent((int)$client['id'], null, 'payment_succeeded',
         "Checkout completed · sub {$subId}" . ($consent === 'accepted' ? ' · ToS accepted' : ''),
         ['session_id' => $sessionId, 'consent_tos' => $consent]);
+
+    // Send the welcome + kickoff email. Resend handles delivery; if it fails
+    // (e.g. RESEND_API_KEY missing), we just log — the client status is
+    // already correct and the operator can manually nudge from /crm/client.php.
+    try {
+        $clientId = (int)$client['id'];
+        $clientFresh = crm_getClient($clientId) ?: $client;
+        $kickoffToken = crm_setClientMagicToken($clientId, 60);
+        $kickoffUrl   = 'https://adverton.net/kickoff?t=' . urlencode($kickoffToken);
+
+        $signer = trim((string)($clientFresh['authorized_signer']
+                            ?? $clientFresh['business_name'] ?? 'there')) ?: 'there';
+        $business = trim((string)($clientFresh['business_name'] ?? ''));
+        $billingEmail = (string)($clientFresh['billing_email']
+                              ?? $clientFresh['primary_email'] ?? '');
+        if (!$billingEmail) throw new RuntimeException('Client has no billing/primary email');
+
+        // Match sender to the operator who originally sent the pre-contract,
+        // so welcome email comes from the same identity ("Leo from Adverton")
+        // as the rest of the chain.
+        $senderUserId = null;
+        try {
+            $stmt = crm_db()->prepare(
+                "SELECT user_id FROM lead_activities
+                 WHERE lead_id = ? AND type = 'system' AND disposition = 'pre_contract_sent'
+                 ORDER BY created_at DESC LIMIT 1"
+            );
+            $stmt->execute([(int)($clientFresh['lead_id'] ?? 0)]);
+            $row = $stmt->fetchColumn();
+            if ($row) $senderUserId = (int)$row;
+        } catch (Throwable $e) {
+            error_log('[stripe-webhook welcome sender lookup] ' . $e->getMessage());
+        }
+
+        $bodyHtml =
+            '<p>Hi ' . htmlspecialchars($signer, ENT_QUOTES) . ',</p>'
+          . '<p>Welcome to Adverton — your subscription is active and your '
+          . 'Service Agreement is on file. Here\'s what happens next:</p>'
+          . '<ol style="line-height:1.7">'
+          . '<li><strong>Kickoff intake</strong> — fill out 8 short questions about '
+          . htmlspecialchars($business ?: 'your business', ENT_QUOTES)
+          . ' so we can tailor the website + Google profile copy. Takes ~10 min.</li>'
+          . '<li><strong>We build</strong> — site goes live on a preview URL within 5 business days.</li>'
+          . '<li><strong>You review</strong> — request changes from your phone, we tweak, then we deploy to your domain.</li>'
+          . '<li><strong>Billing</strong> — Stripe handles renewals automatically; you get receipts in your inbox.</li>'
+          . '</ol>'
+          . '<p style="margin:28px 0">'
+          . '<a href="' . htmlspecialchars($kickoffUrl, ENT_QUOTES) . '" '
+          . 'style="display:inline-block;background:#6d28d9;color:#fff;padding:12px 24px;'
+          . 'border-radius:8px;text-decoration:none;font-weight:600">Start the kickoff intake →</a>'
+          . '</p>'
+          . '<p style="font-size:13px;color:#6b6877">Prefer a 30-min call instead? '
+          . 'Reply to this email and we\'ll send you a Calendly link. Either path works.</p>'
+          . '<p style="font-size:13px;color:#6b6877">Receipts + future invoices come straight from Stripe.</p>'
+          . '<p style="font-size:13px;color:#6b6877">— Adverton</p>';
+
+        $leadForEmail = ['email' => $billingEmail];
+        $r = crm_sendTrackedEmail(
+            (int)($clientFresh['lead_id'] ?? 0), $leadForEmail,
+            null, $senderUserId,
+            'Welcome to Adverton — let\'s start the build',
+            $bodyHtml
+        );
+        if (!$r['ok']) {
+            error_log('[stripe-webhook welcome email] ' . ($r['error'] ?? 'unknown'));
+        } else {
+            crm_logClientEvent($clientId, null, 'note',
+                "Welcome + kickoff email sent to {$billingEmail}",
+                ['kickoff_token' => substr($kickoffToken, 0, 8) . '…']);
+        }
+    } catch (Throwable $e) {
+        error_log('[stripe-webhook welcome] ' . $e->getMessage());
+    }
+
     break;
 }
 
