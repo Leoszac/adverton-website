@@ -54,24 +54,53 @@ function crm_saveSequence(int $id, array $data, ?int $userId): int {
     return (int) crm_db()->lastInsertId();
 }
 
+// Internal: replace steps without owning a transaction. Caller is expected to
+// have started one (used by crm_saveSequenceWithSteps below).
+function crm_replaceSequenceStepsInner(int $sequenceId, array $steps): void {
+    $db = crm_db();
+    $db->prepare('DELETE FROM sequence_steps WHERE sequence_id = ?')->execute([$sequenceId]);
+    $ins = $db->prepare(
+        'INSERT INTO sequence_steps (sequence_id, step_order, delay_days, action, payload)
+         VALUES (?, ?, ?, ?, ?)'
+    );
+    $order = 0;
+    foreach ($steps as $s) {
+        if (empty($s['action']) || !in_array($s['action'], CRM_SEQ_ACTIONS, true)) continue;
+        $delay = max(0, (int)($s['delay_days'] ?? 0));
+        $payload = is_array($s['payload'] ?? null) ? json_encode($s['payload']) : (string)($s['payload'] ?? '{}');
+        $ins->execute([$sequenceId, ++$order, $delay, $s['action'], $payload]);
+    }
+}
+
+// Public wrapper kept for backward-compat with any standalone caller.
 function crm_replaceSequenceSteps(int $sequenceId, array $steps): void {
     $db = crm_db();
     $db->beginTransaction();
     try {
-        $db->prepare('DELETE FROM sequence_steps WHERE sequence_id = ?')->execute([$sequenceId]);
-        $ins = $db->prepare(
-            'INSERT INTO sequence_steps (sequence_id, step_order, delay_days, action, payload)
-             VALUES (?, ?, ?, ?, ?)'
-        );
-        $order = 0;
-        foreach ($steps as $s) {
-            if (empty($s['action']) || !in_array($s['action'], CRM_SEQ_ACTIONS, true)) continue;
-            $delay = max(0, (int)($s['delay_days'] ?? 0));
-            $payload = is_array($s['payload'] ?? null) ? json_encode($s['payload']) : (string)($s['payload'] ?? '{}');
-            $ins->execute([$sequenceId, ++$order, $delay, $s['action'], $payload]);
-        }
+        crm_replaceSequenceStepsInner($sequenceId, $steps);
         $db->commit();
-    } catch (Throwable $e) { $db->rollBack(); error_log('[crm_replaceSequenceSteps] ' . $e->getMessage()); }
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('[crm_replaceSequenceSteps] ' . $e->getMessage());
+    }
+}
+
+// Atomic save: header + steps committed together. Returns the (new or existing)
+// sequence id, or 0 on failure. If $steps is null the steps are left untouched.
+function crm_saveSequenceWithSteps(int $id, array $data, ?array $steps, ?int $userId): int {
+    $db = crm_db();
+    $db->beginTransaction();
+    try {
+        $newId = crm_saveSequence($id, $data, $userId);
+        if ($newId <= 0) { $db->rollBack(); return 0; }
+        if ($steps !== null) crm_replaceSequenceStepsInner($newId, $steps);
+        $db->commit();
+        return $newId;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('[crm_saveSequenceWithSteps] ' . $e->getMessage());
+        return 0;
+    }
 }
 
 function crm_enrollLeadInSequence(int $sequenceId, int $leadId): ?int {
@@ -179,38 +208,26 @@ function crm_deleteSequence(int $sequenceId): bool {
 }
 
 // Clone an existing sequence (with its steps) under a new name. Created copy
-// is INACTIVE so it can be edited safely before turning it on. Wrapped in a
-// transaction so a partial failure doesn't leave a stub sequence with no
-// steps in the list.
+// is INACTIVE so it can be edited safely before turning it on. Atomic via
+// crm_saveSequenceWithSteps.
 function crm_duplicateSequence(int $sourceId, ?int $userId): ?int {
     $src = crm_getSequence($sourceId);
     if (!$src) return null;
-    $db = crm_db();
-    $db->beginTransaction();
-    try {
-        $newId = crm_saveSequence(0, [
-            'name'          => mb_substr('Copy of ' . $src['name'], 0, 120),
-            'trigger_event' => $src['trigger_event'],
-            'trigger_value' => $src['trigger_value'] ?? '',
-            'active'        => false,
-        ], $userId);
-        if ($newId <= 0) { $db->rollBack(); return null; }
-        $steps = [];
-        foreach ($src['steps'] as $st) {
-            $steps[] = [
-                'delay_days' => (int)$st['delay_days'],
-                'action'     => (string)$st['action'],
-                'payload'    => json_decode((string)$st['payload'], true) ?: [],
-            ];
-        }
-        crm_replaceSequenceSteps($newId, $steps);
-        $db->commit();
-        return $newId;
-    } catch (Throwable $e) {
-        if ($db->inTransaction()) $db->rollBack();
-        error_log('[crm_duplicateSequence] ' . $e->getMessage());
-        return null;
+    $steps = [];
+    foreach ($src['steps'] as $st) {
+        $steps[] = [
+            'delay_days' => (int)$st['delay_days'],
+            'action'     => (string)$st['action'],
+            'payload'    => json_decode((string)$st['payload'], true) ?: [],
+        ];
     }
+    $newId = crm_saveSequenceWithSteps(0, [
+        'name'          => mb_substr('Copy of ' . $src['name'], 0, 120),
+        'trigger_event' => $src['trigger_event'],
+        'trigger_value' => $src['trigger_value'] ?? '',
+        'active'        => false,
+    ], $steps, $userId);
+    return $newId > 0 ? $newId : null;
 }
 
 // Unenroll one specific enrollment row (single sequence × lead pair) — used

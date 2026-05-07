@@ -267,6 +267,7 @@ case 'template_save': {
 }
 
 case 'lead_delete': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
     $id = (int)($_POST['id'] ?? 0);
     if ($id > 0) crm_deleteLead($id);
     header('Location: /crm/');
@@ -393,20 +394,15 @@ case 'client_addon_remove': {
 case 'sequence_save': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $id = (int)($_POST['id'] ?? 0);
-    $newId = crm_saveSequence($id, [
+    $stepsJson = (string)($_POST['steps_json'] ?? '');
+    $parsed    = json_decode($stepsJson, true);
+    $newId = crm_saveSequenceWithSteps($id, [
         'name'          => $_POST['name'] ?? '',
         'trigger_event' => $_POST['trigger_event'] ?? '',
         'trigger_value' => $_POST['trigger_value'] ?? '',
         'active'        => !empty($_POST['active']),
-    ], (int)$user['id']);
-    if ($newId > 0) {
-        $stepsJson = (string)($_POST['steps_json'] ?? '');
-        $parsed = json_decode($stepsJson, true);
-        if (is_array($parsed)) crm_replaceSequenceSteps($newId, $parsed);
-        header('Location: /crm/sequences.php?edit=' . $newId . '&saved=1');
-    } else {
-        header('Location: /crm/sequences.php');
-    }
+    ], is_array($parsed) ? $parsed : null, (int)$user['id']);
+    header('Location: /crm/sequences.php' . ($newId > 0 ? ('?edit=' . $newId . '&saved=1') : ''));
     exit;
 }
 
