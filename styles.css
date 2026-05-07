@@ -1128,3 +1128,56 @@ html, body { overflow-x: hidden; }
   .hero h1 { font-size: 26px; }
   .nav-cta .btn { padding: 8px 12px; font-size: 12px; }
 }
+
+/* ============================================================
+   AUDIT PAGE — mobile-specific polish
+   ============================================================ */
+@media (max-width: 700px) {
+  .audit-hero-grid { gap: 32px; }
+  .audit-hero-visual { min-height: 380px; }
+  .audit-hero-pill { font-size: 11px; padding: 5px 12px; }
+  .audit-trust-row { gap: 16px; font-size: 13px; }
+  .audit-trust-row strong { font-size: 18px; }
+
+  /* GBP mock — drop the rotation (looks awkward at narrow widths,
+     and combined with floating issue tags can leak horizontally) */
+  .gbp-mock { transform: none; max-width: 320px; }
+  .gbp-mock:hover { transform: none; }
+  .gbp-mock-photo { height: 150px; }
+  .gbp-mock-name { font-size: 17px; }
+
+  /* Help dropdown (find your Maps link) — better tap targets + wrapping */
+  .audit-help summary { padding: 12px 14px; font-size: 14px; }
+  .audit-help-tabs { flex-wrap: wrap; gap: 6px; }
+  .audit-help-tab { flex: 1 1 auto; min-width: 130px; padding: 10px 12px; font-size: 13px; }
+  .audit-help-steps { font-size: 14px; padding-left: 22px; }
+  .audit-help-steps li { margin-bottom: 8px; line-height: 1.5; }
+
+  /* URL validator message — tighter */
+  .url-validator { font-size: 12px; padding: 8px 10px; }
+
+  /* "Audit me anyway" fallback — full-width, centered */
+  .audit-fallback { margin-top: 14px; text-align: center; }
+  .audit-fallback-btn { padding: 12px 16px; font-size: 14px; width: 100%; }
+
+  /* Form action area — make "Send me my free audit" comfortable */
+  .audit-form .form-submit { padding: 14px; font-size: 16px; }
+  .form-fineprint { font-size: 12px; line-height: 1.5; padding: 0 4px; }
+
+  /* Pillars (under the hero) — slightly tighter on phone */
+  .audit-pillar { padding: 22px 20px; }
+  .audit-pillar-icon { font-size: 26px; }
+  .audit-pillar h3 { font-size: 17px; margin-bottom: 6px; }
+  .audit-pillar p { font-size: 14px; }
+
+  /* "How it works" steps */
+  .how-step { padding: 22px 20px; }
+}
+
+@media (max-width: 480px) {
+  /* On the smallest phones the GBP mock dominates — let it shrink further */
+  .gbp-mock { max-width: 280px; }
+  .gbp-mock-photo { height: 130px; }
+  .gbp-mock-body { padding: 14px 16px 16px; }
+  .audit-hero-visual { min-height: 340px; }
+}
