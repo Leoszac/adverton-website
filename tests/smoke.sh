@@ -24,6 +24,19 @@ echo
 echo "Public site:"
 probe "/"                                  200 "Homepage loads"
 probe "/audit"                             200 "Audit landing"
+probe "/about"                             200 "About page loads"
+probe "/growth-engine"                     200 "Ebook (growth-engine) landing loads"
+probe "/hvac"                              200 "HVAC vertical page loads"
+probe "/404"                               200 "404 page is fetchable directly"
+probe "/sitemap.xml"                       200 "sitemap.xml served"
+probe "/robots.txt"                        200 "robots.txt served"
+
+echo
+echo "Sensitive files must NOT be reachable:"
+probe "/audit-config.example.php"          404 "audit-config.example.php blocked"
+probe "/crm-config.example.php"            404 "crm-config.example.php blocked"
+probe "/crm/lib/db.php"                    403 "PHP libs not directly fetchable"
+probe "/.htaccess"                         403 "dotfile served as 403 by Require-all-denied"
 
 echo
 echo "CRM gates (must redirect or show login form when not authed):"
@@ -57,7 +70,27 @@ probe "/crm/cron-client-triggers.php"      403 "cron-client-triggers requires to
 probe "/crm/cron-health-score.php"         403 "cron-health-score requires token"
 probe "/crm/cron-lost-reengagement.php"    403 "cron-lost-reengagement requires token"
 probe "/crm/cron-backup.php"               403 "cron-backup requires token"
-probe "/crm/setup-cron.php"                403 "setup-cron requires token"
+# setup-cron.php is a one-shot that gets removed from server after running
+# (rm in .cpanel.yml). 404 is the expected post-cleanup state.
+probe "/crm/setup-cron.php"                404 "setup-cron one-shot removed after run"
+
+echo
+echo "Authenticated CRM pages (302 redirect when not logged in):"
+probe "/crm/today.php"                     302 "Today view requires auth"
+probe "/crm/pipeline.php"                  302 "Pipeline (Kanban) requires auth"
+probe "/crm/reports.php"                   302 "Reports requires auth"
+probe "/crm/templates.php"                 302 "Templates requires auth"
+probe "/crm/nurture-stats.php"             302 "Nurture stats requires auth"
+probe "/crm/account.php"                   302 "Account settings requires auth"
+probe "/crm/lead-new.php"                  302 "New lead form requires auth"
+probe "/crm/client-new.php"                302 "New client form requires auth"
+probe "/crm/email-compose.php"             302 "Email compose requires auth"
+probe "/crm/proposal-preview.php"          302 "Proposal preview requires auth"
+probe "/crm/proposal-send.php"             302 "Proposal send requires auth"
+probe "/crm/integrations.php"              302 "Integrations admin requires auth"
+probe "/crm/routing.php"                   302 "Routing rules requires auth"
+probe "/crm/file.php"                      302 "File download requires auth"
+probe "/crm/logout.php"                    302 "Logout always redirects"
 
 echo
 echo "Webhooks (GET = 4xx/503, never 500 with stack info):"
