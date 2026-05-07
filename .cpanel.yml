@@ -33,3 +33,9 @@ deployment:
     # _fix-cron.php same pattern: deploy → call → self-deletes.
     # Re-enable below once it's been triggered.
     # - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
+    # _bootstrap-v11.php + _fix-sign-cols.php — one-shot scripts that ran
+    # successfully (schema applied, columns added). Belt-and-suspenders rm
+    # so re-deploys can't expose them even if the files leak back into the
+    # repo accidentally.
+    - /bin/rm -f $DEPLOYPATH/crm/_bootstrap-v11.php
+    - /bin/rm -f $DEPLOYPATH/crm/_fix-sign-cols.php
