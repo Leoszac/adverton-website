@@ -16,10 +16,10 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/patch-nurture-tail-task.php
     - /bin/rm -f $DEPLOYPATH/crm/_cleanup-files.php
     - /bin/rm -f $DEPLOYPATH/crm/setup-cron.php
-    # _run-v10.php intentionally NOT auto-deleted on first deploy — it's a
-    # one-shot that has to survive the deploy long enough for the founder to
-    # visit the URL and trigger it. After self-destruct, re-enable this line.
-    # - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
+    # _run-v10.php was a one-shot ENUM migration runner. It self-destructed
+    # after running successfully (verified 404 on server). Belt-and-suspenders rm
+    # in case the file ever returns to the repo by accident.
+    - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
     # _fix-cron.php same pattern: deploy → call → self-deletes.
     # Re-enable below once it's been triggered.
     # - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
