@@ -32,8 +32,19 @@ $rows = $db->query(
      ORDER BY e.next_run_at ASC LIMIT 200"
 )->fetchAll();
 
+// Atomic claim: bump next_run_at into the future so a parallel worker can't
+// grab the same row. If our UPDATE affects zero rows, someone else got it.
+$claim = $db->prepare(
+    'UPDATE sequence_enrollments
+     SET next_run_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
+     WHERE id = ? AND completed_at IS NULL AND next_run_at <= NOW()'
+);
+
 foreach ($rows as $enr) {
     $enrId  = (int)$enr['id'];
+    $claim->execute([$enrId]);
+    if ($claim->rowCount() === 0) continue; // another worker is processing this row
+
     $leadId = (int)$enr['lead_id'];
     $lead   = crm_getLead($leadId);
     $seqName = (string)($enr['sequence_name'] ?? 'sequence');

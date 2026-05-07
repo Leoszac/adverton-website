@@ -179,27 +179,38 @@ function crm_deleteSequence(int $sequenceId): bool {
 }
 
 // Clone an existing sequence (with its steps) under a new name. Created copy
-// is INACTIVE so it can be edited safely before turning it on.
+// is INACTIVE so it can be edited safely before turning it on. Wrapped in a
+// transaction so a partial failure doesn't leave a stub sequence with no
+// steps in the list.
 function crm_duplicateSequence(int $sourceId, ?int $userId): ?int {
     $src = crm_getSequence($sourceId);
     if (!$src) return null;
-    $newId = crm_saveSequence(0, [
-        'name'          => mb_substr('Copy of ' . $src['name'], 0, 120),
-        'trigger_event' => $src['trigger_event'],
-        'trigger_value' => $src['trigger_value'] ?? '',
-        'active'        => false,
-    ], $userId);
-    if ($newId <= 0) return null;
-    $steps = [];
-    foreach ($src['steps'] as $st) {
-        $steps[] = [
-            'delay_days' => (int)$st['delay_days'],
-            'action'     => (string)$st['action'],
-            'payload'    => json_decode((string)$st['payload'], true) ?: [],
-        ];
+    $db = crm_db();
+    $db->beginTransaction();
+    try {
+        $newId = crm_saveSequence(0, [
+            'name'          => mb_substr('Copy of ' . $src['name'], 0, 120),
+            'trigger_event' => $src['trigger_event'],
+            'trigger_value' => $src['trigger_value'] ?? '',
+            'active'        => false,
+        ], $userId);
+        if ($newId <= 0) { $db->rollBack(); return null; }
+        $steps = [];
+        foreach ($src['steps'] as $st) {
+            $steps[] = [
+                'delay_days' => (int)$st['delay_days'],
+                'action'     => (string)$st['action'],
+                'payload'    => json_decode((string)$st['payload'], true) ?: [],
+            ];
+        }
+        crm_replaceSequenceSteps($newId, $steps);
+        $db->commit();
+        return $newId;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('[crm_duplicateSequence] ' . $e->getMessage());
+        return null;
     }
-    crm_replaceSequenceSteps($newId, $steps);
-    return $newId;
 }
 
 // Unenroll one specific enrollment row (single sequence × lead pair) — used
