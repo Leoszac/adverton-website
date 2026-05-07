@@ -260,12 +260,17 @@ crm_renderHeader($user, '');
 (function(){
   const TEMPLATES = <?= json_encode($tplsForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
   const INITIAL_STEPS = <?= json_encode($stepsForJs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-  const ACTIONS = [
-    { v: 'send_template', label: 'Send email template' },
-    { v: 'create_task',   label: 'Create task'         },
-    { v: 'add_tag',       label: 'Add tag'             },
-    { v: 'remove_tag',    label: 'Remove tag'          },
-  ];
+  const MAX_STEPS = 50;
+  // Action vocabulary lives in PHP (CRM_SEQ_ACTIONS) — render labels here but
+  // pull the canonical list from the server so JS and PHP can never drift.
+  const ACTION_LABELS = {
+    send_template: 'Send email template',
+    create_task:   'Create task',
+    add_tag:       'Add tag',
+    remove_tag:    'Remove tag',
+  };
+  const ACTIONS = <?= json_encode(array_map(fn($v) => ['v' => $v], CRM_SEQ_ACTIONS), JSON_UNESCAPED_SLASHES) ?>
+    .map(a => ({ v: a.v, label: ACTION_LABELS[a.v] || a.v }));
 
   const stepsEl = document.getElementById('steps');
   let steps = Array.isArray(INITIAL_STEPS) ? INITIAL_STEPS.slice() : [];
@@ -365,6 +370,10 @@ crm_renderHeader($user, '');
   };
   window.addStep = () => {
     readDom();
+    if (steps.length >= MAX_STEPS) {
+      alert(`Sequences are capped at ${MAX_STEPS} steps. Split into multiple sequences chained by tags if you need more.`);
+      return;
+    }
     steps.push({ delay_days: 0, action: 'send_template', payload: {} });
     render();
   };
