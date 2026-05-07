@@ -560,6 +560,93 @@ case 'intake_approve': {
     exit;
 }
 
+case 'asset_upload': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/photos.php';
+
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    $client = $clientId > 0 ? crm_getClient($clientId) : null;
+    if (!$client) { http_response_code(404); exit; }
+
+    $imported = 0; $errors = [];
+    if (!empty($_FILES['photos']['name'][0])) {
+        $count = count($_FILES['photos']['name']);
+        for ($i = 0; $i < $count; $i++) {
+            $err = (int)($_FILES['photos']['error'][$i] ?? UPLOAD_ERR_NO_FILE);
+            if ($err !== UPLOAD_ERR_OK) {
+                $errors[] = $_FILES['photos']['name'][$i] . ': upload error ' . $err;
+                continue;
+            }
+            $r = crm_storeClientPhoto(
+                $clientId,
+                (string)$_FILES['photos']['tmp_name'][$i],
+                (string)$_FILES['photos']['name'][$i],
+                (string)($_FILES['photos']['type'][$i] ?? null),
+                'manual_upload'
+            );
+            if ($r['ok']) $imported++;
+            else          $errors[] = $_FILES['photos']['name'][$i] . ': ' . ($r['error'] ?? 'unknown');
+        }
+    }
+
+    crm_logClientEvent($clientId, (int)$user['id'], 'note',
+        "Uploaded {$imported} photo(s)" . ($errors ? '; errors: ' . implode(' | ', array_slice($errors, 0, 3)) : ''));
+    header('Location: /crm/client.php?id=' . $clientId . '&saved=1#assets');
+    exit;
+}
+
+case 'asset_approve': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/photos.php';
+    $assetId = (int)($_POST['asset_id'] ?? 0);
+    $a = $assetId > 0 ? crm_getAsset($assetId) : null;
+    if (!$a) { http_response_code(404); exit; }
+    crm_approveAsset($assetId, !empty($_POST['approve']));
+    header('Location: /crm/client.php?id=' . (int)$a['client_id'] . '#assets');
+    exit;
+}
+
+case 'asset_recategorize': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/photos.php';
+    $assetId  = (int)($_POST['asset_id'] ?? 0);
+    $category = (string)($_POST['category'] ?? '');
+    $a = $assetId > 0 ? crm_getAsset($assetId) : null;
+    if (!$a) { http_response_code(404); exit; }
+    crm_recategorizeAsset($assetId, $category);
+    header('Location: /crm/client.php?id=' . (int)$a['client_id'] . '#assets');
+    exit;
+}
+
+case 'asset_delete': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/photos.php';
+    $assetId = (int)($_POST['asset_id'] ?? 0);
+    $a = $assetId > 0 ? crm_getAsset($assetId) : null;
+    if (!$a) { http_response_code(404); exit; }
+    $clientId = (int)$a['client_id'];
+    crm_deleteAsset($assetId);
+    crm_logClientEvent($clientId, (int)$user['id'], 'note', 'Deleted asset #' . $assetId);
+    header('Location: /crm/client.php?id=' . $clientId . '#assets');
+    exit;
+}
+
+case 'asset_classify_now': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/photos.php';
+    $assetId = (int)($_POST['asset_id'] ?? 0);
+    $a = $assetId > 0 ? crm_getAsset($assetId) : null;
+    if (!$a) { http_response_code(404); exit; }
+    $r = crm_classifyAssetWithAI($assetId);
+    $clientId = (int)$a['client_id'];
+    if (!$r['ok']) {
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'AI classify failed for asset #' . $assetId . ': ' . substr((string)($r['error'] ?? ''), 0, 200));
+    }
+    header('Location: /crm/client.php?id=' . $clientId . '#assets');
+    exit;
+}
+
 case 'intake_send_link': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     require_once __DIR__ . '/lib/magic-tokens.php';

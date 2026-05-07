@@ -395,6 +395,10 @@ _DEF_PATTERNS = [
     re.compile(r"list\s*\(([^)]*)\)\s*="),                                       # list($a, $b) =
     re.compile(r"\[([^\]]*)\]\s*="),                                             # [$a, $b] = (top-level)
     re.compile(r"&\$([a-zA-Z_][a-zA-Z0-9_]*)"),                                  # by-reference param/use
+    # Built-ins that write to a named var via reference parameter.
+    # preg_match($p, $s, $m) — $m is created on call.
+    re.compile(r"\bpreg_match(?:_all)?\s*\([^)]*,\s*\$([a-zA-Z_][a-zA-Z0-9_]*)\s*[,)]"),
+    re.compile(r"\bparse_str\s*\([^)]*,\s*\$([a-zA-Z_][a-zA-Z0-9_]*)\s*\)"),
 ]
 
 _RE_VAR_USE = re.compile(r"\$([a-zA-Z_][a-zA-Z0-9_]*)")
