@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phoenix Pro HVAC — Modern Heating, Cooling & Air | Phoenix, AZ</title>
+<meta name="description" content="Modern HVAC service in Phoenix. Same-day diagnostics, transparent pricing, premium installations. Book online or call (602) 555-0100.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-2: #141414;
+    --surface: #1c1c1c;
+    --line: #2a2a2a;
+    --text: #f5f5f5;
+    --text-dim: #a3a3a3;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', -apple-system, sans-serif; color: var(--text); line-height: 1.6; background: var(--bg); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, h4 { line-height: 1.1; letter-spacing: -0.02em; font-weight: 800; }
+  a { color: var(--text); text-decoration: none; transition: color 0.15s; }
+  a:hover { color: var(--accent); }
+  img { max-width: 100%; height: auto; display: block; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; background: rgba(10,10,10,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  header .container { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 900; font-size: 22px; letter-spacing: -0.04em; }
+  .logo span { color: var(--accent); }
+  nav { display: flex; gap: 32px; align-items: center; }
+  nav a { font-weight: 500; font-size: 15px; color: var(--text-dim); }
+  nav a:hover { color: var(--text); }
+  .btn-call { background: var(--accent); color: #fff !important; padding: 10px 20px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+  .btn-call:hover { background: var(--accent-hover); color: #fff !important; }
+
+  /* Hero */
+  .hero { position: relative; min-height: 100vh; display: flex; align-items: center; padding: 120px 0 80px; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: 0; background-image: url('https://source.unsplash.com/1920x1080/?modern,architecture,sky'); background-size: cover; background-position: center; }
+  .hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,10,0.4) 0%, rgba(10,10,10,0.85) 60%, var(--bg) 100%); }
+  .hero .container { position: relative; z-index: 2; }
+  .hero-tag { display: inline-block; background: var(--accent-soft); color: var(--accent); padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 24px; border: 1px solid rgba(37,99,235,0.3); }
+  .hero h1 { font-size: clamp(40px, 7vw, 88px); font-weight: 900; max-width: 1000px; margin-bottom: 28px; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .sub { font-size: clamp(17px, 2vw, 22px); color: var(--text-dim); max-width: 640px; margin-bottom: 40px; line-height: 1.5; }
+  .hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; font-weight: 600; border-radius: 999px; font-size: 16px; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); color: #fff !important; }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text) !important; border: 1px solid var(--line); }
+  .btn-ghost:hover { border-color: var(--text); }
+
+  .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 64px; padding-top: 40px; border-top: 1px solid var(--line); }
+  .stat { }
+  .stat .num { font-size: 36px; font-weight: 800; color: var(--text); line-height: 1; }
+  .stat .lbl { color: var(--text-dim); font-size: 13px; margin-top: 6px; }
+
+  /* Sections */
+  section.block { padding: 120px 0; position: relative; }
+  .eyebrow { display: inline-block; color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+  .section-h { font-size: clamp(36px, 5vw, 60px); font-weight: 900; margin-bottom: 24px; max-width: 800px; }
+  .section-sub { color: var(--text-dim); font-size: 19px; max-width: 640px; line-height: 1.6; margin-bottom: 64px; }
+
+  /* Services */
+  .services { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .service { background: var(--bg-2); padding: 48px; transition: background 0.2s; }
+  .service:hover { background: var(--surface); }
+  .service .num { color: var(--accent); font-size: 14px; font-weight: 600; margin-bottom: 24px; letter-spacing: 1px; }
+  .service h3 { font-size: 28px; margin-bottom: 12px; }
+  .service p { color: var(--text-dim); font-size: 16px; max-width: 380px; }
+
+  /* Trust */
+  .trust { background: var(--bg-2); }
+  .trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .trust-img { aspect-ratio: 4/5; background: url('https://source.unsplash.com/800x1000/?engineer,technician,blueprint') center/cover; border-radius: 16px; }
+  .trust-content h2 { margin-bottom: 32px; }
+  .trust-content .item { padding: 24px 0; border-top: 1px solid var(--line); }
+  .trust-content .item:last-child { border-bottom: 1px solid var(--line); }
+  .trust-content h4 { font-size: 19px; margin-bottom: 8px; }
+  .trust-content .item p { color: var(--text-dim); font-size: 15px; }
+
+  /* Reviews */
+  .reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .review { background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 32px; }
+  .review .stars { color: #fbbf24; margin-bottom: 16px; font-size: 18px; letter-spacing: 2px; }
+  .review p { color: var(--text); margin-bottom: 24px; line-height: 1.7; }
+  .review .who { color: var(--text-dim); font-size: 14px; }
+  .review .who strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+  /* Service area */
+  .area-block { background: var(--bg-2); }
+  .area-flex { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .area-cities { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .area-cities span { padding: 14px 0; border-bottom: 1px solid var(--line); font-weight: 500; display: flex; align-items: center; gap: 12px; }
+  .area-cities span::before { content: '→'; color: var(--accent); }
+  .map-wrap { aspect-ratio: 1; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+  .map-wrap iframe { width: 100%; height: 100%; border: 0; filter: invert(0.92) hue-rotate(180deg); }
+
+  /* CTA */
+  .cta-block { padding: 96px 0; }
+  .cta-card { background: linear-gradient(135deg, var(--accent) 0%, #1e40af 100%); border-radius: 24px; padding: 72px 48px; text-align: center; position: relative; overflow: hidden; }
+  .cta-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.15) 0%, transparent 50%); }
+  .cta-card > * { position: relative; }
+  .cta-card h2 { font-size: clamp(32px, 5vw, 56px); margin-bottom: 16px; }
+  .cta-card p { font-size: 18px; opacity: 0.9; margin-bottom: 32px; max-width: 540px; margin-left: auto; margin-right: auto; }
+  .cta-card .btn-primary { background: #fff; color: var(--accent) !important; }
+  .cta-card .btn-primary:hover { background: var(--text); }
+
+  /* Contact */
+  .contact-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 64px; }
+  .contact-info { padding-top: 16px; }
+  .contact-info .item { margin-bottom: 32px; }
+  .contact-info .lbl { color: var(--text-dim); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .contact-info .val { font-size: 22px; font-weight: 600; }
+  .contact-info .val a { color: var(--accent); }
+  .form-wrap { background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 40px; }
+  .form-row { margin-bottom: 18px; }
+  .form-row label { display: block; font-size: 13px; color: var(--text-dim); font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font-size: 16px; font-family: inherit; color: var(--text); }
+  .form-row textarea { min-height: 120px; resize: vertical; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); }
+  button[type="submit"] { width: 100%; background: var(--accent); color: #fff; padding: 16px; border: 0; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.2s; }
+  button[type="submit"]:hover { background: var(--accent-hover); }
+
+  /* Footer */
+  footer { background: var(--bg); border-top: 1px solid var(--line); padding: 64px 0 32px; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+  .footer-top h4 { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; font-weight: 600; }
+  .footer-top ul { list-style: none; }
+  .footer-top li { margin-bottom: 8px; font-size: 15px; }
+  .footer-top a { color: var(--text-dim); }
+  .footer-top a:hover { color: var(--text); }
+  .footer-bot { padding-top: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; color: var(--text-dim); font-size: 14px; }
+
+  @media (max-width: 900px) {
+    nav a:not(.btn-call) { display: none; }
+    .services { grid-template-columns: 1fr; }
+    .service { padding: 36px; }
+    .reviews-grid { grid-template-columns: 1fr; }
+    .trust-grid, .area-flex, .contact-grid { grid-template-columns: 1fr; gap: 48px; }
+    .trust-img { aspect-ratio: 16/9; }
+    .area-cities { grid-template-columns: 1fr; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+    section.block { padding: 80px 0; }
+    .hero-stats { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .cta-card { padding: 56px 24px; }
+  }
+  @media (max-width: 480px) {
+    .footer-top { grid-template-columns: 1fr; }
+  }
+</style>
+<meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+<!-- Adverton template preview bar -->
+<style>
+.adverton-preview-bar {position:fixed;top:0;left:0;right:0;background:#6d28d9;color:#fff;padding:10px 16px;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;z-index:99999;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.adverton-preview-bar a{color:#fff;text-decoration:underline}
+.adverton-preview-bar .pick-btn{background:#fff;color:#6d28d9;padding:7px 14px;border-radius:5px;text-decoration:none;font-weight:700;white-space:nowrap}
+.adverton-preview-bar .pick-btn:hover{background:#f0ebff}
+body{padding-top:54px!important}
+@media (max-width:600px){
+  .adverton-preview-bar{font-size:13px;padding:8px 12px}
+  .adverton-preview-bar .pick-btn{padding:6px 10px}
+  body{padding-top:80px!important}
+}
+</style>
+<div class="adverton-preview-bar" id="adverton-preview-bar">
+  <span>Preview: <strong>Template — Modern</strong> · <a href="/templates/">See all 3</a></span>
+  <a class="pick-btn" href="mailto:ops@adverton.net?subject=Template%20choice%3A%20Modern&body=Hi%20Adverton%2C%0A%0AI%27d%20like%20to%20go%20with%20the%20Modern%20template%20for%20my%20website.%0A%0ABusiness%20name%3A%0AYour%20name%3A%0ABest%20phone%3A%0A%0AThanks">I want this one →</a>
+</div>
+
+
+<header>
+  <div class="container">
+    <div class="logo">PHX <span>PRO</span></div>
+    <nav>
+      <a href="#services">Services</a>
+      <a href="#trust">About</a>
+      <a href="#area">Service Area</a>
+      <a href="#contact">Contact</a>
+      <a href="tel:+16025550100" class="btn-call">→ (602) 555-0100</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="hero-tag">★ 4.9 / 5 · 487 verified Phoenix homeowners</span>
+    <h1>HVAC, <span class="accent">re-engineered</span><br>for the Phoenix climate.</h1>
+    <p class="sub">Premium installations. Same-day diagnostics. Transparent fixed-price quotes — no surprises, no commission-driven techs, no "let me ask my manager."</p>
+    <div class="ctas">
+      <a href="tel:+16025550100" class="btn btn-primary">→ Call (602) 555-0100</a>
+      <a href="#contact" class="btn btn-ghost">Book online</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="num">19</div><div class="lbl">Years in Phoenix</div></div>
+      <div class="stat"><div class="num">14k+</div><div class="lbl">Homes serviced</div></div>
+      <div class="stat"><div class="num">24/7</div><div class="lbl">Emergency response</div></div>
+      <div class="stat"><div class="num">A+</div><div class="lbl">BBB rating</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="services">
+  <div class="container">
+    <span class="eyebrow">Services</span>
+    <h2 class="section-h">Built for Arizona homes.<br>Engineered for the heat.</h2>
+    <p class="section-sub">Six core services. Real specialists. Every job priced before we touch a tool.</p>
+    <div class="services">
+      <div class="service">
+        <div class="num">01 / SERVICE</div>
+        <h3>Emergency AC repair</h3>
+        <p>Same-day diagnostics. Most repairs completed in one visit with parts on the truck.</p>
+      </div>
+      <div class="service">
+        <div class="num">02 / INSTALL</div>
+        <h3>System installation</h3>
+        <p>Trane, Lennox, Carrier. High-efficiency systems sized to your home, not upsold.</p>
+      </div>
+      <div class="service">
+        <div class="num">03 / HEAT PUMP</div>
+        <h3>Heat pump &amp; dual-fuel</h3>
+        <p>Specialists in modern variable-speed heat pumps. Energy rebates handled for you.</p>
+      </div>
+      <div class="service">
+        <div class="num">04 / DUCTWORK</div>
+        <h3>Ductwork &amp; airflow</h3>
+        <p>Smoke-test diagnostics, sealing, and replacement. Reduce energy bills 20–30%.</p>
+      </div>
+      <div class="service">
+        <div class="num">05 / IAQ</div>
+        <h3>Indoor air quality</h3>
+        <p>UV sanitization, HEPA, dehumidification. Tuned for Arizona dust and allergy season.</p>
+      </div>
+      <div class="service">
+        <div class="num">06 / MAINTENANCE</div>
+        <h3>Maintenance plans</h3>
+        <p>Spring + fall tune-ups, priority booking, 15% off repairs, manufacturer-warranty compliant.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block trust" id="trust">
+  <div class="container">
+    <div class="trust-grid">
+      <div class="trust-img"></div>
+      <div class="trust-content">
+        <span class="eyebrow">Why Phoenix Pro</span>
+        <h2 class="section-h">Family-owned.<br>Engineer-led.<br>Phoenix-native.</h2>
+        <div class="item">
+          <h4>NATE-certified technicians</h4>
+          <p>Every tech holds North American Technician Excellence certification. Continuous training, no shortcuts.</p>
+        </div>
+        <div class="item">
+          <h4>Up-front fixed-price quotes</h4>
+          <p>You see the price before we start. If the job changes, we stop and re-quote. No surprises on your invoice.</p>
+        </div>
+        <div class="item">
+          <h4>Lifetime workmanship guarantee</h4>
+          <p>If our work fails — at any point — we come back and make it right. No questions, no clock running.</p>
+        </div>
+        <div class="item">
+          <h4>14-truck Phoenix fleet</h4>
+          <p>Real local presence with real response times. Most calls dispatched within 90 minutes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="container">
+    <span class="eyebrow">Reviews</span>
+    <h2 class="section-h">487 verified reviews.<br>4.9 stars across the board.</h2>
+    <div class="reviews-grid">
+      <div class="review">
+        <div class="stars">★★★★★</div>
+        <p>"AC died Saturday at 11pm. Tech at the door 7am Sunday with the part. Quote was honest, work was fast. Two summers later still running great."</p>
+        <div class="who"><strong>Marcus R.</strong>Glendale, AZ · Verified Google</div>
+      </div>
+      <div class="review">
+        <div class="stars">★★★★★</div>
+        <p>"Quoted me half what the big-name companies wanted for a new system. Same brand, same warranty, way more honest. Install was clean and on time."</p>
+        <div class="who"><strong>Linda K.</strong>Tempe, AZ · Verified Google</div>
+      </div>
+      <div class="review">
+        <div class="stars">★★★★★</div>
+        <p>"They took an hour to actually diagnose the problem instead of just selling me a new unit. Saved me $8k. I'm calling them every time now."</p>
+        <div class="who"><strong>James W.</strong>Scottsdale, AZ · Verified Google</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block area-block" id="area">
+  <div class="container">
+    <div class="area-flex">
+      <div>
+        <span class="eyebrow">Service Area</span>
+        <h2 class="section-h">Across the Valley,<br>same-day service.</h2>
+        <p class="section-sub">Twelve cities, one phone number. Emergency dispatch 24/7.</p>
+        <div class="area-cities">
+          <span>Phoenix</span>
+          <span>Scottsdale</span>
+          <span>Tempe</span>
+          <span>Mesa</span>
+          <span>Chandler</span>
+          <span>Gilbert</span>
+          <span>Glendale</span>
+          <span>Peoria</span>
+          <span>Surprise</span>
+          <span>Avondale</span>
+          <span>Goodyear</span>
+          <span>Queen Creek</span>
+        </div>
+      </div>
+      <div class="map-wrap">
+        <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d425000!2d-112.07!3d33.45!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sus!4v1700000000" loading="lazy"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-block">
+  <div class="container">
+    <div class="cta-card">
+      <h2>Need it fixed today?</h2>
+      <p>Call now and a Phoenix Pro tech will be at your door within 90 minutes — or we'll tell you up front when we can be.</p>
+      <a href="tel:+16025550100" class="btn btn-primary">→ Call (602) 555-0100</a>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="contact">
+  <div class="container">
+    <span class="eyebrow">Contact</span>
+    <h2 class="section-h">Talk to us.</h2>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <div class="item">
+          <div class="lbl">Phone</div>
+          <div class="val"><a href="tel:+16025550100">(602) 555-0100</a></div>
+        </div>
+        <div class="item">
+          <div class="lbl">Email</div>
+          <div class="val"><a href="mailto:hello@phoenixprohvac.com">hello@phoenixprohvac.com</a></div>
+        </div>
+        <div class="item">
+          <div class="lbl">Hours</div>
+          <div class="val" style="font-size: 16px; line-height: 1.7;">Mon–Sat: 7am–7pm<br>Sun: 8am–5pm<br>24/7 emergency dispatch</div>
+        </div>
+        <div class="item">
+          <div class="lbl">Office</div>
+          <div class="val" style="font-size: 16px; line-height: 1.7;">2840 N 16th Street<br>Phoenix, AZ 85016<br>ROC #287654</div>
+        </div>
+      </div>
+      <form class="form-wrap" action="#" method="post">
+        <div class="form-row">
+          <label>Name</label>
+          <input type="text" name="name" required>
+        </div>
+        <div class="form-row">
+          <label>Phone</label>
+          <input type="tel" name="phone" required>
+        </div>
+        <div class="form-row">
+          <label>Service needed</label>
+          <select name="service" required>
+            <option value="">Select…</option>
+            <option>Emergency AC repair</option>
+            <option>Non-emergency repair</option>
+            <option>New installation</option>
+            <option>Heat pump service</option>
+            <option>Maintenance / tune-up</option>
+            <option>Indoor air quality</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Tell us what's happening</label>
+          <textarea name="message" placeholder="Symptoms, age of system, when it started…"></textarea>
+        </div>
+        <button type="submit">→ Request quote</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div>
+        <div class="logo" style="margin-bottom: 16px;">PHX <span>PRO</span></div>
+        <p style="color: var(--text-dim); font-size: 15px; max-width: 320px;">Engineer-led HVAC for Phoenix homes since 2006. Premium installs, transparent pricing, lifetime workmanship.</p>
+      </div>
+      <div>
+        <h4>Services</h4>
+        <ul>
+          <li><a href="#services">Emergency repair</a></li>
+          <li><a href="#services">Installation</a></li>
+          <li><a href="#services">Heat pumps</a></li>
+          <li><a href="#services">Ductwork</a></li>
+          <li><a href="#services">Maintenance</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#trust">About</a></li>
+          <li><a href="#area">Service area</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="#contact">Careers</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="tel:+16025550100">(602) 555-0100</a></li>
+          <li><a href="mailto:hello@phoenixprohvac.com">hello@phoenixprohvac.com</a></li>
+          <li>2840 N 16th St<br>Phoenix, AZ 85016</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bot">
+      <div>© 2026 Phoenix Pro HVAC, LLC · ROC #287654</div>
+      <div><a href="#" style="color: var(--text-dim);">Privacy</a> &nbsp; · &nbsp; <a href="#" style="color: var(--text-dim);">Terms</a></div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
