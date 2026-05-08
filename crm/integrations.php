@@ -189,6 +189,24 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
+    <!-- ============== Instantly API ============== -->
+    <div class="section">
+      <h2>Instantly — cold email API</h2>
+      <div class="desc">Pulls connected mailbox status + warmup health, lists campaigns, and (later) enrolls leads programmatically. Used by <code>crm/lib/instantly.php</code>. After saving, click <strong>Test connection</strong> to verify.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">API key (V2)</div>
+          <div class="help">Generate at: app.instantly.ai → Settings → Integrations → API Keys → Create. Key is base64-encoded <code>workspace_id:token</code>.</div>
+          <span class="badge <?= $cur['INSTANTLY_API_KEY']['set']?'set':'unset' ?>"><?= $cur['INSTANTLY_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div>
+          <input type="password" name="INSTANTLY_API_KEY" value="<?= crm_h($cur['INSTANTLY_API_KEY']['value']) ?>" placeholder="NDY5...==" autocomplete="off">
+          <div style="margin-top:6px;font-size:12px"><a href="/crm/instantly-test.php" target="_blank">Test connection &amp; show mailboxes →</a></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ============== Outbound notification ============== -->
     <div class="section">
       <h2>New-lead notification (Slack / Discord / Telegram)</h2>
@@ -206,15 +224,15 @@ crm_renderHeader($user, '');
     <!-- ============== Calendly ============== -->
     <div class="section">
       <h2>Calendly — meeting auto-log</h2>
-      <div class="desc">Pulls your iCal feed every 30 min and logs meetings on matching leads (matched by email). Bumps lead to <code>qualified</code> and creates a "Prep meeting" task 1 hour before the call.</div>
+      <div class="desc">Polls scheduled events every 15 min via Calendly API and logs meetings on matching leads (matched by email). Bumps lead to <code>qualified</code> and creates a "Prep meeting" task 1 hour before the call.</div>
 
       <div class="row">
         <div class="meta">
-          <div class="name">iCal feed URL</div>
-          <div class="help">Calendly → Account → Calendar Connections → "Get iCal feed".</div>
-          <span class="badge <?= $cur['CALENDLY_ICAL_URL']['set']?'set':'unset' ?>"><?= $cur['CALENDLY_ICAL_URL']['set']?'configured':'not set' ?></span>
+          <div class="name">Personal Access Token</div>
+          <div class="help">Calendly → Integrations &amp; apps → API and webhooks → Personal Access Tokens. Required scopes: <code>scheduled_events:read</code>, <code>event_types:read</code>.</div>
+          <span class="badge <?= $cur['CALENDLY_API_TOKEN']['set']?'set':'unset' ?>"><?= $cur['CALENDLY_API_TOKEN']['set']?'configured':'not set' ?></span>
         </div>
-        <div><input type="text" name="CALENDLY_ICAL_URL" value="<?= crm_h($cur['CALENDLY_ICAL_URL']['value']) ?>" placeholder="https://calendly.com/api/.../ical/..." autocomplete="off"></div>
+        <div><input type="password" name="CALENDLY_API_TOKEN" value="<?= crm_h($cur['CALENDLY_API_TOKEN']['value']) ?>" placeholder="eyJraWQi..." autocomplete="off"></div>
       </div>
     </div>
 

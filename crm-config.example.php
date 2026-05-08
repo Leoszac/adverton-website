@@ -41,10 +41,11 @@ return [
     'CRM_FROM_ADDRESS' => 'Adverton <leandro@adverton.net>',
     'CRM_REPLY_TO'     => 'leandro@adverton.net',
 
-    // Calendly iCal feed URL. Find at: Calendly → Account → Calendar
-    // connections → "Get iCal feed". Pulled by cron-calendly.php (cron job).
+    // Calendly Personal Access Token. Generate at: Calendly → Integrations &
+    // apps → API and webhooks → Personal Access Tokens. Pulled by
+    // cron-calendly.php (every 15 min) to log meetings on matching leads.
     // Leave unset to disable.
-    'CALENDLY_ICAL_URL' => '',
+    'CALENDLY_API_TOKEN' => '',
 
     // ===== v5 integrations (Phase 3-6) =====
 
@@ -94,6 +95,14 @@ return [
     // Smartlead / Instantly shared token. Endpoint URL with ?token=<this>:
     //   https://adverton.net/crm/smartlead-webhook.php?token=...
     'SMARTLEAD_WEBHOOK_SECRET' => '',
+
+    // Instantly API key (V2 format: base64-encoded "<workspace_id>:<token>").
+    // Generate at: https://app.instantly.ai → Settings → Integrations → API Keys.
+    // Used by crm/lib/instantly.php for: listing connected mailboxes,
+    // pulling warmup health scores, enrolling leads in campaigns, etc.
+    // RECOMMENDED: manage via /crm/integrations.php (DB-backed) — that takes
+    // precedence over this file value.
+    'INSTANTLY_API_KEY' => '',
 
     // Web Push (PWA notifications) — VAPID keys.
     // Generate with: web-push generate-vapid-keys (npm) or use https://web-push-codelab.glitch.me/
