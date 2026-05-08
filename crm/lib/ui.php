@@ -110,6 +110,10 @@ function crm_sourceLabel(?string $source): string {
         'inbound_call'         => 'Inbound call',
         'manual'               => 'Manual entry',
         'ebook_growth_engine'  => 'Ebook · Growth Engine',
+        'cold_email_instantly' => 'Cold email · Instantly',
+        'referral'             => 'Referral',
+        'affiliate'            => 'Affiliate',
+        'csv_import'           => 'CSV import',
     ];
     if (!$source) return '—';
     return $labels[$source] ?? str_replace('_', ' ', $source);

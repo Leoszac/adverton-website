@@ -83,33 +83,43 @@ pre{background:#f5f5f5;padding:8px 12px;border-radius:5px;font-size:11px;overflo
               <th>Email</th>
               <th>Status</th>
               <th>Warmup</th>
-              <th class="num">Daily limit</th>
-              <th class="num">Sent today</th>
-              <th class="num">Health</th>
+              <th class="num">Health Score</th>
+              <th>Setup</th>
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($accounts['items'] as $a): ?>
+            <?php foreach ($accounts['items'] as $a):
+              $statusCode  = (int)($a['status'] ?? 0);
+              $statusLabel = crm_instantlyStatusLabel($statusCode);
+              $warmupCode  = (int)($a['warmup_status'] ?? 0);
+              $warmupLabel = crm_instantlyWarmupStatusLabel($warmupCode);
+              $score       = (int)($a['stat_warmup_score'] ?? 0);
+              $pending     = (bool)($a['setup_pending'] ?? false);
+              $scoreClass  = $score >= 80 ? 'ok' : ($score >= 50 ? 'warn' : 'err');
+            ?>
               <tr>
                 <td><strong><?= crm_h($a['email'] ?? '?') ?></strong></td>
                 <td>
-                  <?php $st = (string)($a['status'] ?? '?'); ?>
-                  <span class="badge <?= $st==='active'?'ok':($st==='paused'?'warn':'err') ?>"><?= crm_h($st) ?></span>
+                  <span class="badge <?= $statusCode === 1 ? 'ok' : ($statusCode === 2 ? 'warn' : 'err') ?>"><?= crm_h($statusLabel) ?></span>
                 </td>
                 <td>
-                  <?php
-                    $w = $a['warmup'] ?? null;
-                    $wstatus = is_array($w) ? ($w['status'] ?? '?') : ($w ?? '?');
-                  ?>
-                  <span class="badge <?= $wstatus==='active'?'ok':'warn' ?>"><?= crm_h((string)$wstatus) ?></span>
+                  <span class="badge <?= $warmupCode === 1 ? 'ok' : ($warmupCode === 0 ? 'warn' : 'err') ?>"><?= crm_h($warmupLabel) ?></span>
                 </td>
-                <td class="num"><?= crm_h((string)($a['daily_limit'] ?? $a['warmup']['warmup_limit'] ?? '—')) ?></td>
-                <td class="num"><?= crm_h((string)($a['emails_sent_today'] ?? '—')) ?></td>
-                <td class="num"><?= crm_h((string)($a['health_score'] ?? $a['warmup']['warmup_score'] ?? '—')) ?>%</td>
+                <td class="num">
+                  <span class="badge <?= $scoreClass ?>"><?= $score ?>%</span>
+                </td>
+                <td>
+                  <?php if ($pending): ?>
+                    <span class="badge warn">setting up…</span>
+                  <?php else: ?>
+                    <span class="muted">ready</span>
+                  <?php endif; ?>
+                </td>
               </tr>
             <?php endforeach; ?>
           </tbody>
         </table>
+        <p class="muted" style="margin-top:10px">Health score sube durante el warmup (target: 80%+ post día 21). Si baja de 50% en cualquier mailbox, investigar deliverability.</p>
       <?php endif; ?>
     </div>
 

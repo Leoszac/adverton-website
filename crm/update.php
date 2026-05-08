@@ -496,6 +496,54 @@ case 'send_onboarding_pack': {
     exit;
 }
 
+case 'instantly_enroll': {
+    require_once __DIR__ . '/lib/instantly.php';
+
+    $leadId     = (int)($_POST['lead_id'] ?? 0);
+    $campaignId = trim((string)($_POST['campaign_id'] ?? ''));
+
+    if ($leadId <= 0 || $campaignId === '') {
+        header('Location: /crm/leads.php?err=invalid');
+        exit;
+    }
+
+    $lead = crm_getLead($leadId);
+    if (!$lead) {
+        header('Location: /crm/leads.php?err=not_found');
+        exit;
+    }
+    if (empty($lead['email'])) {
+        header('Location: /crm/lead.php?id=' . $leadId . '&instantly_err=' . urlencode('lead has no email'));
+        exit;
+    }
+
+    // Build merge vars from lead
+    $vars = [
+        'first_name' => (string)($lead['first_name'] ?? ''),
+        'last_name'  => (string)($lead['last_name']  ?? ''),
+        'company'    => (string)($lead['company']    ?? ''),
+        'phone'      => (string)($lead['phone']      ?? ''),
+    ];
+    // Drop empties
+    $vars = array_filter($vars, fn($v) => $v !== '');
+
+    $r = crm_instantlyAddLead($campaignId, (string)$lead['email'], $vars);
+
+    if (!$r['ok']) {
+        $msg = "Instantly: " . substr($r['error'], 0, 120);
+        crm_log("instantly_enroll FAIL uid={$user['id']} lead={$leadId} campaign={$campaignId}: " . $r['error']);
+        header('Location: /crm/lead.php?id=' . $leadId . '&instantly_err=' . urlencode($msg));
+        exit;
+    }
+
+    crm_logActivity($leadId, (int)$user['id'], 'email', 'enrolled',
+        "Enrolled in Instantly campaign · " . substr($campaignId, 0, 8) . "…");
+
+    crm_log("instantly_enroll OK uid={$user['id']} lead={$leadId} campaign={$campaignId}");
+    header('Location: /crm/lead.php?id=' . $leadId . '&instantly_ok=1');
+    exit;
+}
+
 case 'sequence_save': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $id = (int)($_POST['id'] ?? 0);

@@ -206,6 +206,40 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
   .bulk-bar input[type=text]{background:#1a1820;border:1px solid #2d2a36;color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}
 </style>
 <main>
+
+  <?php
+    // Instantly mailbox health alert — shown only if anything needs attention.
+    // Snapshot refreshed hourly by cron-instantly-health.php.
+    require_once __DIR__ . '/lib/instantly.php';
+    $instSnap = crm_instantlyLoadHealthSnapshot();
+    $instTotal = count($instSnap['items']);
+    $instAlerts = [];
+    foreach ($instSnap['items'] as $m) {
+      if ((int)$m['warmup_status'] !== 1)               $instAlerts[] = "{$m['email']}: warmup {$m['warmup_label']}";
+      elseif ((int)$m['warmup_score'] < 50 && !$m['setup_pending']) $instAlerts[] = "{$m['email']}: health {$m['warmup_score']}%";
+      elseif ((int)$m['status'] !== 1 && (int)$m['status'] !== 2)   $instAlerts[] = "{$m['email']}: status {$m['status_label']}";
+    }
+    $instStaleHrs = $instSnap['age_minutes'] !== null ? round($instSnap['age_minutes'] / 60, 1) : null;
+  ?>
+  <?php if ($instTotal > 0 && (count($instAlerts) > 0 || $instStaleHrs > 4)): ?>
+    <div style="background:#fef3c7;border:1px solid #fbbf24;color:#78350f;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <strong>⚠ Instantly:</strong>
+      <?php if (count($instAlerts) > 0): ?>
+        <span><?= count($instAlerts) ?>/<?= $instTotal ?> mailbox(es) need attention</span>
+        <span style="color:#92400e;font-size:12px">— <?= crm_h(implode(' · ', array_slice($instAlerts, 0, 3))) ?></span>
+      <?php elseif ($instStaleHrs > 4): ?>
+        <span>health snapshot is <?= $instStaleHrs ?>h old — cron may be stuck</span>
+      <?php endif; ?>
+      <a href="/crm/instantly-test.php" style="margin-left:auto;color:#6d28d9;font-weight:600">View →</a>
+    </div>
+  <?php elseif ($instTotal > 0): ?>
+    <div style="background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;padding:8px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;display:flex;align-items:center;gap:10px">
+      ✓ <strong>Instantly:</strong> <?= $instTotal ?>/<?= $instTotal ?> mailboxes healthy
+      <span style="color:#6b6877;margin-left:auto">snapshot <?= $instSnap['age_minutes'] !== null ? $instSnap['age_minutes'] . 'm ago' : 'never' ?></span>
+      <a href="/crm/instantly-test.php" style="color:#065f46;font-weight:600">Detail →</a>
+    </div>
+  <?php endif; ?>
+
   <div class="quick" style="justify-content:space-between">
     <div style="display:flex;gap:6px;flex-wrap:wrap">
     <a href="/crm/" class="<?= empty(array_filter($filters)) ? 'cur':'' ?>">All</a>
@@ -230,6 +264,7 @@ function crm_render_list(array $user, array $users, array $rows, array $filters,
         <option value="audit_manual"        <?= $filters['source']==='audit_manual'?'selected':'' ?>>Audit · manual</option>
         <option value="contact_form"        <?= $filters['source']==='contact_form'?'selected':'' ?>>Contact form</option>
         <option value="ebook_growth_engine" <?= $filters['source']==='ebook_growth_engine'?'selected':'' ?>>Ebook · Growth Engine</option>
+        <option value="cold_email_instantly" <?= $filters['source']==='cold_email_instantly'?'selected':'' ?>>Cold email · Instantly</option>
         <option value="inbound_call"        <?= $filters['source']==='inbound_call'?'selected':'' ?>>Inbound call</option>
         <option value="manual"              <?= $filters['source']==='manual'?'selected':'' ?>>Manual entry</option>
       </select>

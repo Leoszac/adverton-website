@@ -205,6 +205,25 @@ crm_renderHeader($user, '');
           <div style="margin-top:6px;font-size:12px"><a href="/crm/instantly-test.php" target="_blank">Test connection &amp; show mailboxes →</a></div>
         </div>
       </div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">Webhook URL (replies → CRM)</div>
+          <div class="help">In Instantly: Settings → Integrations → Webhooks → Create. Subscribe to: <code>email_reply</code>, <code>email_bounced</code>, <code>email_opened</code>, <code>email_link_clicked</code>. Replies auto-create leads with source <code>cold_email_instantly</code>.</div>
+        </div>
+        <div>
+          <div class="copy"><span><?= $base ?>/crm/instantly-webhook.php?token=YOUR_SECRET</span><button type="button" onclick="copy(this,'<?= $base ?>/crm/instantly-webhook.php?token=YOUR_SECRET')">Copy</button></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">Webhook shared token</div>
+          <div class="help">Generate any random 32+ chars (e.g., <code>php -r "echo bin2hex(random_bytes(16));"</code>) and paste here AND in the Instantly webhook URL above.</div>
+          <span class="badge <?= $cur['INSTANTLY_WEBHOOK_SECRET']['set']?'set':'unset' ?>"><?= $cur['INSTANTLY_WEBHOOK_SECRET']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="INSTANTLY_WEBHOOK_SECRET" value="<?= crm_h($cur['INSTANTLY_WEBHOOK_SECRET']['value']) ?>" placeholder="random-32-chars" autocomplete="off"></div>
+      </div>
     </div>
 
     <!-- ============== Outbound notification ============== -->

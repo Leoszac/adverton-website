@@ -559,6 +559,30 @@ crm_renderHeader($user, '');
       </div>
       <?php endif; ?>
 
+      <?php if (!empty($lead['email'])): ?>
+      <div class="card">
+        <h2>Cold email · Instantly</h2>
+        <p style="font-size:12px;color:#6b6877;margin:0 0 10px">Enroll this lead in an Instantly cold-email campaign. Replies auto-flow back to this CRM via webhook (status bumps to <code>qualified</code>).</p>
+        <?php
+          $instOk = isset($_GET['instantly_ok']);
+          $instErr = (string)($_GET['instantly_err'] ?? '');
+        ?>
+        <?php if ($instOk): ?>
+          <div style="background:#d1fae5;color:#065f46;padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">✓ Lead enrolled in Instantly campaign</div>
+        <?php elseif ($instErr): ?>
+          <div style="background:#fee2e2;color:#991b1b;padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">✗ <?= crm_h($instErr) ?></div>
+        <?php endif; ?>
+        <form method="post" action="/crm/update.php" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+          <input type="hidden" name="mode" value="instantly_enroll">
+          <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
+          <input type="text" name="campaign_id" placeholder="Campaign UUID (paste from Instantly)" style="flex:1;min-width:240px;font-size:13px;padding:6px 10px" required>
+          <button type="submit" class="primary" style="margin-top:0;font-size:13px;padding:7px 14px">Enroll lead</button>
+        </form>
+        <div style="margin-top:8px;font-size:11px"><a href="/crm/instantly-test.php" target="_blank" style="color:#6d28d9">Find campaign IDs →</a></div>
+      </div>
+      <?php endif; ?>
+
       <?php if ($emailSends): ?>
       <div class="card">
         <h2>Sent emails (tracked)</h2>

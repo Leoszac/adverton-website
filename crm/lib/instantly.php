@@ -120,3 +120,84 @@ function crm_instantlyTestConnection(): array {
     }
     return ['ok'=>true, 'message'=>'Connection OK', 'account_count'=>count($r['items'])];
 }
+
+// ===== Status code mappings (per Instantly V2 API) =====
+
+function crm_instantlyStatusLabel($code): string {
+    $map = [1 => 'active', 2 => 'paused', -1 => 'connection_error', -2 => 'soft_bounce_error', -3 => 'sending_error', 3 => 'connection_error'];
+    return $map[(int)$code] ?? ('status_' . (string)$code);
+}
+
+function crm_instantlyWarmupStatusLabel($code): string {
+    $map = [0 => 'paused', 1 => 'active', -1 => 'banned', -2 => 'reconnect_required'];
+    return $map[(int)$code] ?? ('warmup_' . (string)$code);
+}
+
+/**
+ * Snapshot all accounts into a flat array suitable for storage / display.
+ * Returns: [['email','status','status_label','warmup_status','warmup_label','warmup_score','setup_pending'], ...]
+ */
+function crm_instantlyAccountsSnapshot(): array {
+    $r = crm_instantlyListAccounts(100);
+    if ($r['error']) return ['error' => $r['error'], 'items' => []];
+
+    $out = [];
+    foreach ($r['items'] as $a) {
+        $out[] = [
+            'email'          => $a['email'] ?? '',
+            'status'         => (int)($a['status'] ?? 0),
+            'status_label'   => crm_instantlyStatusLabel($a['status'] ?? 0),
+            'warmup_status'  => (int)($a['warmup_status'] ?? 0),
+            'warmup_label'   => crm_instantlyWarmupStatusLabel($a['warmup_status'] ?? 0),
+            'warmup_score'   => (int)($a['stat_warmup_score'] ?? 0),
+            'setup_pending'  => (bool)($a['setup_pending'] ?? false),
+            'first_name'     => $a['first_name'] ?? '',
+            'last_name'      => $a['last_name'] ?? '',
+        ];
+    }
+    return ['error' => '', 'items' => $out];
+}
+
+/**
+ * Persist snapshot in DB settings table (key=INSTANTLY_HEALTH_SNAPSHOT, value=JSON).
+ * Called by cron-instantly-health.php every hour.
+ */
+function crm_instantlySaveHealthSnapshot(array $snapshot): bool {
+    $payload = json_encode([
+        'synced_at' => date('c'),
+        'items'     => $snapshot['items'] ?? [],
+        'error'     => $snapshot['error'] ?? '',
+    ]);
+    try {
+        $stmt = crm_db()->prepare(
+            'INSERT INTO settings (`key`, `value`) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)'
+        );
+        return $stmt->execute(['INSTANTLY_HEALTH_SNAPSHOT', $payload]);
+    } catch (Throwable $e) {
+        error_log('[crm_instantlySaveHealthSnapshot] ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Read latest health snapshot from DB. Returns ['synced_at', 'items', 'error', 'age_minutes'].
+ */
+function crm_instantlyLoadHealthSnapshot(): array {
+    try {
+        $stmt = crm_db()->prepare("SELECT `value`, updated_at FROM settings WHERE `key` = 'INSTANTLY_HEALTH_SNAPSHOT'");
+        $stmt->execute();
+        $row = $stmt->fetch();
+        if (!$row) return ['synced_at' => null, 'items' => [], 'error' => 'never synced', 'age_minutes' => null];
+        $data = json_decode((string)$row['value'], true) ?: [];
+        $age = $data['synced_at'] ? max(0, (int)round((time() - strtotime($data['synced_at'])) / 60)) : null;
+        return [
+            'synced_at'   => $data['synced_at'] ?? null,
+            'items'       => $data['items'] ?? [],
+            'error'       => $data['error'] ?? '',
+            'age_minutes' => $age,
+        ];
+    } catch (Throwable $e) {
+        return ['synced_at' => null, 'items' => [], 'error' => $e->getMessage(), 'age_minutes' => null];
+    }
+}
