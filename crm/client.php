@@ -152,6 +152,8 @@ crm_renderHeader($user, 'clients');
         <option value="leads_marketplace_1">Lead marketplace (1) — $199</option>
         <option value="leads_marketplace_2">Lead marketplace (2) — $349</option>
         <option value="leads_marketplace_3">Lead marketplace (3) — $499</option>
+        <option value="call_tracking">Call tracking (CallRail) — $79</option>
+        <option value="content_updates">Content updates — $99</option>
       </select>
       <input type="number" step="0.01" name="price" placeholder="Override $" style="width:120px">
       <button type="submit" class="primary" style="margin-top:0">+ Add</button>

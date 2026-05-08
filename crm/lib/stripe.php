@@ -31,6 +31,8 @@ const CRM_STRIPE_ADDON_CATALOG = [
     'leads_marketplace_1'  => ['name' => 'Lead marketplace mgmt — 1 platform',  'monthly' => 199.00],
     'leads_marketplace_2'  => ['name' => 'Lead marketplace mgmt — 2 platforms', 'monthly' => 349.00],
     'leads_marketplace_3'  => ['name' => 'Lead marketplace mgmt — 3 platforms', 'monthly' => 499.00],
+    'call_tracking'        => ['name' => 'Call tracking (CallRail)',      'monthly' => 79.00],
+    'content_updates'      => ['name' => 'Content updates (monthly)',     'monthly' => 99.00],
 ];
 
 // Make any Stripe REST call. Returns ['ok'=>bool, 'data'=>array|null, 'error'=>string].
