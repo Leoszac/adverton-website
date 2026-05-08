@@ -204,6 +204,43 @@ crm_renderHeader($user, 'clients');
     </div>
   </div>
 
+  <?php
+    // Onboarding pack — pre-check guides based on active addons
+    $activeAddonCodes = array_column(($client['addons_decoded'] ?? []), 'code');
+    $hasYelp     = in_array('yelp_mgmt', $activeAddonCodes, true);
+    $hasMeta     = (bool)array_intersect($activeAddonCodes, ['social_1','social_2','social_3','meta_ads']);
+    $hasAIVoice  = in_array('ai_voice', $activeAddonCodes, true);
+    $hasMarket   = (bool)array_intersect($activeAddonCodes, ['leads_marketplace_1','leads_marketplace_2','leads_marketplace_3']);
+    $hasCallTrk  = in_array('call_tracking', $activeAddonCodes, true);
+    $packSentOk  = isset($_GET['ok']) && $_GET['ok'] === 'onboarding_pack_sent';
+    $packErr     = (string)($_GET['pack_err'] ?? '');
+  ?>
+  <form class="card" method="post" action="/crm/update.php" style="background:#fffbeb;border-color:#fde68a">
+    <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Onboarding pack — email access guides to client</h2>
+    <p style="margin:0 0 12px;font-size:13px;color:#6b6877;line-height:1.55">
+      Sends the right access/setup guides based on the client's plan. Uncheck any guide that doesn't apply, or check a non-default one if their situation needs it.
+    </p>
+    <?php if ($packSentOk): ?>
+      <div style="background:#d1fae5;color:#065f46;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;font-weight:600">✓ Onboarding pack emailed to <?= crm_h($client['primary_email']) ?></div>
+    <?php elseif ($packErr): ?>
+      <div style="background:#fee2e2;color:#991b1b;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:13px;font-weight:600">Send failed: <?= crm_h($packErr) ?></div>
+    <?php endif; ?>
+    <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+    <input type="hidden" name="mode" value="send_onboarding_pack">
+    <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:13px;margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="01" checked> 01 — Google Business Profile <span style="color:#6b6877;font-size:11px">(always)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="02" checked> 02 — Google Ads + LSA <span style="color:#6b6877;font-size:11px">(always)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="03" checked> 03 — Domain + Hosting <span style="color:#6b6877;font-size:11px">(always)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="04" <?= $hasYelp?'checked':'' ?>> 04 — Yelp <span style="color:#6b6877;font-size:11px">(if Yelp add-on)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="05" <?= $hasMeta?'checked':'' ?>> 05 — Facebook + Instagram <span style="color:#6b6877;font-size:11px">(if Social/Meta Ads)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="06" <?= $hasAIVoice?'checked':'' ?>> 06 — AI Voice Receptionist <span style="color:#6b6877;font-size:11px">(if AI Voice)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="07" <?= $hasMarket?'checked':'' ?>> 07 — Lead Marketplace <span style="color:#6b6877;font-size:11px">(if Marketplace)</span></label>
+      <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="guides[]" value="08" <?= $hasCallTrk?'checked':'' ?>> 08 — Call Tracking <span style="color:#6b6877;font-size:11px">(if Call Tracking)</span></label>
+    </div>
+    <button type="submit" class="primary" style="margin-top:0" <?= empty($client['primary_email'])?'disabled':'' ?>>📧 Email pack to <?= crm_h($client['primary_email'] ?: '(no email on file)') ?></button>
+  </form>
+
   <div class="card" style="background:#faf9ff;border-color:#e0d6f5">
     <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Billing &amp; Stripe</h2>
     <?php

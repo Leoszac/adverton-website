@@ -7,5 +7,6 @@ Disallow: /crm/
 Disallow: /crm
 Disallow: /templates/
 Disallow: /preview/
+Disallow: /onboarding-pack/
 
 Sitemap: https://adverton.net/sitemap.xml

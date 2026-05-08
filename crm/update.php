@@ -391,6 +391,111 @@ case 'client_addon_remove': {
     exit;
 }
 
+case 'send_onboarding_pack': {
+    $clientId   = (int)($_POST['client_id'] ?? 0);
+    $guideSlugs = array_values(array_filter((array)($_POST['guides'] ?? []), 'is_string'));
+
+    if ($clientId <= 0) { header('Location: /crm/'); exit; }
+
+    $pdo  = crm_db();
+    $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ?");
+    $stmt->execute([$clientId]);
+    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$client) { header('Location: /crm/'); exit; }
+
+    if (empty($client['primary_email'])) {
+        header("Location: /crm/client.php?id={$clientId}&pack_err=" . urlencode('client has no primary_email'));
+        exit;
+    }
+
+    $catalog = [
+        '01' => ['name' => 'Google Business Profile',                  'file' => '01_Google_Business_Profile.pdf'],
+        '02' => ['name' => 'Google Ads + Local Services Ads (LSA)',    'file' => '02_Google_Ads_and_LSA.pdf'],
+        '03' => ['name' => 'Domain + Hosting',                          'file' => '03_Domain_and_Hosting.pdf'],
+        '04' => ['name' => 'Yelp',                                      'file' => '04_Yelp.pdf'],
+        '05' => ['name' => 'Facebook + Instagram',                      'file' => '05_Facebook_and_Instagram.pdf'],
+        '06' => ['name' => 'AI Voice Receptionist',                     'file' => '06_AI_Voice_Receptionist.pdf'],
+        '07' => ['name' => 'Lead Marketplace Management',               'file' => '07_Lead_Marketplace_Management.pdf'],
+        '08' => ['name' => 'Call Tracking',                             'file' => '08_Call_Tracking.pdf'],
+    ];
+
+    $selected = array_intersect_key($catalog, array_flip($guideSlugs));
+    if (!$selected) {
+        header("Location: /crm/client.php?id={$clientId}&pack_err=" . urlencode('no guides selected'));
+        exit;
+    }
+
+    $apiKey = crm_config('RESEND_API_KEY');
+    if (!$apiKey) {
+        header("Location: /crm/client.php?id={$clientId}&pack_err=" . urlencode('RESEND_API_KEY missing'));
+        exit;
+    }
+
+    $bizName = $client['business_name'] ?: 'there';
+    $base    = 'https://adverton.net/onboarding-pack/';
+    $bullets = '';
+    foreach ($selected as $g) {
+        $bullets .= '<li style="margin:8px 0"><a href="' . $base . rawurlencode($g['file']) . '" style="color:#6d28d9;font-weight:600">'
+                  . htmlspecialchars($g['name'], ENT_QUOTES) . '</a></li>';
+    }
+
+    $html = '<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;color:#0e0d12;line-height:1.55;max-width:600px">'
+          . '<p>Hi ' . htmlspecialchars($bizName, ENT_QUOTES) . ',</p>'
+          . '<p>Welcome to Adverton. Below are the access and setup guides for the things our team needs to take live for you. Each guide is short (5–10 min), step-by-step, and covers both the case where you already have the asset AND the case where you don\'t.</p>'
+          . '<ul>' . $bullets . '</ul>'
+          . '<p>Open them on your phone or laptop, work through whichever applies, and reply to this email if you get stuck. We\'re standing by.</p>'
+          . '<p>Talk soon,<br>The Adverton team</p>'
+          . '</body></html>';
+
+    $subject  = 'Your Adverton onboarding pack — access guides';
+    $resolved = crm_resolveUserSender((int)$user['id']);
+
+    $payload = [
+        'from'     => $resolved['from'],
+        'to'       => [$client['primary_email']],
+        'subject'  => $subject,
+        'html'     => $html,
+        'reply_to' => $resolved['reply_to'],
+    ];
+
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey,
+        ],
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 4,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($resp === false || $code >= 400) {
+        $msg = "Resend HTTP {$code}: " . substr((string)($resp ?: $err), 0, 120);
+        header("Location: /crm/client.php?id={$clientId}&pack_err=" . urlencode($msg));
+        exit;
+    }
+
+    $log = $pdo->prepare(
+        "INSERT INTO client_events (client_id, user_id, type, body, meta) VALUES (?, ?, 'note', ?, ?)"
+    );
+    $log->execute([
+        $clientId,
+        (int)$user['id'],
+        'Onboarding pack emailed (' . count($selected) . ' guide' . (count($selected) === 1 ? '' : 's') . ')',
+        json_encode(['guides' => array_keys($selected), 'to' => $client['primary_email']]),
+    ]);
+
+    crm_log("send_onboarding_pack uid={$user['id']} cid={$clientId} guides=" . implode(',', array_keys($selected)));
+    header("Location: /crm/client.php?id={$clientId}&ok=onboarding_pack_sent");
+    exit;
+}
+
 case 'sequence_save': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $id = (int)($_POST['id'] ?? 0);
