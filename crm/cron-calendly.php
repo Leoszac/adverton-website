@@ -53,11 +53,19 @@ function calendly_api(string $token, string $url): ?array {
     return is_array($j) ? $j : null;
 }
 
-$me = calendly_api($token, 'https://api.calendly.com/users/me');
-if (!$me || empty($me['resource']['uri'])) {
-    echo "Failed to fetch /users/me — invalid or expired token.\n"; exit;
+// The PAT JWT carries user_uuid in its payload, so we skip /users/me (which
+// requires the users:read scope — not granted to default PATs).
+$parts = explode('.', $token);
+if (count($parts) !== 3) {
+    echo "Malformed token (not a JWT).\n"; exit;
 }
-$userUri = (string)$me['resource']['uri'];
+$payloadJson = base64_decode(strtr($parts[1], '-_', '+/'), true);
+$payload = is_string($payloadJson) ? json_decode($payloadJson, true) : null;
+$uuid = is_array($payload) ? ($payload['user_uuid'] ?? null) : null;
+if (!is_string($uuid) || $uuid === '') {
+    echo "Could not extract user_uuid from token.\n"; exit;
+}
+$userUri = 'https://api.calendly.com/users/' . $uuid;
 
 $min = gmdate('Y-m-d\TH:i:s\Z', time() - 7 * 86400);
 $max = gmdate('Y-m-d\TH:i:s\Z', time() + 90 * 86400);
