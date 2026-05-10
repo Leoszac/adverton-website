@@ -163,15 +163,15 @@ can keep using `mailto:` ("Blank email") or your own client.
 
 ## (Optional) Calendly auto-sync
 
-The CRM can pull your Calendly bookings every 15 min and log a `📅 Meeting`
-activity on the matching lead (matched by email).
+The CRM can poll your Calendly scheduled events every 15 min via API and log a
+`📅 Meeting` activity on the matching lead (matched by email).
 
-1. **Get your iCal feed**: Calendly → Account → Calendar connections → click
-   "Get iCal feed" → copy the URL.
-2. Add to `/home2/advertonnet/crm-config.php`:
-   ```php
-   'CALENDLY_ICAL_URL' => 'https://calendly.com/api/.../ical/...',
-   ```
+1. **Generate a Personal Access Token**: Calendly → Integrations & apps →
+   API and webhooks → Personal Access Tokens → Generate new token. Required
+   scopes: `scheduled_events:read`, `event_types:read`.
+2. Paste it into `/crm/integrations.php` → Calendly section → Personal Access
+   Token field. (Or, if you prefer file config, add to `crm-config.php`:
+   `'CALENDLY_API_TOKEN' => 'eyJraWQi...'`.)
 3. **Set up the cron** in cPanel → Cron Jobs → Add new:
    - Schedule: every 15 minutes (`*/15 * * * *`)
    - Command:

@@ -131,7 +131,7 @@ case 'checkout.session.completed': {
           . 'border-radius:8px;text-decoration:none;font-weight:600">Start the kickoff intake →</a>'
           . '</p>'
           . '<p style="font-size:13px;color:#6b6877">Prefer a 30-min call instead? '
-          . 'Reply to this email and we\'ll send you a Calendly link. Either path works.</p>'
+          . '<a href="https://calendly.com/meet-adverton/kickoff">Book your kickoff call</a>. Either path works.</p>'
           . '<p style="font-size:13px;color:#6b6877">Receipts + future invoices come straight from Stripe.</p>'
           . '<p style="font-size:13px;color:#6b6877">— Adverton</p>';
 
