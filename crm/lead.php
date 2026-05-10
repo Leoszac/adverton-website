@@ -566,6 +566,15 @@ crm_renderHeader($user, '');
         <?php
           $instOk = isset($_GET['instantly_ok']);
           $instErr = (string)($_GET['instantly_err'] ?? '');
+
+          // Fetch campaigns from Instantly (cached briefly via static)
+          require_once __DIR__ . '/lib/instantly.php';
+          static $instCampaignsCache = null;
+          if ($instCampaignsCache === null) {
+              $instCampaignsCache = crm_instantlyApiKey() ? crm_instantlyListCampaigns(50) : ['error' => 'no api key', 'items' => []];
+          }
+          $campaigns = $instCampaignsCache['items'];
+          $campaignsErr = $instCampaignsCache['error'];
         ?>
         <?php if ($instOk): ?>
           <div style="background:#d1fae5;color:#065f46;padding:6px 10px;border-radius:6px;font-size:12px;margin-bottom:8px">✓ Lead enrolled in Instantly campaign</div>
@@ -576,10 +585,27 @@ crm_renderHeader($user, '');
           <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
           <input type="hidden" name="mode" value="instantly_enroll">
           <input type="hidden" name="lead_id" value="<?= (int)$lead['id'] ?>">
-          <input type="text" name="campaign_id" placeholder="Campaign UUID (paste from Instantly)" style="flex:1;min-width:240px;font-size:13px;padding:6px 10px" required>
+          <?php if (count($campaigns) > 0): ?>
+            <select name="campaign_id" required style="flex:1;min-width:240px;font-size:13px;padding:6px 10px">
+              <option value="">Select a campaign…</option>
+              <?php foreach ($campaigns as $c): ?>
+                <?php
+                  $cid = (string)($c['id'] ?? '');
+                  $cname = (string)($c['name'] ?? $cid);
+                  $cstatus = (int)($c['status'] ?? 0);
+                  $statusLabel = $cstatus === 1 ? '▶ active' : ($cstatus === 2 ? '⏸ paused' : 'draft');
+                ?>
+                <option value="<?= crm_h($cid) ?>"><?= crm_h($cname) ?> · <?= $statusLabel ?></option>
+              <?php endforeach; ?>
+            </select>
+          <?php elseif ($campaignsErr): ?>
+            <input type="text" name="campaign_id" placeholder="Campaign UUID (API error: <?= crm_h(substr($campaignsErr,0,40)) ?>)" style="flex:1;min-width:240px;font-size:13px;padding:6px 10px" required>
+          <?php else: ?>
+            <input type="text" name="campaign_id" placeholder="No campaigns yet · paste UUID when ready" style="flex:1;min-width:240px;font-size:13px;padding:6px 10px" required>
+          <?php endif; ?>
           <button type="submit" class="primary" style="margin-top:0;font-size:13px;padding:7px 14px">Enroll lead</button>
         </form>
-        <div style="margin-top:8px;font-size:11px"><a href="/crm/instantly-test.php" target="_blank" style="color:#6d28d9">Find campaign IDs →</a></div>
+        <div style="margin-top:8px;font-size:11px"><a href="/crm/instantly-test.php" target="_blank" style="color:#6d28d9">View all Instantly campaigns →</a></div>
       </div>
       <?php endif; ?>
 
