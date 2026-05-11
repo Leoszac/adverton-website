@@ -16,7 +16,8 @@ $crons = [
 ];
 
 echo "=== Adverton cron health ===\n";
-echo "Now: " . gmdate('Y-m-d H:i:s') . " UTC\n\n";
+$tz = new DateTimeZone('America/New_York');
+echo "Now: " . (new DateTime('now', $tz))->format('Y-m-d H:i:s T') . "\n\n";
 
 foreach ($crons as $name => $schedule) {
     $log = "{$logsDir}/{$name}.log";
