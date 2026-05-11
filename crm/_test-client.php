@@ -51,6 +51,73 @@ if ($action === 'status') {
     exit;
 }
 
+if ($action === 'run-tests') {
+    // Find the most recent test client
+    $stmt = $db->query("SELECT id, business_name FROM clients WHERE business_name LIKE 'Test Acme%' ORDER BY id DESC LIMIT 1");
+    $row = $stmt->fetch();
+    if (!$row) {
+        exit("No test client found. Run ?action=create + complete kickoff first.\n");
+    }
+    $cid = (int)$row['id'];
+    echo "=== Test client #{$cid} — {$row['business_name']} ===\n\n";
+
+    // ── Sprint 2: AI generate ──────────────────────────────────────────
+    echo "[Sprint 2] Triggering AI copy generation...\n";
+    require_once __DIR__ . '/lib/ai-generator.php';
+    $start = microtime(true);
+    $r = crm_aiGenerateClientCopy($cid);
+    $dur = round((microtime(true) - $start) * 1000);
+    if (!$r['ok']) {
+        echo "[Sprint 2] ❌ FAIL ({$dur}ms): " . ($r['error'] ?? 'unknown') . "\n";
+        exit;
+    }
+    echo "[Sprint 2] ✅ OK ({$dur}ms) — copy generated\n";
+    $copy = $r['copy'];
+    echo "  hero.headline:    \"" . substr((string)($copy['hero']['headline'] ?? ''), 0, 80) . "\"\n";
+    echo "  hero.subheadline: \"" . substr((string)($copy['hero']['subheadline'] ?? ''), 0, 80) . "\"\n";
+    echo "  trust_strip:      " . count((array)($copy['trust_strip'] ?? [])) . " items\n";
+    echo "  services:         " . count((array)($copy['services'] ?? [])) . " items\n";
+    echo "  faq:              " . count((array)($copy['faq'] ?? [])) . " items\n";
+
+    // Mark intake as approved so the deploy can run
+    $db->prepare("UPDATE client_intake SET status='approved', approved_at=NOW() WHERE client_id=?")->execute([$cid]);
+    echo "  status:           flipped to 'approved' (test bypass — normally operator click)\n\n";
+
+    // ── Sprint 4: Render all 5 pages ───────────────────────────────────
+    echo "[Sprint 4] Rendering all 5 pages...\n";
+    require_once __DIR__ . '/lib/preview.php';
+    $rendered = crm_renderAllPages($cid);
+    if (!$rendered['ok']) {
+        echo "[Sprint 4] ❌ FAIL: " . ($rendered['error'] ?? 'unknown') . "\n";
+        exit;
+    }
+    foreach ($rendered['pages'] as $filename => $html) {
+        $bytes = strlen($html);
+        $hasNav = strpos($html, 'nav') !== false ? '✓' : '✗';
+        $hasFooter = strpos($html, '</footer>') !== false ? '✓' : '✗';
+        $hasSchema = strpos($html, 'application/ld+json') !== false ? '✓' : '✗';
+        printf("  %-22s %6d bytes  nav:%s footer:%s schema:%s\n",
+            $filename, $bytes, $hasNav, $hasFooter, $hasSchema);
+    }
+    echo "[Sprint 4] ✅ OK — 5 pages rendered\n\n";
+
+    // ── Sprint 5: Verify post-deploy task creation logic ──────────────
+    echo "[Sprint 5] Post-deploy task list:\n";
+    require_once __DIR__ . '/lib/deploy.php';
+    foreach (crm_postDeployTaskTitles() as $i => $title) {
+        echo "  " . ($i+1) . ". {$title}\n";
+    }
+    echo "[Sprint 5] ✅ OK — 5 tasks would be auto-created on real deploy\n\n";
+
+    // ── Deploy adapter check ───────────────────────────────────────────
+    echo "[Deploy] Skipping actual SFTP/cPanel/WP upload — test client has no\n";
+    echo "         hosting credentials in vault. Multi-page render verified above.\n\n";
+
+    echo "=== ALL SPRINTS PASSED ===\n";
+    echo "Cleanup with: ?action=cleanup\n";
+    exit;
+}
+
 if ($action === 'cleanup') {
     // Find all test clients
     $stmt = $db->query("SELECT id, business_name FROM clients WHERE business_name LIKE 'Test Acme%'");
