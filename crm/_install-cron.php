@@ -34,6 +34,7 @@ $canonical = [
     '5 11 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php >> /home2/advertonnet/logs/cron-client-triggers.log 2>&1',
     '20 12 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home2/advertonnet/logs/cron-lost-reengagement.log 2>&1',
     '0 10 * * 1 /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/cron-health-score.log 2>&1',
+    '0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php >> /home2/advertonnet/logs/cron-instantly-health.log 2>&1',
 ];
 
 $managedScripts = [
@@ -42,6 +43,7 @@ $managedScripts = [
     'cron-client-triggers.php',
     'cron-lost-reengagement.php',
     'cron-health-score.php',
+    'cron-instantly-health.php',
 ];
 
 // ── Read current crontab ────────────────────────────────────────────────
@@ -113,7 +115,7 @@ if ($missing) {
     echo "[fail] Some scripts not in crontab after apply: " . implode(', ', $missing) . "\n";
     echo "[warn] keeping _install-cron.php for retry\n";
 } else {
-    echo "[ok] All 5 managed crons present\n";
+    echo "[ok] All " . count($managedScripts) . " managed crons present\n";
     @unlink(__FILE__);
     echo "[ok] _install-cron.php self-destructed\n";
 }
