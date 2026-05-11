@@ -75,9 +75,15 @@ $copy = [
 $assets = [];
 
 $which = (string)($_GET['which'] ?? 'trust_first');
+$page  = (string)($_GET['page']  ?? 'home');
+$allowedPages = ['home', 'about', 'services', 'service-area', 'contact'];
+if (!in_array($page, $allowedPages, true)) {
+    http_response_code(400);
+    exit("page must be one of: " . implode('|', $allowedPages) . "\n");
+}
 header('Content-Type: text/html; charset=utf-8');
 switch ($which) {
-    case 'trust_first': echo crm_renderTemplate_trust_first($client, $intake, $copy, $assets); break;
+    case 'trust_first': echo crm_renderTemplate_trust_first($client, $intake, $copy, $assets, $page); break;
     case 'speed_first': echo crm_renderTemplate_speed_first($client, $intake, $copy, $assets); break;
     case 'story_first': echo crm_renderTemplate_story_first($client, $intake, $copy, $assets); break;
     default:
