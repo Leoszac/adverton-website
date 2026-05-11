@@ -26,8 +26,10 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/_run-v11.php
     - /bin/rm -f $DEPLOYPATH/crm/_run-v12.php
     - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
-    - /bin/rm -f $DEPLOYPATH/crm/_install-cron.php
     - /bin/rm -f $DEPLOYPATH/crm/_diag-cron.php
+    # _install-cron.php (CRON_TZ variant) self-destructs after success;
+    # uncomment after first user-triggered run.
+    # - /bin/rm -f $DEPLOYPATH/crm/_install-cron.php
     - /bin/rm -f $DEPLOYPATH/crm/_bootstrap-v11.php
     - /bin/rm -f $DEPLOYPATH/crm/_fix-sign-cols.php
     - /bin/rm -f $DEPLOYPATH/crm/seed-users.php
