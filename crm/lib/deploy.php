@@ -24,6 +24,8 @@ require_once __DIR__ . '/preview.php';
 const CRM_DEPLOY_PRIORITIES = ['cpanel', 'sftp', 'wordpress', 'custom'];
 
 // Top-level dispatch. Returns ['ok','url','adapter','error'].
+// Multi-page: renders all 5 pages (home/about/services/service-area/contact)
+// and hands the array {filename => html} to the adapter.
 function crm_deployToClient(int $clientId, ?int $actorUserId): array {
     $client = crm_getClient($clientId);
     if (!$client) return ['ok' => false, 'url' => null, 'adapter' => null, 'error' => 'Client not found'];
@@ -34,13 +36,13 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
                 'error' => 'Client intake must be approved before deploying'];
     }
 
-    // Render the HTML
-    $rendered = crm_renderPreviewHtml($clientId);
+    // Render all 5 pages
+    $rendered = crm_renderAllPages($clientId);
     if (!$rendered['ok']) {
         return ['ok' => false, 'url' => null, 'adapter' => null,
                 'error' => 'Render failed: ' . ($rendered['error'] ?? 'unknown')];
     }
-    $html = $rendered['html'];
+    $pages = $rendered['pages'];  // ['index.html' => '<html>...', 'about.html' => ..., ...]
 
     // Pick the highest-priority credential the client has
     $cred = null;
@@ -56,10 +58,10 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
 
     // Dispatch
     $result = match ($kindUsed) {
-        'cpanel'    => crm_deployAdapterCpanel($html, $cred, $client),
-        'sftp'      => crm_deployAdapterSftp($html, $cred, $client),
-        'wordpress' => crm_deployAdapterWordpress($html, $cred, $client),
-        'custom'    => crm_deployAdapterCustom($html, $cred, $client),
+        'cpanel'    => crm_deployAdapterCpanel($pages, $cred, $client),
+        'sftp'      => crm_deployAdapterSftp($pages, $cred, $client),
+        'wordpress' => crm_deployAdapterWordpress($pages, $cred, $client),
+        'custom'    => crm_deployAdapterCustom($pages, $cred, $client),
         default     => ['ok' => false, 'url' => null, 'error' => 'Unknown adapter: ' . $kindUsed],
     };
 
@@ -88,92 +90,129 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
 
 // ─── ADAPTERS ──────────────────────────────────────────────────────────
 
-// cPanel SFTP adapter — uploads via FTP curl (most cPanel hosts gate SFTP
-// behind shell access; FTP-with-TLS is universally available).
-//
-// Credential row shape:
-//   url       e.g. "ftp.example.com" (no scheme), or "example.com" — adapter prepends ftps://
-//   username  cPanel user
-//   value     decrypted password
-//
-// Target path: htdocs root → upload index.html. Most cPanel sites have
-// public_html as the FTP user's home, so we land directly there.
-function crm_deployAdapterCpanel(string $html, array $cred, array $client): array {
+// cPanel SFTP adapter — uploads via FTP curl. Multi-page: uploads each
+// {filename => html} entry to /public_html/{filename}.
+function crm_deployAdapterCpanel(array $pages, array $cred, array $client): array {
     $host = trim((string)($cred['row']['url'] ?? ''));
     if ($host === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing host (set url field)'];
     $user = (string)($cred['row']['username'] ?? '');
     $pass = (string)($cred['value'] ?? '');
     if ($user === '' || $pass === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing username/password'];
 
-    // Strip scheme if present
     $host = preg_replace('#^[a-z]+://#i', '', $host);
     $host = rtrim($host, '/');
 
-    return crm_deployFtpUpload($host, $user, $pass, '/public_html/index.html', $html, $client);
+    $uploaded = 0;
+    $errors = [];
+    foreach ($pages as $filename => $html) {
+        $r = crm_deployFtpUpload($host, $user, $pass, '/public_html/' . $filename, $html, $client);
+        if ($r['ok']) {
+            $uploaded++;
+        } else {
+            $errors[] = "{$filename}: " . ($r['error'] ?? 'unknown');
+        }
+    }
+    if ($errors) {
+        return ['ok' => false, 'url' => null, 'error' => "Uploaded {$uploaded}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
+    }
+    // Derive public URL from host (best-effort — same logic as crm_deployFtpUpload)
+    $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
+    return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
 }
 
-// Generic SFTP adapter — uses the FTP curl path too (most simple hosts).
-// If the client's hosting is genuinely SFTP-only, we'd need phpseclib;
-// flagged as a TODO when we encounter such a client.
-function crm_deployAdapterSftp(string $html, array $cred, array $client): array {
+// Generic SFTP adapter — same multi-page pattern. Uses notes field as
+// remote dir prefix (default '/'); each page lands at {prefix}/{filename}.
+function crm_deployAdapterSftp(array $pages, array $cred, array $client): array {
     $host = trim((string)($cred['row']['url'] ?? ''));
     if ($host === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing host'];
     $host = preg_replace('#^[a-z]+://#i', '', $host);
     $host = rtrim($host, '/');
 
-    $remotePath = '/' . ltrim((string)($cred['row']['notes'] ?? '/index.html'), '/');
-    return crm_deployFtpUpload(
-        $host, (string)$cred['row']['username'], (string)$cred['value'],
-        $remotePath, $html, $client
-    );
+    $prefix = rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/');
+    $uploaded = 0;
+    $errors = [];
+    foreach ($pages as $filename => $html) {
+        $r = crm_deployFtpUpload(
+            $host, (string)$cred['row']['username'], (string)$cred['value'],
+            $prefix . '/' . $filename, $html, $client
+        );
+        if ($r['ok']) {
+            $uploaded++;
+        } else {
+            $errors[] = "{$filename}: " . ($r['error'] ?? 'unknown');
+        }
+    }
+    if ($errors) {
+        return ['ok' => false, 'url' => null, 'error' => "Uploaded {$uploaded}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
+    }
+    $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
+    return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
 }
 
-// Wordpress adapter — POSTs to WP REST API to create/update a page.
-// We don't replace the theme; we publish a single page set as front-page.
-// Credential value should be a Wordpress Application Password (Users →
-// Edit Profile → Application Passwords on the WP side).
-function crm_deployAdapterWordpress(string $html, array $cred, array $client): array {
+// Wordpress adapter — POSTs to WP REST API to create 5 pages.
+// home → set as front page (slug: home). Others as standard pages.
+// NOTE: setting WP front_page option requires settings:write — operator
+// flips it manually if needed (we just create the pages here).
+function crm_deployAdapterWordpress(array $pages, array $cred, array $client): array {
     $base = rtrim((string)($cred['row']['url'] ?? ''), '/');
     if ($base === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing url (e.g. https://site.com)'];
     $user = (string)$cred['row']['username'];
     $pass = (string)$cred['value'];
     if ($user === '' || $pass === '') return ['ok' => false, 'url' => null, 'error' => 'WP needs username + app password'];
 
-    $title = (string)($client['business_name'] ?? 'Home');
-    $body  = json_encode([
-        'title'   => $title,
-        'content' => $html,
-        'status'  => 'publish',
-        'slug'    => 'home',
-    ]);
+    $slugMap = [
+        'index.html'        => 'home',
+        'about.html'        => 'about',
+        'services.html'     => 'services',
+        'service-area.html' => 'service-area',
+        'contact.html'      => 'contact',
+    ];
 
-    $ch = curl_init($base . '/wp-json/wp/v2/pages');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $body,
-        CURLOPT_USERPWD        => $user . ':' . $pass,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_TIMEOUT        => 30,
-        CURLOPT_CONNECTTIMEOUT => 6,
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($resp === false || $code >= 400) {
-        return ['ok' => false, 'url' => null,
-                'error' => "WP REST HTTP {$code}: " . substr((string)$resp, 0, 200)];
+    $created = 0;
+    $errors = [];
+    $homeLink = null;
+    foreach ($pages as $filename => $html) {
+        $slug = $slugMap[$filename] ?? pathinfo($filename, PATHINFO_FILENAME);
+        $title = ucfirst(str_replace('-', ' ', $slug));
+        $body = json_encode([
+            'title'   => $title,
+            'content' => $html,
+            'status'  => 'publish',
+            'slug'    => $slug,
+        ]);
+        $ch = curl_init($base . '/wp-json/wp/v2/pages');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_USERPWD        => $user . ':' . $pass,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 6,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($resp === false || $code >= 400) {
+            $errors[] = "{$slug}: HTTP {$code}";
+            continue;
+        }
+        $data = json_decode((string)$resp, true) ?: [];
+        if ($slug === 'home') $homeLink = (string)($data['link'] ?? $base);
+        $created++;
     }
-    $data = json_decode((string)$resp, true) ?: [];
-    return ['ok' => true, 'url' => (string)($data['link'] ?? $base), 'error' => null];
+    if ($errors) {
+        return ['ok' => false, 'url' => $homeLink, 'error' => "Created {$created}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
+    }
+    return ['ok' => true, 'url' => $homeLink ?: $base, 'error' => null];
 }
 
 // Custom adapter — host doesn't fit our patterns. The dispatcher logs the
 // failure to client_events; the operator picks it up from /crm/today.php
 // and uploads the rendered HTML by hand.
-function crm_deployAdapterCustom(string $html, array $cred, array $client): array {
+function crm_deployAdapterCustom(array $pages, array $cred, array $client): array {
     return ['ok' => false, 'url' => null,
-            'error' => 'Custom hosting — manual deploy required. Check client_events log for details.'];
+            'error' => 'Custom hosting — manual deploy required for ' . count($pages) . ' pages. Check client_events log for details.'];
 }
 
 // Tasks that fire automatically on a successful deploy. Operator handles

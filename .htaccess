@@ -17,6 +17,7 @@ RewriteRule ^pre-contract/?$  pre-contract.php   [L]
 RewriteRule ^kickoff/?$       kickoff.php        [L]
 RewriteRule ^payment-thanks/?$ payment-thanks.html [L]
 RewriteRule ^preview/(\d+)/?$ preview.php?id=$1 [L,QSA]
+RewriteRule ^preview/(\d+)/([a-z0-9-]+)/?$ preview.php?id=$1&page=$2 [L,QSA]
 
 # Internally route /hvac → /hvac.html (so the file actually loads)
 RewriteCond %{REQUEST_FILENAME} !-f

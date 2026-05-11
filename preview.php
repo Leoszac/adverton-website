@@ -38,6 +38,9 @@ function previewError(int $status, string $title, string $msg): void {
 
 $clientId = (int)($_GET['id'] ?? 0);
 $token    = trim((string)($_GET['t'] ?? ''));
+$page     = (string)($_GET['page'] ?? 'home');
+$allowedPages = ['home', 'about', 'services', 'service-area', 'contact'];
+if (!in_array($page, $allowedPages, true)) $page = 'home';
 
 if ($clientId <= 0) {
     previewError(400, 'Missing preview id',
@@ -52,16 +55,26 @@ if (!$resolved || $resolved['kind'] !== 'client' || $resolved['id'] !== $clientI
         "This preview link doesn't work. Links expire after 14 days. We'll send a fresh one.");
 }
 
-$res = crm_renderPreviewHtml($clientId);
+$res = crm_renderPreviewHtml($clientId, $page);
 if (!$res['ok']) {
     previewError(500, 'Preview not ready yet',
         'We are still drafting your site. We will email you when it is ready to review.');
 }
 
-// Render. We don't add any frame/banner — the client sees the site exactly
-// as it will deploy. The "approve / request changes" UI lives on a separate
-// short page that the operator sends via /crm/client-review.php.
+// Rewrite template nav URLs (which point to /about.html etc. — the post-
+// deploy URLs) to preview-scoped URLs so the nav works on adverton.net.
+// /         → /preview/{id}?t=TOKEN
+// /xyz.html → /preview/{id}/xyz?t=TOKEN
+$qs = '?t=' . urlencode($token);
+$html = $res['html'];
+$html = preg_replace_callback(
+    '#href="/([a-z0-9-]+)\.html"#i',
+    fn($m) => 'href="/preview/' . $clientId . '/' . $m[1] . $qs . '"',
+    $html
+);
+$html = str_replace('href="/"', 'href="/preview/' . $clientId . $qs . '"', $html);
+
 header('Content-Type: text/html; charset=utf-8');
 header('X-Robots-Tag: noindex, nofollow');   // never index previews
 header('Cache-Control: no-store');           // never cache (drafts change)
-echo $res['html'];
+echo $html;

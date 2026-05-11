@@ -59,10 +59,10 @@ function crm_listClientAssets(int $clientId, bool $approvedOnly = true): array {
     }
 }
 
-// Render the preview HTML for a client. Returns ['ok'=>bool, 'html'=>?string,
-// 'error'=>?string]. Falls back to the default template if the chosen one
-// isn't registered yet.
-function crm_renderPreviewHtml(int $clientId): array {
+// Render one page of the preview HTML for a client.
+// Returns ['ok'=>bool, 'html'=>?string, 'error'=>?string].
+// $page = home | about | services | service-area | contact (default: home).
+function crm_renderPreviewHtml(int $clientId, string $page = 'home'): array {
     $client = crm_getClient($clientId);
     if (!$client) return ['ok' => false, 'html' => null, 'error' => 'Client not found'];
     $intake = crm_getIntake($clientId);
@@ -73,7 +73,6 @@ function crm_renderPreviewHtml(int $clientId): array {
     $registry = crm_templateRegistry();
     $choice = (string)($intake['template_choice'] ?? '') ?: CRM_TEMPLATE_DEFAULT;
     if (!isset($registry[$choice])) {
-        // Pending template — fall back so the operator sees something.
         $choice = CRM_TEMPLATE_DEFAULT;
     }
     $entry = $registry[$choice];
@@ -87,10 +86,31 @@ function crm_renderPreviewHtml(int $clientId): array {
 
     try {
         $assets = crm_listClientAssets($clientId, true);
-        $html = call_user_func($entry['fn'], $client, $intake, $copy, $assets);
+        $html = call_user_func($entry['fn'], $client, $intake, $copy, $assets, $page);
         return ['ok' => true, 'html' => (string)$html, 'error' => null];
     } catch (Throwable $e) {
         error_log('[crm_renderPreviewHtml] ' . $e->getMessage());
         return ['ok' => false, 'html' => null, 'error' => 'Render exception: ' . $e->getMessage()];
     }
+}
+
+// Render all 5 pages of a client site for deploy.
+// Returns ['ok'=>bool, 'pages'=>['index.html'=>'<html>', ...], 'error'=>?string].
+function crm_renderAllPages(int $clientId): array {
+    $filenameMap = [
+        'home'         => 'index.html',
+        'about'        => 'about.html',
+        'services'     => 'services.html',
+        'service-area' => 'service-area.html',
+        'contact'      => 'contact.html',
+    ];
+    $pages = [];
+    foreach ($filenameMap as $pageKey => $filename) {
+        $r = crm_renderPreviewHtml($clientId, $pageKey);
+        if (!$r['ok']) {
+            return ['ok' => false, 'pages' => [], 'error' => "render {$pageKey}: " . (string)($r['error'] ?? 'unknown')];
+        }
+        $pages[$filename] = $r['html'];
+    }
+    return ['ok' => true, 'pages' => $pages, 'error' => null];
 }
