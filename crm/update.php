@@ -680,8 +680,17 @@ case 'intake_send_preview': {
               . "<p style='font-size:14px;color:#383640'>Reply to this email with anything you want changed — typos, "
               . "wording, photos to swap, services missing. Once you're happy, we'll publish it to your domain.</p>";
 
-    $r = crm_sendTrackedEmail(0, $synthLead, null, (int)$user['id'],
-        'Your Adverton website draft is ready', $bodyHtml);
+    // crm_sendTrackedEmail tracks the send via email_sends.lead_id (FK to leads).
+    // Use the client's originating lead_id; fall back to skip-tracking if absent.
+    $leadIdForSend = !empty($client['lead_id']) ? (int)$client['lead_id'] : 0;
+    if ($leadIdForSend <= 0) {
+        // Defensive: client with no lead_id (shouldn't happen in normal flow).
+        // Skip tracking, send directly via Resend.
+        $r = ['ok' => false, 'error' => 'Client has no originating lead_id — cannot send tracked email'];
+    } else {
+        $r = crm_sendTrackedEmail($leadIdForSend, $synthLead, null, (int)$user['id'],
+            'Your Adverton website draft is ready', $bodyHtml);
+    }
 
     if ($r['ok']) {
         try {
