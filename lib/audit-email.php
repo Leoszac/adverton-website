@@ -263,6 +263,7 @@ function renderCta(array $cta, string $ctaUrl): string {
         . '<div style="font-size:15px;line-height:1.55;color:rgba(255,255,255,0.92);margin:0 auto 24px;max-width:480px;">' . $body . '</div>'
         . '<a href="' . htmlEsc($ctaUrl) . '" style="display:inline-block;background:#fff;color:' . COLOR_PURPLE . ';padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 8px 20px rgba(0,0,0,0.2);">' . $btn . ' →</a>'
         . '<div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:14px;">No long sales pitch. 15 minutes. Honest yes/no on whether $799/mo makes sense for you.</div>'
+        . '<div style="font-size:13px;color:rgba(255,255,255,0.85);margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.18);">Prefer to talk now? Call our AI assistant: <a href="tel:+14845914724" style="color:#fff;font-weight:700;text-decoration:none;">(484) 591-4724</a><br><span style="color:rgba(255,255,255,0.65);font-size:11px;">Knows our services, answers questions, takes messages — 24/7.</span></div>'
         . '</td></tr></table>';
 }
 
