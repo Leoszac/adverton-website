@@ -20,22 +20,17 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/patch-nurture-tail-task.php
     - /bin/rm -f $DEPLOYPATH/crm/_cleanup-files.php
     - /bin/rm -f $DEPLOYPATH/crm/setup-cron.php
-    # _run-v10.php was a one-shot ENUM migration runner. It self-destructed
-    # after running successfully (verified 404 on server). Belt-and-suspenders rm
-    # in case the file ever returns to the repo by accident.
+    # Belt-and-suspenders rm of one-shot scripts that already ran successfully.
+    # Files no longer in repo; these guard against accidental server-side leftovers.
     - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
-    # _run-v11.php — schema-v11 one-shot migration runner. Same pattern as
-    # _run-v10: do NOT auto-delete on first deploy (file must survive long
-    # enough for the founder to visit /crm/_run-v11.php). Once it self-
-    # destructs (logs say [ok] _run-v11.php self-destructed), uncomment the
-    # rm below in a follow-up commit so accidental re-deploys can't expose it.
-    # - /bin/rm -f $DEPLOYPATH/crm/_run-v11.php
-    # _fix-cron.php same pattern: deploy → call → self-deletes.
-    # Re-enable below once it's been triggered.
-    # - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
-    # _bootstrap-v11.php + _fix-sign-cols.php — one-shot scripts that ran
-    # successfully (schema applied, columns added). Belt-and-suspenders rm
-    # so re-deploys can't expose them even if the files leak back into the
-    # repo accidentally.
+    - /bin/rm -f $DEPLOYPATH/crm/_run-v11.php
+    - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
     - /bin/rm -f $DEPLOYPATH/crm/_bootstrap-v11.php
     - /bin/rm -f $DEPLOYPATH/crm/_fix-sign-cols.php
+    - /bin/rm -f $DEPLOYPATH/crm/seed-users.php
+    - /bin/rm -f $DEPLOYPATH/crm/import-audit-log.php
+    # Dormant integrations replaced (PandaDoc/Smartlead → Stripe/Instantly; OpenSign → click-wrap).
+    - /bin/rm -f $DEPLOYPATH/crm/pandadoc-webhook.php
+    - /bin/rm -f $DEPLOYPATH/crm/smartlead-webhook.php
+    - /bin/rm -f $DEPLOYPATH/crm/opensign-webhook.php
+    - /bin/rm -f $DEPLOYPATH/crm/lib/opensign.php
