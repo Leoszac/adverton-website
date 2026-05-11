@@ -135,7 +135,8 @@ function renderAuditEmail(array $form, array $audit, string $auditId): string {
     $top = topFailedChecks($audit, 3);
     $topActionsHtml = renderTopActions($top);
 
-    $ctaUrl = CTA_BASE_URL . '?utm_source=audit&utm_medium=email&utm_campaign=gbp_audit&audit_id=' . urlencode($auditId) . '#contact';
+    // Email button → Calendly direct (UTM params preserved for analytics).
+    $ctaUrl = 'https://calendly.com/meet-adverton/15?utm_source=audit&utm_medium=email&utm_campaign=gbp_audit&audit_id=' . urlencode($auditId);
 
     // Compose body
     $body = '';
