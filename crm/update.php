@@ -1425,13 +1425,21 @@ case 'client_delete': {
     if (!empty($client['stripe_subscription_id'])) {
         $r = crm_stripeCancelSubscription((string)$client['stripe_subscription_id'], true); // immediate
         if (!$r['ok']) {
-            // Hard fail — refuse to delete if we can't kill the sub, otherwise the
-            // customer keeps getting billed with no CRM record.
-            header('Location: /crm/client.php?id=' . $id . '&payerr=' . urlencode(
-                'Could not cancel Stripe subscription: ' . $r['error'] . ' — deletion aborted to prevent orphaned billing'));
-            exit;
+            $errMsg = (string)($r['error'] ?? '');
+            // "No such subscription" / resource_missing = already gone, which is
+            // exactly the end-state we want. Don't block deletion.
+            if (stripos($errMsg, 'no such subscription') !== false
+             || stripos($errMsg, 'resource_missing')     !== false) {
+                $warnings[] = 'Stripe sub ' . substr((string)$client['stripe_subscription_id'], 0, 14) . '… already gone (skipped)';
+            } else {
+                // Real error — refuse to delete to avoid orphaning a live sub.
+                header('Location: /crm/client.php?id=' . $id . '&payerr=' . urlencode(
+                    'Could not cancel Stripe subscription: ' . $errMsg . ' — deletion aborted to prevent orphaned billing'));
+                exit;
+            }
+        } else {
+            $warnings[] = 'Stripe sub ' . substr((string)$client['stripe_subscription_id'], 0, 14) . '… cancelled immediately';
         }
-        $warnings[] = 'Stripe sub ' . substr((string)$client['stripe_subscription_id'], 0, 14) . '… cancelled immediately';
     }
 
     // 2. Delete the Stripe customer too (so test data doesn't pile up there either)

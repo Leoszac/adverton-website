@@ -29,12 +29,20 @@ function crm_renderHead(string $title): void {
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f4f9;color:#0e0d12}
   header.crm{background:#0e0d12;color:#fff;padding:0 22px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:10}
   header.crm .brand{font-weight:800;letter-spacing:-.01em;margin-right:18px}
-  header.crm nav{display:flex;gap:4px;flex:1}
+  header.crm nav{display:flex;gap:4px;flex:1;align-items:center;flex-wrap:wrap}
   header.crm nav a{color:#bcb6ca;text-decoration:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
   header.crm nav a:hover{color:#fff;background:#1a1820}
   header.crm nav a.cur{color:#fff;background:#1a1820}
   header.crm nav .badge{background:#dc2626;color:#fff;font-size:11px;padding:1px 7px;border-radius:999px;font-weight:700}
   header.crm nav .badge.amber{background:#f59e0b}
+  /* Dropdown groups */
+  header.crm nav .dd{position:relative}
+  header.crm nav .dd > a::after{content:' ▾';font-size:9px;opacity:.6;margin-left:1px}
+  header.crm nav .dd-menu{display:none;position:absolute;top:100%;left:0;background:#1a1820;border:1px solid #2a2730;border-radius:8px;padding:6px;min-width:180px;z-index:20;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px}
+  header.crm nav .dd-menu a{padding:8px 12px;border-radius:6px;font-size:13px;color:#bcb6ca;white-space:nowrap}
+  header.crm nav .dd-menu a:hover{color:#fff;background:#2a2730}
+  header.crm nav .dd-menu a.cur{color:#fff;background:#2a2730}
+  header.crm nav .dd:hover .dd-menu,header.crm nav .dd:focus-within .dd-menu{display:flex}
   header.crm .right{font-size:13px;color:#bcb6ca}
   header.crm .right a{color:#fff;text-decoration:none;margin-left:14px;border-bottom:1px dotted #6b6877}
   main{max-width:1280px;margin:0 auto;padding:22px}
@@ -61,9 +69,21 @@ function crm_renderHeader(array $user, string $current = ''): void {
     ?>
 <header class="crm">
   <div class="brand">Adverton CRM</div>
+  <?php
+    $isFounder = (($user['role'] ?? '') === 'founder');
+    $inLeadsGroup    = in_array($current, ['leads','pipeline'], true);
+    $inNurtureGroup  = in_array($current, ['nurture','templates','sequences'], true);
+    $inSettingsGroup = in_array($current, ['routing','integrations','account'], true);
+  ?>
   <nav>
-    <a href="/crm/" class="<?= $current==='leads'?'cur':'' ?>">Leads</a>
-    <a href="/crm/pipeline.php" class="<?= $current==='pipeline'?'cur':'' ?>">Pipeline</a>
+    <!-- Leads group: list + kanban -->
+    <div class="dd">
+      <a href="/crm/" class="<?= $inLeadsGroup?'cur':'' ?>">Leads</a>
+      <div class="dd-menu">
+        <a href="/crm/" class="<?= $current==='leads'?'cur':'' ?>">All leads</a>
+        <a href="/crm/pipeline.php" class="<?= $current==='pipeline'?'cur':'' ?>">Pipeline (kanban)</a>
+      </div>
+    </div>
     <a href="/crm/clients.php" class="<?= $current==='clients'?'cur':'' ?>">Clients</a>
     <a href="/crm/today.php" class="<?= $current==='today'?'cur':'' ?>">
       Today
@@ -72,14 +92,30 @@ function crm_renderHeader(array $user, string $current = ''): void {
       <?php endif; ?>
     </a>
     <a href="/crm/reports.php" class="<?= $current==='reports'?'cur':'' ?>">Reports</a>
-    <a href="/crm/nurture-stats.php" class="<?= $current==='nurture'?'cur':'' ?>">Nurture</a>
-    <a href="/crm/templates.php" class="<?= $current==='templates'?'cur':'' ?>">Templates</a>
-    <?php if (($user['role'] ?? '') === 'founder'): ?>
-      <a href="/crm/sequences.php">Sequences</a>
-      <a href="/crm/routing.php">Routing</a>
-      <a href="/crm/integrations.php">Integrations</a>
+    <!-- Nurture group: stats + templates + sequences -->
+    <div class="dd">
+      <a href="/crm/nurture-stats.php" class="<?= $inNurtureGroup?'cur':'' ?>">Nurture</a>
+      <div class="dd-menu">
+        <a href="/crm/nurture-stats.php" class="<?= $current==='nurture'?'cur':'' ?>">Stats &amp; funnels</a>
+        <a href="/crm/templates.php" class="<?= $current==='templates'?'cur':'' ?>">Email templates</a>
+        <?php if ($isFounder): ?>
+          <a href="/crm/sequences.php" class="<?= $current==='sequences'?'cur':'' ?>">Sequences (founder)</a>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php if ($isFounder): ?>
+      <!-- Settings group (founder only): config-like items -->
+      <div class="dd">
+        <a href="/crm/account.php" class="<?= $inSettingsGroup?'cur':'' ?>">⚙️ Settings</a>
+        <div class="dd-menu">
+          <a href="/crm/account.php" class="<?= $current==='account'?'cur':'' ?>">Account · 2FA</a>
+          <a href="/crm/routing.php" class="<?= $current==='routing'?'cur':'' ?>">Lead routing</a>
+          <a href="/crm/integrations.php" class="<?= $current==='integrations'?'cur':'' ?>">Integrations · API keys</a>
+        </div>
+      </div>
+    <?php else: ?>
+      <a href="/crm/account.php" title="Account · password · 2FA" style="font-size:14px">⚙️</a>
     <?php endif; ?>
-    <a href="/crm/account.php" title="Account · password · 2FA" style="margin-left:auto;font-size:14px">⚙️</a>
     <?php
     $newCount = crm_newLeadsSinceLastSeen((int)$user['id']);
     if ($newCount > 0): ?>

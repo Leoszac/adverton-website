@@ -290,27 +290,24 @@ function intake_step4(array $intake): void {
 function intake_step5(array $intake): void {
     $colors = $intake['brand_colors_decoded'] ?? [];
     ?>
-    <p class="lede">Brand stuff. Mostly optional — we have defaults that look great.</p>
+    <p class="lede">Photos and brand. Both optional — if you skip, we use sensible defaults that look great for your trade.</p>
 
-    <label>Photos folder URL <span class="opt">(Google Drive, Dropbox, etc.)</span></label>
+    <label>Photos of your work, team, or trucks <span class="opt">(optional)</span></label>
     <input type="url" name="photos_drive_url" maxlength="500" placeholder="https://drive.google.com/drive/folders/..." value="<?= intake_h($intake['photos_drive_url'] ?? '') ?>">
-    <div class="help">Or just email photos to <strong>assets@adverton.net</strong> anytime — our AI sorts them automatically.</div>
+    <div class="help">Paste a Google Drive, Dropbox, or any folder link — make sure it's set to "anyone with the link can view". Or just email photos to <strong>assets@adverton.net</strong> anytime — our AI sorts them automatically.</div>
 
-    <label style="margin-top:18px">Brand colors (optional)</label>
+    <label style="margin-top:24px">Brand colors <span class="opt">(optional — leave blank if you don't have any)</span></label>
     <div class="row2">
       <div>
-        <label style="margin:0;font-weight:400;font-size:12px">Primary</label>
-        <input type="text" name="color_primary" placeholder="#6d28d9" maxlength="9" value="<?= intake_h($colors['primary'] ?? '') ?>">
+        <label style="margin:0;font-weight:400;font-size:12px;color:#6b6877">Main color</label>
+        <input type="text" name="color_primary" placeholder="#1a73e8" maxlength="9" value="<?= intake_h($colors['primary'] ?? '') ?>">
       </div>
       <div>
-        <label style="margin:0;font-weight:400;font-size:12px">Accent</label>
+        <label style="margin:0;font-weight:400;font-size:12px;color:#6b6877">Accent color</label>
         <input type="text" name="color_accent" placeholder="#f59e0b" maxlength="9" value="<?= intake_h($colors['accent'] ?? '') ?>">
       </div>
     </div>
-    <div class="help">Hex codes (#abc123). Leave blank to use ours — we'll pick something on-brand for the trade.</div>
-
-    <label>Logo file path <span class="opt">(optional, internal use only)</span></label>
-    <input type="text" name="brand_logo_path" maxlength="255" placeholder="set after the photos folder is processed" value="<?= intake_h($intake['brand_logo_path'] ?? '') ?>">
+    <div class="help">Hex codes like <code style="background:#f3f1f8;padding:1px 5px;border-radius:3px;font-size:12px">#1a73e8</code>. <strong>No idea what hex is?</strong> Leave both blank — we'll pick something on-brand for your trade automatically.</div>
 <?php
 }
 
@@ -484,14 +481,20 @@ function crm_intakeNormalizePost(array $post, int $step): array {
                 ],
             ];
         case 5:
-            return [
+            $out = [
                 'photos_drive_url'  => trim((string)($post['photos_drive_url'] ?? '')),
                 'brand_colors_json' => [
                     'primary' => trim((string)($post['color_primary'] ?? '')),
                     'accent'  => trim((string)($post['color_accent']  ?? '')),
                 ],
-                'brand_logo_path'   => trim((string)($post['brand_logo_path'] ?? '')),
             ];
+            // brand_logo_path is now operator-only (set later via /crm/client.php
+            // after photos are processed) — only write if explicitly POSTed,
+            // never overwrite with empty.
+            if (isset($post['brand_logo_path'])) {
+                $out['brand_logo_path'] = trim((string)$post['brand_logo_path']);
+            }
+            return $out;
         case 6:
             $comps = array_values(array_filter(array_map('trim',
                 $post['competitors'] ?? [])));
