@@ -365,26 +365,54 @@ function intake_step7(array $intake): void {
             'for'   => 'Best for: landscaping, painting, remodeling, hardscaping',
         ],
     ];
+    // Page menu order — must match the template nav: Home, About, Services,
+    // Service Area, Contact. The preview thumbnails are rendered in this order.
+    $pageOrder = [
+        'home'         => 'Home',
+        'about'        => 'About',
+        'services'     => 'Services',
+        'service-area' => 'Service Area',
+        'contact'      => 'Contact',
+    ];
     ?>
-    <p class="lede">Pick the layout that fits the business. We can swap later if it doesn't feel right.</p>
+    <p class="lede">Each option is a 5-page website. Pick the layout that fits the business — we can swap later if it doesn't feel right.</p>
 
-    <div class="tile-grid">
-      <?php foreach ($tiles as $key => $t): ?>
-        <label class="tile <?= $sel===$key?'sel':'' ?>" style="display:block">
-          <input type="radio" name="template_choice" value="<?= intake_h($key) ?>" <?= $sel===$key?'checked':'' ?> style="display:none">
-          <h3><?= intake_h($t['title']) ?></h3>
-          <p><?= intake_h($t['desc']) ?></p>
-          <div class="for"><?= intake_h($t['for']) ?></div>
-        </label>
-      <?php endforeach; ?>
-    </div>
+    <style>
+      .tpl-tile{border:2px solid #e7e4ee;border-radius:12px;padding:18px;cursor:pointer;background:#fff;margin-bottom:14px;display:block}
+      .tpl-tile.sel{border-color:#6d28d9;background:#faf5ff}
+      .tpl-tile h3{margin:0 0 4px;font-size:17px}
+      .tpl-tile .desc{margin:0 0 12px;color:#6b6877;font-size:13px;line-height:1.5}
+      .tpl-tile .pages{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0 10px}
+      @media(max-width:600px){.tpl-tile .pages{grid-template-columns:repeat(3,1fr)}}
+      @media(max-width:380px){.tpl-tile .pages{grid-template-columns:repeat(2,1fr)}}
+      .tpl-tile .page-thumb{display:flex;flex-direction:column;align-items:center;gap:4px}
+      .tpl-tile .page-thumb img{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:top center;border:1px solid #e7e4ee;border-radius:6px;background:#faf9ff}
+      .tpl-tile .page-thumb span{font-size:11px;color:#6b6877;font-weight:600;text-align:center}
+      .tpl-tile .for{font-size:11px;color:#6d28d9;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:8px}
+    </style>
+
+    <?php foreach ($tiles as $key => $t): ?>
+      <label class="tpl-tile <?= $sel===$key?'sel':'' ?>">
+        <input type="radio" name="template_choice" value="<?= intake_h($key) ?>" <?= $sel===$key?'checked':'' ?> style="display:none">
+        <h3><?= intake_h($t['title']) ?></h3>
+        <p class="desc"><?= intake_h($t['desc']) ?></p>
+        <div class="pages">
+          <?php foreach ($pageOrder as $slug => $label): ?>
+            <div class="page-thumb">
+              <img src="/crm/web-templates/previews/<?= intake_h($key) ?>_<?= intake_h($slug) ?>.png" alt="<?= intake_h($label) ?> preview" loading="lazy">
+              <span><?= intake_h($label) ?></span>
+            </div>
+          <?php endforeach; ?>
+        </div>
+        <div class="for"><?= intake_h($t['for']) ?></div>
+      </label>
+    <?php endforeach; ?>
 
     <script>
-    // Highlight the selected tile on click without waiting for re-render
-    document.querySelectorAll('.tile input').forEach(function(r){
+    document.querySelectorAll('.tpl-tile input').forEach(function(r){
       r.addEventListener('change', function(){
-        document.querySelectorAll('.tile').forEach(function(t){t.classList.remove('sel')});
-        r.closest('.tile').classList.add('sel');
+        document.querySelectorAll('.tpl-tile').forEach(function(t){t.classList.remove('sel')});
+        r.closest('.tpl-tile').classList.add('sel');
       });
     });
     </script>
