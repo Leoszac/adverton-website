@@ -168,11 +168,12 @@ function crm_deployAdapterWordpress(string $html, array $cred, array $client): a
     return ['ok' => true, 'url' => (string)($data['link'] ?? $base), 'error' => null];
 }
 
-// Custom adapter — host doesn't fit our patterns; we fall back to creating
-// an operator task with the rendered HTML attached for manual upload.
+// Custom adapter — host doesn't fit our patterns. The dispatcher logs the
+// failure to client_events; the operator picks it up from /crm/today.php
+// and uploads the rendered HTML by hand.
 function crm_deployAdapterCustom(string $html, array $cred, array $client): array {
     return ['ok' => false, 'url' => null,
-            'error' => 'Custom hosting — manual deploy required. Operator task created.'];
+            'error' => 'Custom hosting — manual deploy required. Check client_events log for details.'];
 }
 
 // Tasks that fire automatically on a successful deploy. Operator handles

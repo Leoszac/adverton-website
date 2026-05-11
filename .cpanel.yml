@@ -20,6 +20,9 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/patch-nurture-tail-task.php
     - /bin/rm -f $DEPLOYPATH/crm/_cleanup-files.php
     - /bin/rm -f $DEPLOYPATH/crm/setup-cron.php
+    # _run-v12.php — schema-v12 one-shot migration runner. Self-destructs after
+    # a clean apply (see file). Re-enable the rm below once it's been triggered.
+    # - /bin/rm -f $DEPLOYPATH/crm/_run-v12.php
     # Belt-and-suspenders rm of one-shot scripts that already ran successfully.
     # Files no longer in repo; these guard against accidental server-side leftovers.
     - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php

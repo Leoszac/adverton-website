@@ -51,6 +51,21 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title><?= $h($name) ?> — <?= $h($hero['headline'] ?? '') ?></title>
 <meta name="description" content="<?= $h($hero['subheadline'] ?? '') ?>">
+<?php
+$_schemaAddr = trim(implode(', ', array_filter([
+    (string)($client['billing_address'] ?? ''),
+    (string)($client['billing_city'] ?? ''),
+    trim((string)($client['billing_state'] ?? '') . ' ' . (string)($client['billing_zip'] ?? ''))
+])));
+$_googleUrl = (string)(($intake['reviews_links_decoded'] ?? [])['google'] ?? '');
+$_schema = ['@context' => 'https://schema.org', '@type' => 'LocalBusiness', 'name' => $name, 'description' => (string)($hero['subheadline'] ?? '')];
+if ($phone) $_schema['telephone'] = $phone;
+if ($_schemaAddr) $_schema['address'] = ['@type' => 'PostalAddress', 'streetAddress' => $_schemaAddr];
+$_schemaSvcs = array_values(array_filter(array_map(fn($s) => (string)($s['name'] ?? ''), (array)$services)));
+if ($_schemaSvcs) $_schema['makesOffer'] = array_map(fn($s) => ['@type' => 'Offer', 'name' => $s], $_schemaSvcs);
+if ($_googleUrl) $_schema['sameAs'] = [$_googleUrl];
+?>
+<script type="application/ld+json"><?= json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <style>
   :root{--primary:<?= $h($primary) ?>;--accent:<?= $h($accent) ?>;--ink:#1f2937;--ink-2:#374151;--ink-3:#6b7280;--bg:#fafaf9;--card:#fff;--line:#e7e5e4}
   *{box-sizing:border-box}
@@ -113,8 +128,19 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
   .final-cta h2{margin:0 0 14px;font-size:32px;font-family:Georgia,serif;font-weight:400}
   .final-cta p{margin:0 0 26px;color:#fff;opacity:0.9;font-size:17px}
   .final-cta a{display:inline-block;background:#fff;color:var(--primary);padding:14px 28px;border-radius:9px;font-weight:700;font-size:16px;font-family:-apple-system,sans-serif}
+  /* Contact form */
+  .contact{padding:64px 0;background:var(--bg)}
+  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+  @media(max-width:780px){.contact-grid{grid-template-columns:1fr}}
+  .contact h2{margin:0 0 14px;font-size:30px;font-family:Georgia,serif;font-weight:400}
+  .form{display:flex;flex-direction:column;gap:12px;font-family:-apple-system,sans-serif;font-size:16px}
+  .form input,.form textarea{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:9px;font-family:inherit;font-size:16px;box-sizing:border-box;background:#fff}
+  .form input:focus,.form textarea:focus{outline:none;border-color:var(--primary)}
+  .form .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.form .row2{grid-template-columns:1fr}}
   footer.site{background:var(--ink);color:#9ca3af;padding:30px 0;font-size:14px}
   footer.site .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
+  footer.site a{color:#d1d5db;margin-right:14px}
   @media(max-width:520px){.hero h1{font-size:32px}.about h2,.services h2,.process h2,.faq h2,.final-cta h2{font-size:24px}.stat{font-size:48px}}
 </style>
 </head>
@@ -204,16 +230,50 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
 </div></section>
 <?php endif; ?>
 
-<section class="final-cta" id="contact"><div class="wrap">
+<section class="final-cta"><div class="wrap">
   <h2>Ready to start?</h2>
   <p>Free estimates. We'll come out, listen, and tell you straight if it's a fit.</p>
   <?php if ($phone): ?><a href="tel:<?= $h($phoneTel) ?>"><?= $h($phone) ?></a><?php endif; ?>
 </div></section>
 
+<!-- Contact -->
+<section class="contact" id="contact"><div class="wrap"><div class="contact-grid">
+  <div>
+    <h2>Tell us about your project</h2>
+    <p style="color:var(--ink-2);font-size:17px">A few sentences about what you're picturing. We'll come out for a free walkthrough.</p>
+    <?php if ($phone): ?>
+      <p style="margin-top:18px;color:var(--ink-2);font-family:-apple-system,sans-serif"><strong>Or call:</strong> <a href="tel:<?= $h($phoneTel) ?>" style="color:var(--primary);font-weight:700"><?= $h($phone) ?></a></p>
+    <?php endif; ?>
+  </div>
+  <form action="https://adverton.net/crm/client-form-submit.php?client_id=<?= (int)$client['id'] ?>" method="post" class="form">
+    <input type="hidden" name="redirect" value="1">
+    <input type="text" name="hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+    <input type="text" name="name" placeholder="Your name" required>
+    <div class="row2">
+      <input type="tel" name="phone" placeholder="Phone" required>
+      <input type="email" name="email" placeholder="Email">
+    </div>
+    <textarea name="message" placeholder="What are you thinking of building / fixing / changing?" rows="4"></textarea>
+    <button type="submit" style="background:var(--primary);color:#fff;padding:14px 22px;border-radius:9px;font-weight:700;font-size:16px;cursor:pointer;border:0;font-family:inherit">Send →</button>
+  </form>
+</div></div></section>
+
+<!-- Map placeholder — operator: uncomment + paste Google Maps Embed API key + address at onboarding
+<section style="padding:0"><iframe width="100%" height="320" frameborder="0" loading="lazy" src="https://www.google.com/maps/embed/v1/place?key=YOUR_KEY&q=YOUR_ADDRESS"></iframe></section>
+-->
+
 <footer class="site"><div class="wrap row">
   <div><strong style="color:#fff"><?= $h($name) ?></strong> · <?= $h((string)($copy['footer_blurb'] ?? '')) ?></div>
-  <div>© <?= date('Y') ?></div>
+  <div>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    © <?= date('Y') ?>
+  </div>
 </div></footer>
+
+<!-- CallRail tracking — operator: paste your CallRail swap.js script tag below at onboarding
+<script async src="//cdn.callrail.com/companies/YOUR_COMPANY_ID/swap.js"></script>
+-->
 
 </body>
 </html>
