@@ -22,8 +22,9 @@ function crm_renderTemplate_speed_first(array $client, array $intake, array $cop
     $emergency = !empty($intake['emergency_24_7']);
 
     $colors  = (array)($intake['brand_colors_decoded'] ?? []);
-    $primary = $colors['primary'] ?? '#dc2626';
-    $accent  = $colors['accent']  ?? '#f59e0b';
+    // ?? only handles null/unset; wizard saves "" for blank inputs, so check empty.
+    $primary = !empty($colors['primary']) ? $colors['primary'] : '#dc2626';
+    $accent  = !empty($colors['accent'])  ? $colors['accent']  : '#f59e0b';
 
     $reviews    = (array)($intake['reviews_links_decoded'] ?? []);
     $googleUrl  = (string)($reviews['google'] ?? '');

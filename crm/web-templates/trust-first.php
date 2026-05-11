@@ -28,8 +28,11 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
     $footerBlurb = (string)($copy['footer_blurb'] ?? '');
 
     $colors = (array)($intake['brand_colors_decoded'] ?? []);
-    $primary = $colors['primary'] ?? '#6d28d9';
-    $accent  = $colors['accent']  ?? '#f59e0b';
+    // ?? only handles null/unset; the wizard saves "" for blank inputs, so
+    // fall back when empty too — otherwise `--primary:;` renders invalid CSS
+    // and the whole color system unravels.
+    $primary = !empty($colors['primary']) ? $colors['primary'] : '#6d28d9';
+    $accent  = !empty($colors['accent'])  ? $colors['accent']  : '#f59e0b';
 
     $reviews    = (array)($intake['reviews_links_decoded'] ?? []);
     $googleUrl  = (string)($reviews['google'] ?? '');
