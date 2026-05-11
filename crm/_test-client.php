@@ -29,6 +29,28 @@ $action = (string)($_GET['action'] ?? 'create');
 $db = crm_db();
 $now = date('Y-m-d H:i:s');
 
+if ($action === 'status') {
+    $stmt = $db->query("SELECT id, business_name, status, magic_token FROM clients WHERE business_name LIKE 'Test Acme%' ORDER BY id DESC LIMIT 1");
+    $row = $stmt->fetch();
+    if (!$row) {
+        echo "No test client found. Run ?action=create first.\n";
+        exit;
+    }
+    $cid = (int)$row['id'];
+    $iStmt = $db->prepare("SELECT status, current_step FROM client_intake WHERE client_id = ?");
+    $iStmt->execute([$cid]);
+    $intake = $iStmt->fetch();
+
+    echo "=== TEST CLIENT ===\n";
+    echo "Client ID:    #{$cid}\n";
+    echo "Business:     {$row['business_name']}\n";
+    echo "Client status:{$row['status']}\n";
+    echo "Intake status:" . ($intake['status'] ?? 'no row') . " (step " . ($intake['current_step'] ?? '?') . "/8)\n";
+    echo "\n=== KICKOFF MAGIC LINK (for you to fill the 8 steps) ===\n";
+    echo "https://adverton.net/kickoff?t=" . urlencode((string)$row['magic_token']) . "\n";
+    exit;
+}
+
 if ($action === 'cleanup') {
     // Find all test clients
     $stmt = $db->query("SELECT id, business_name FROM clients WHERE business_name LIKE 'Test Acme%'");
