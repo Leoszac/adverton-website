@@ -613,8 +613,16 @@ case 'intake_save': {
                 . '&step=1&err=' . urlencode("Missing: {$first}"));
             exit;
         }
-        crm_logActivity(null, (int)$user['id'], 'system', 'kickoff_completed',
-            'Operator completed kickoff intake for client #' . $clientId);
+        // crm_logActivity requires a non-null lead_id (column is NOT NULL +
+        // FK). Look up the originating lead from the client row; skip the
+        // log if there isn't one (defensive — shouldn't happen in practice).
+        $clientForLog = crm_getClient($clientId);
+        $leadIdForLog = $clientForLog && !empty($clientForLog['lead_id'])
+            ? (int)$clientForLog['lead_id'] : null;
+        if ($leadIdForLog) {
+            crm_logActivity($leadIdForLog, (int)$user['id'], 'system', 'kickoff_completed',
+                'Operator completed kickoff intake for client #' . $clientId);
+        }
         header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
     } else {
         header('Location: /crm/client-kickoff.php?id=' . $clientId . '&step=' . ($step + 1));

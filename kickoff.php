@@ -70,8 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: /kickoff?t=' . urlencode($token) . '&step=1&err=' . urlencode("Almost there — please complete {$first}."));
             exit;
         }
-        crm_logActivity(null, null, 'system', 'kickoff_completed',
-            'Client completed kickoff intake (client #' . $clientId . ')');
+        // crm_logActivity needs a non-null lead_id. Look up from client.
+        $leadIdForLog = $client && !empty($client['lead_id']) ? (int)$client['lead_id'] : null;
+        if ($leadIdForLog) {
+            crm_logActivity($leadIdForLog, null, 'system', 'kickoff_completed',
+                'Client completed kickoff intake (client #' . $clientId . ')');
+        }
         // One-time invalidation so the link isn't reusable
         crm_invalidateMagicToken('client', $clientId);
         header('Location: /kickoff-thank-you.html');
