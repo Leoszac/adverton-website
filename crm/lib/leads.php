@@ -336,11 +336,23 @@ function crm_listLeads(array $filters = [], int $limit = 50, int $offset = 0, st
     // 'stale'      = oldest leads first (by last update or creation).
     // 'score'      = computed lead_score (we sort in PHP after the SELECT
     //                because score is a PHP function, not a SQL expression).
-    $orderBy = match ($sort) {
-        'engagement' => 'COALESCE(es.clicks,0) * 3 + COALESCE(es.opens,0) DESC, l.created_at DESC',
-        'stale'      => 'l.updated_at ASC',
-        default      => 'l.created_at DESC',  // 'created' or unknown
-    };
+    // PHP 7.4-compatible switch (NOT match) — this file is required by
+    // cron-sequences/cron-calendly/cron-lost-reengagement which run under
+    // /usr/local/bin/php = PHP 7.4.33 CLI. PHP 8+ syntax (match, nullsafe,
+    // str_contains, etc.) silently parse-errors the cron and the empty log
+    // file gives no clue what broke. Web (LSAPI/PHP-FPM) is on PHP 8 so it
+    // would run match fine — keep this file CLI-safe regardless.
+    switch ($sort) {
+        case 'engagement':
+            $orderBy = 'COALESCE(es.clicks,0) * 3 + COALESCE(es.opens,0) DESC, l.created_at DESC';
+            break;
+        case 'stale':
+            $orderBy = 'l.updated_at ASC';
+            break;
+        default:
+            $orderBy = 'l.created_at DESC';  // 'created' or unknown
+            break;
+    }
 
     $sql = "SELECT l.id, l.source, l.source_page, l.first_name, l.last_name, l.email, l.phone,
                    l.business_name, l.trade, l.audit_score, l.status, l.owner_user_id,
