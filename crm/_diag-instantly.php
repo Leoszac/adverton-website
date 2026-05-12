@@ -60,14 +60,24 @@ try {
 }
 echo "\n";
 
-echo "=== Run cron-instantly-health.php directly (same way cron daemon does) ===\n";
-echo "Command: $phpBin $cronScript\n";
+echo "=== Run cron-instantly-health.php WITH display_errors=1 ===\n";
+$cmd = "$phpBin -d display_errors=1 -d error_reporting=E_ALL $cronScript 2>&1; echo \"---EXIT---\$?\"";
+echo "Command: $cmd\n";
 $start = microtime(true);
-$out = (string) shell_exec("$phpBin $cronScript 2>&1; echo \"---EXIT---\$?\"");
+$out = (string) shell_exec($cmd);
 $dur = round((microtime(true) - $start) * 1000);
 echo "Duration: {$dur}ms\n";
 echo "Output:\n";
 echo $out;
+echo "\n";
+
+echo "=== Try requiring lib/instantly.php in isolation ===\n";
+$probeCmd = "$phpBin -d display_errors=1 -d error_reporting=E_ALL -r \"define('CRM_ENTRY',1); require '/home2/advertonnet/public_html/crm/lib/db.php'; require '/home2/advertonnet/public_html/crm/lib/instantly.php'; echo 'loaded OK\\n';\" 2>&1; echo \"---EXIT---\$?\"";
+echo (string) shell_exec($probeCmd);
+echo "\n";
+
+echo "=== Tail of PHP error_log (if any) ===\n";
+echo (string) shell_exec("find /home2/advertonnet -maxdepth 3 -name 'error_log' -mmin -1440 2>/dev/null | xargs -I {} sh -c 'echo \"== {} ==\"; tail -20 {}' 2>&1 | head -60");
 echo "\n";
 
 echo "=== Log mtime after manual run ===\n";
