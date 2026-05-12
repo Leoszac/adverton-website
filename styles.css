@@ -103,25 +103,63 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 }
 .nav-link-pill:hover { color: var(--purple-dark) !important; }
 
-/* Mobile nav: hide secondary links + dropdown, but KEEP the lead-magnet pill
-   visible. Without this the mobile visitor has no way to reach /growth-engine
-   from any other page on the site. */
+/* Hamburger — checkbox-hack, no JS. The <input.nav-burger-input> is hidden
+   sibling of <label.nav-burger>. Below 800px the label is the visible
+   button, the nav-links / nav-cta panel slides into view when checked. */
+.nav-burger-input { display: none; }
+.nav-burger { display: none; cursor: pointer; padding: 8px 6px; user-select: none; -webkit-tap-highlight-color: transparent; }
+.nav-burger span { display: block; width: 26px; height: 2.5px; background: var(--ink); margin: 5px 0; border-radius: 2px; transition: transform .25s, opacity .2s; }
+
+/* Mobile (≤800px): hamburger visible, nav-links + cta hidden by default,
+   shown when the burger is checked. Industries dropdown becomes inline. */
 @media (max-width: 800px) {
-  .nav-links { gap: 0; }
-  .nav-links > a:not(.nav-link-pill),
-  .nav-links > .dropdown { display: none; }
-  .nav-link-pill {
-    background: var(--purple-tint);
-    padding: 7px 14px;
-    border-radius: 100px;
-    font-size: 13px !important;
+  .nav-inner { flex-wrap: wrap; position: relative; }
+  .nav-burger { display: inline-flex; flex-direction: column; }
+  .nav-links {
+    display: none !important;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--line);
+    margin-top: 8px;
   }
+  .nav-cta {
+    display: none !important;
+    width: 100%;
+    padding: 4px 0 12px;
+    justify-content: stretch;
+  }
+  .nav-cta .btn { width: 100%; text-align: center; }
+  .nav-burger-input:checked ~ .nav-links { display: flex !important; }
+  .nav-burger-input:checked ~ .nav-cta   { display: flex !important; }
+  /* Restore links that were previously hidden by the old mobile rule */
+  .nav-links > a:not(.nav-link-pill),
+  .nav-links > .dropdown { display: block; }
+  .nav-links > a, .nav-links > .dropdown > .dropdown-trigger {
+    padding: 12px 8px; font-size: 15px; width: 100%; text-align: left;
+  }
+  /* Dropdown becomes inline (always-open) on mobile — no hover on touch */
+  .dropdown-menu {
+    position: static; opacity: 1; visibility: visible; transform: none;
+    box-shadow: none; border: 0; padding: 0 0 0 16px; margin: 0 0 8px;
+    background: transparent; min-width: 0;
+  }
+  .dropdown-menu a { padding: 8px 10px; font-size: 14px; }
+  .nav-link-pill {
+    background: var(--purple-tint); padding: 10px 14px; border-radius: 8px;
+    margin: 6px 0; font-size: 14px !important; text-align: center;
+  }
+  /* Animated X when burger is checked */
+  .nav-burger-input:checked ~ .nav-burger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .nav-burger-input:checked ~ .nav-burger span:nth-child(2) { opacity: 0; }
+  .nav-burger-input:checked ~ .nav-burger span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
 }
 @media (max-width: 480px) {
-  .nav-inner { height: 60px; }
+  .nav-inner { min-height: 60px; }
   .nav-logo img { height: 28px; }
-  .nav-cta .btn { padding: 9px 14px; font-size: 13px; }
-  .nav-link-pill { padding: 6px 11px; font-size: 12px !important; }
+  .nav-cta .btn { padding: 12px 14px; font-size: 14px; }
 }
 
 .hero {
