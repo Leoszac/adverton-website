@@ -56,7 +56,8 @@ function crm_stripeRequest(string $method, string $path, array $params = []): ar
 
     $method = strtoupper($method);
     if ($method === 'GET') {
-        if ($params) $opts[CURLOPT_URL] .= (str_contains($url, '?') ? '&' : '?') . http_build_query($params);
+        // strpos !== false — PHP 7.4 CLI-safe (str_contains is PHP 8+).
+        if ($params) $opts[CURLOPT_URL] .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($params);
     } else {
         $opts[CURLOPT_CUSTOMREQUEST] = $method;
         if ($params) $opts[CURLOPT_POSTFIELDS] = http_build_query($params);

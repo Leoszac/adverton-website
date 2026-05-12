@@ -234,7 +234,9 @@ function crm_postDeployTaskTitles(): array {
 // FTPS-implicit on port 990; cPanel uses FTPES which curl picks via flags.
 function crm_deployFtpUpload(string $host, string $user, string $pass,
                              string $remotePath, string $content, array $client): array {
-    if (!str_starts_with($remotePath, '/')) $remotePath = '/' . $remotePath;
+    // PHP 7.4-safe (strpos === 0) — deploy.php loaded by update.php (web on
+    // PHP 8) today but keep CLI-safe for any future cron use.
+    if (strpos($remotePath, '/') !== 0) $remotePath = '/' . $remotePath;
     $url = 'ftps://' . $host . $remotePath;
 
     $tmp = tmpfile();

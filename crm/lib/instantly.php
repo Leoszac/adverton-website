@@ -46,7 +46,9 @@ function crm_instantlyRequest(string $method, string $path, array $params = []):
     ];
 
     if ($method === 'GET') {
-        if ($params) $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($params);
+        // strpos !== false instead of str_contains — this file is loaded by
+        // cron-instantly-health.php under PHP 7.4 CLI (no str_contains).
+        if ($params) $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($params);
     } else {
         $opts[CURLOPT_CUSTOMREQUEST] = $method;
         $headers[] = 'Content-Type: application/json';
