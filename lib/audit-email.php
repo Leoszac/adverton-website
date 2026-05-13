@@ -45,7 +45,7 @@ function sendManualPendingEmail(array $form): bool {
     $bodyInner = "<p style='font-size:16px;color:" . COLOR_INK . ";margin:0 0 16px;'>Hi {$first},</p>"
                . "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;'>Thanks for requesting your free Google Business audit. We've got your info.</p>"
                . "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;'>Because you couldn't grab your Google Maps link, <strong>Leandro</strong> is going to look up your profile by hand and send the full audit within <strong>24 business hours</strong>.</p>"
-               . "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;'>If anything's urgent, just reply to this email — it goes straight to Leandro.</p>"
+               . "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;'>Want to talk in the meantime? Book a free 15-min call with me: <a href=\"https://calendly.com/meet-adverton/15\" style='color:" . COLOR_PURPLE . ";text-decoration:underline;'>calendly.com/meet-adverton/15</a>.</p>"
                . "<p style='color:" . COLOR_INK . ";margin-top:24px;'>— Leandro<br><span style='color:" . COLOR_INK_3 . ";font-size:14px;'>Adverton</span></p>";
     $html = renderEmailShell('Your audit is on the way', $bodyInner, $form['email']);
     $text = stripHtml($html);
@@ -171,7 +171,7 @@ function renderAuditEmail(array $form, array $audit, string $auditId): string {
     $body .= renderCta($cta, $ctaUrl);
 
     // 8. Sign-off
-    $body .= "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;margin:32px 0 12px;'>If anything in here doesn't make sense, just reply to this email. I read every reply.</p>";
+    $body .= "<p style='color:" . COLOR_INK_2 . ";line-height:1.6;margin:32px 0 12px;'>Want to talk through your audit with me? <strong>Book a free 15-min call</strong> — I'll walk through your score, the top fixes, and answer anything: <a href=\"https://calendly.com/meet-adverton/15\" style='color:" . COLOR_PURPLE . ";text-decoration:underline;font-weight:600;'>calendly.com/meet-adverton/15</a>.</p>";
     $body .= "<p style='color:" . COLOR_INK . ";margin:0;'>— Leo from Adverton<br><span style='color:" . COLOR_INK_3 . ";font-size:14px;'>The marketing team for U.S. home service contractors</span></p>";
 
     return renderEmailShell("Your GBP audit: {$score}/100", $body, $form['email']);
@@ -298,9 +298,9 @@ function renderEmailShell(string $title, string $bodyHtml, string $recipientEmai
         . '</tr></table></td></tr>'
         // Body
         . '<tr><td style="padding:32px 28px 16px;font-family:' . FONT_STACK . ';">' . $bodyHtml . '</td></tr>'
-        // Visual gap between body and CAN-SPAM footer (more breathing room
-        // than the border-top alone provided)
-        . '<tr><td style="padding:0 28px;"><div style="height:24px;line-height:24px;font-size:1px;color:#fff;">&nbsp;</div></td></tr>'
+        // Visual gap between body and CAN-SPAM footer (much more breathing
+        // room than the border-top alone provided — user feedback 2026-05-13)
+        . '<tr><td style="padding:0 28px;"><div style="height:48px;line-height:48px;font-size:1px;color:#fff;">&nbsp;</div></td></tr>'
         // Footer (CAN-SPAM)
         . '<tr><td style="padding:24px 28px 28px;border-top:1px solid ' . COLOR_LINE . ';font-family:' . FONT_STACK . ';font-size:12px;color:' . COLOR_INK_3 . ';line-height:1.6;">'
         . htmlEsc($whyReceiving) . '<br>'

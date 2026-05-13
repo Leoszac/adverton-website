@@ -350,6 +350,22 @@ crm_renderHeader($user, '');
       <button type="submit" class="primary">Save all integrations</button>
     </div>
   </form>
+
+  <!-- ============== Cron jobs (server-side scheduled tasks) ============== -->
+  <div class="section" style="margin-top:24px">
+    <h2>Cron jobs — server-side scheduled tasks</h2>
+    <div class="desc">
+      Adverton runs 7 managed crons (nurture sequences, Calendly sync, client triggers, lost re-engagement, health score, Instantly health, watchdog).
+      Click <strong>Sync cron jobs</strong> to install / repair them on the server crontab in one shot. Idempotent: preserves any unrelated lines, replaces only the managed ones, sets <code>CRON_TZ=America/New_York</code> so schedules fire at ET wall-clock.
+      Current status is always at <a href="/crm/_health.php" target="_blank">/crm/_health.php</a>.
+    </div>
+    <form method="post" action="/crm/update.php" style="margin-top:10px"
+          onsubmit="return confirm('Sync the 7 managed cron lines (+ CRON_TZ header) on the server crontab?\\n\\nPreserves any unrelated entries.');">
+      <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+      <input type="hidden" name="mode" value="sync_crontab">
+      <button type="submit" class="primary">🔧 Sync cron jobs</button>
+    </form>
+  </div>
 </main>
 <script>
 function copy(btn, txt){

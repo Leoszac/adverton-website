@@ -592,6 +592,17 @@ case 'routing_save': {
     exit;
 }
 
+case 'sync_crontab': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/cron-installer.php';
+    $r = crm_syncManagedCrontab();
+    $msg = $r['ok']
+        ? "Crontab synced: " . count($r['added']) . " managed lines + CRON_TZ. Preserved " . $r['preserved'] . " unrelated."
+        : "Crontab sync failed: " . ($r['error'] ?? 'unknown');
+    header('Location: /crm/integrations.php?' . ($r['ok'] ? 'saved=' : 'err=') . urlencode($msg));
+    exit;
+}
+
 case 'intake_save': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     require_once __DIR__ . '/lib/intake.php';

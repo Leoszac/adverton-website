@@ -145,7 +145,7 @@ function sendEbookDeliveryEmail(array $form, string $requestId): bool {
            . "<li>The 30-day rollout, four phases that have to happen in order</li>"
            . "</ul>";
 
-    $body .= "<p style='color:#383640;line-height:1.6;font-size:14px;margin:0 0 12px;'>If anything in here doesn't make sense, just reply to this email. I read every reply.</p>";
+    $body .= "<p style='color:#383640;line-height:1.6;font-size:14px;margin:0 0 12px;'>Want to talk through how this applies to your business? <strong>Book a free 15-min call</strong> with me: <a href=\"https://calendly.com/meet-adverton/15\" style='color:#6d28d9;text-decoration:underline;font-weight:600;'>calendly.com/meet-adverton/15</a>.</p>";
     $body .= "<p style='color:#0e0d12;margin:24px 0 0;'>— Leo from Adverton<br><span style='color:#6b6877;font-size:13px;'>The marketing team for U.S. home service contractors</span></p>";
 
     $html = renderEmailShell("Your Growth Engine guide", $body, $form['email'], [
