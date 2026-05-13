@@ -1202,7 +1202,8 @@ html, body { overflow-x: hidden; }
   /* Help dropdown (find your Maps link) — better tap targets + wrapping */
   .audit-help summary { padding: 12px 14px; font-size: 14px; }
   .audit-help-tabs { flex-wrap: wrap; gap: 6px; }
-  .audit-help-tab { flex: 1 1 auto; min-width: 130px; padding: 10px 12px; font-size: 13px; }
+  /* Tap target ≥44px (was 10px padding = 37px tall) */
+  .audit-help-tab { flex: 1 1 auto; min-width: 130px; padding: 14px 12px; font-size: 14px; min-height: 44px; }
   .audit-help-steps { font-size: 14px; padding-left: 22px; }
   .audit-help-steps li { margin-bottom: 8px; line-height: 1.5; }
 
