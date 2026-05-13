@@ -80,15 +80,23 @@ crm_renderHeader($user, '');
     <h1 style="margin:0;font-size:20px">
       <a href="/crm/client.php?id=<?= (int)$client['id'] ?>" style="color:#6b6877;text-decoration:none">‹</a>
       <?= crm_h($client['business_name'] ?? 'Client') ?>
-      <?= match ($status) {
-          'not_started','in_progress'  => '<span class="badge b-prog">Kickoff in progress</span>',
-          'ready_for_ai'               => '<span class="badge b-ready">Ready to generate</span>',
-          'ai_generated'               => '<span class="badge b-gen">AI draft ready</span>',
-          'pending_approval'           => '<span class="badge b-gen">Pending approval</span>',
-          'approved'                   => '<span class="badge b-appr">Approved</span>',
-          'deployed'                   => '<span class="badge b-appr">Live</span>',
-          default                      => '<span class="badge b-not">' . crm_h($status) . '</span>',
-      } ?>
+      <?php
+        // Smarter "ready_for_ai" label: if a draft already exists (e.g. operator
+        // re-opened the kickoff wizard after AI gen), say "Ready to re-generate"
+        // so the operator isn't confused by the old "Last AI gen" timestamp.
+        $hasDraft = !empty($intake['ai_drafts_json']);
+        echo match ($status) {
+            'not_started','in_progress'  => '<span class="badge b-prog">Kickoff in progress</span>',
+            'ready_for_ai'               => $hasDraft
+                ? '<span class="badge b-ready">Ready to re-generate</span>'
+                : '<span class="badge b-ready">Ready to generate</span>',
+            'ai_generated'               => '<span class="badge b-gen">AI draft ready</span>',
+            'pending_approval'           => '<span class="badge b-gen">Pending approval</span>',
+            'approved'                   => '<span class="badge b-appr">Approved</span>',
+            'deployed'                   => '<span class="badge b-appr">Live</span>',
+            default                      => '<span class="badge b-not">' . crm_h($status) . '</span>',
+        };
+      ?>
     </h1>
   </div>
 
