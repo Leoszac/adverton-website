@@ -113,6 +113,9 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 /* Mobile (≤800px): hamburger visible, nav-links + cta hidden by default,
    shown when the burger is checked. Industries dropdown becomes inline. */
 @media (max-width: 800px) {
+  /* Force solid opaque header on mobile — the translucent rgba(.85) lets
+     hero/page text bleed through the expanded menu otherwise. */
+  .nav { background: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
   .nav-inner { flex-wrap: wrap; position: relative; }
   .nav-burger { display: inline-flex; flex-direction: column; }
   .nav-links {
