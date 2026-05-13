@@ -116,7 +116,10 @@ p.lede { font-size: 18px; color: var(--ink-2); }
   /* Force solid opaque header on mobile — the translucent rgba(.85) lets
      hero/page text bleed through the expanded menu otherwise. */
   .nav { background: #fff !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-  .nav-inner { flex-wrap: wrap; position: relative; }
+  /* Override the fixed 68px height — when the burger expands the menu,
+     the container needs to grow to fit (otherwise the menu items overflow
+     below the header, sit transparently over the hero). */
+  .nav-inner { flex-wrap: wrap; position: relative; height: auto; min-height: 68px; }
   .nav-burger { display: inline-flex; flex-direction: column; }
   .nav-links {
     display: none !important;
