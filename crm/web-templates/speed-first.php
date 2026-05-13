@@ -102,7 +102,20 @@ function crm_renderTemplate_speed_first(array $client, array $intake, array $cop
   header.site nav a{padding:8px 14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-2)}
   header.site nav a:hover{background:var(--soft);color:var(--primary)}
   header.site nav a.active{background:var(--soft);color:var(--primary)}
-  @media(max-width:760px){header.site nav a{padding:6px 10px;font-size:13px}}
+  /* Hamburger — CSS-only checkbox hack */
+  header.site .nav-burger-input{display:none}
+  header.site .nav-burger{display:none;cursor:pointer;padding:8px 6px;user-select:none;-webkit-tap-highlight-color:transparent}
+  header.site .nav-burger span{display:block;width:26px;height:2.5px;background:var(--ink);margin:5px 0;border-radius:2px;transition:transform .25s,opacity .2s}
+  @media(max-width:760px){
+    header.site .row{flex-wrap:wrap;position:relative}
+    header.site .nav-burger{display:inline-flex;flex-direction:column;margin-left:auto}
+    header.site nav{display:none !important;width:100%;flex-direction:column;align-items:stretch;gap:0;padding:8px 0 12px;border-top:1px solid var(--line);margin-top:10px}
+    header.site .nav-burger-input:checked ~ nav{display:flex !important}
+    header.site nav a{padding:12px 14px;font-size:15px;text-align:left;width:100%;border-radius:8px}
+    header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+    header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(2){opacity:0}
+    header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+  }
   /* Page header */
   .pagehead{background:linear-gradient(180deg,#fff 0%,var(--soft) 100%);padding:50px 0 40px;text-align:center}
   .pagehead h1{margin:0 0 8px;font-size:38px;letter-spacing:-0.02em;line-height:1.1;font-weight:800}
@@ -195,6 +208,8 @@ function crm_renderTemplate_speed_first(array $client, array $intake, array $cop
 
 <header class="site"><div class="wrap row">
   <a href="/" class="brand"><?= $h($name) ?></a>
+  <input type="checkbox" id="nav-burger" class="nav-burger-input" aria-hidden="true">
+  <label for="nav-burger" class="nav-burger" aria-label="Toggle menu"><span></span><span></span><span></span></label>
   <nav>
     <?php foreach ($nav as $key => $item): ?>
       <a href="<?= $h($item['href']) ?>" class="<?= $page === $key ? 'active' : '' ?>"><?= $h($item['label']) ?></a>
