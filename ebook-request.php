@@ -148,7 +148,10 @@ function sendEbookDeliveryEmail(array $form, string $requestId): bool {
     $body .= "<p style='color:#383640;line-height:1.6;font-size:14px;margin:0 0 12px;'>If anything in here doesn't make sense, just reply to this email. I read every reply.</p>";
     $body .= "<p style='color:#0e0d12;margin:24px 0 0;'>— Leo from Adverton<br><span style='color:#6b6877;font-size:13px;'>The marketing team for U.S. home service contractors</span></p>";
 
-    $html = renderEmailShell("Your Growth Engine guide", $body, $form['email']);
+    $html = renderEmailShell("Your Growth Engine guide", $body, $form['email'], [
+        'header_tag'    => 'Growth Engine guide',
+        'why_receiving' => "You're receiving this because you requested the Growth Engine guide at adverton.net.",
+    ]);
     $text = stripHtml($html);
     $subject = "Your Growth Engine guide is here";
     return sendEmail($form['email'], $subject, $html, $text);

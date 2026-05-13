@@ -36,6 +36,7 @@ $canonical = [
     '20 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home2/advertonnet/logs/cron-lost-reengagement.log 2>&1',
     '0 6 * * 1 /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/cron-health-score.log 2>&1',
     '0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php >> /home2/advertonnet/logs/cron-instantly-health.log 2>&1',
+    '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php >> /home2/advertonnet/logs/cron-watchdog.log 2>&1',
 ];
 
 $managedScripts = [
@@ -45,6 +46,7 @@ $managedScripts = [
     'cron-lost-reengagement.php',
     'cron-health-score.php',
     'cron-instantly-health.php',
+    'cron-watchdog.php',
 ];
 
 // ── Read current crontab ────────────────────────────────────────────────

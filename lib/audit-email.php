@@ -267,8 +267,15 @@ function renderCta(array $cta, string $ctaUrl): string {
         . '</td></tr></table>';
 }
 
-function renderEmailShell(string $title, string $bodyHtml, string $recipientEmail): string {
-    $unsubUrl = buildUnsubscribeUrl($recipientEmail);
+// renderEmailShell — shared HTML shell for transactional emails.
+// $opts:
+//   'header_tag'    — uppercase right-side label (default: "Free GBP audit")
+//   'why_receiving' — CAN-SPAM "you're receiving this because" line
+//                     (default: audit-specific)
+function renderEmailShell(string $title, string $bodyHtml, string $recipientEmail, array $opts = []): string {
+    $unsubUrl     = buildUnsubscribeUrl($recipientEmail);
+    $headerTag    = (string)($opts['header_tag']    ?? 'Free GBP audit');
+    $whyReceiving = (string)($opts['why_receiving'] ?? "You're receiving this because you requested a free Google Business audit at adverton.net.");
     return ''
         . '<!doctype html>'
         . '<html lang="en"><head><meta charset="utf-8">'
@@ -287,13 +294,16 @@ function renderEmailShell(string $title, string $bodyHtml, string $recipientEmai
         . '<img src="' . LOGO_URL . '" alt="Adverton" width="120" style="display:block;height:30px;width:auto;border:0;outline:none;">'
         . '</a>'
         . '</td>'
-        . '<td valign="middle" align="right" style="font-family:' . FONT_STACK . ';font-size:11px;color:' . COLOR_INK_3 . ';text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Free GBP audit</td>'
+        . '<td valign="middle" align="right" style="font-family:' . FONT_STACK . ';font-size:11px;color:' . COLOR_INK_3 . ';text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">' . htmlEsc($headerTag) . '</td>'
         . '</tr></table></td></tr>'
         // Body
-        . '<tr><td style="padding:32px 28px;font-family:' . FONT_STACK . ';">' . $bodyHtml . '</td></tr>'
+        . '<tr><td style="padding:32px 28px 16px;font-family:' . FONT_STACK . ';">' . $bodyHtml . '</td></tr>'
+        // Visual gap between body and CAN-SPAM footer (more breathing room
+        // than the border-top alone provided)
+        . '<tr><td style="padding:0 28px;"><div style="height:24px;line-height:24px;font-size:1px;color:#fff;">&nbsp;</div></td></tr>'
         // Footer (CAN-SPAM)
-        . '<tr><td style="padding:18px 28px 28px;border-top:1px solid ' . COLOR_LINE . ';font-family:' . FONT_STACK . ';font-size:12px;color:' . COLOR_INK_3 . ';line-height:1.6;">'
-        . 'You\'re receiving this because you requested a free Google Business audit at adverton.net.<br>'
+        . '<tr><td style="padding:24px 28px 28px;border-top:1px solid ' . COLOR_LINE . ';font-family:' . FONT_STACK . ';font-size:12px;color:' . COLOR_INK_3 . ';line-height:1.6;">'
+        . htmlEsc($whyReceiving) . '<br>'
         . 'Adverton is operated by MDS LLC · ' . htmlEsc(SENDER_ADDRESS) . '<br>'
         . '<a href="' . htmlEsc($unsubUrl) . '" style="color:' . COLOR_INK_3 . ';text-decoration:underline;">Unsubscribe</a> · '
         . '<a href="https://adverton.net/privacy.html" style="color:' . COLOR_INK_3 . ';text-decoration:underline;">Privacy Policy</a>'
