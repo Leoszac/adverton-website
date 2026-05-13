@@ -131,18 +131,26 @@
       <div class="eyebrow">For HVAC · Plumbing · Roofing · Electrical · Pest Control · Landscaping · & other trades</div>
       <h1>The whole marketing team for <span class="accent">$799/month</span>.</h1>
       <p class="lede">Website. Local Services Ads. Google Business Profile. Reviews automation. Tradio CRM. <strong>One bill — not five.</strong> No 12-month lock-in. Pricing posted, not hidden behind a sales call.</p>
-      <div class="hero-cta">
-        <a href="audit.html" class="btn btn-primary btn-arrow">Run your free GBP audit</a>
-        <a href="#contact" class="btn btn-secondary">Or book a 15-min call</a>
-      </div>
-      <div class="hero-trust">
-        <span class="hero-trust-meta">Free audit · 60 seconds · No credit card · No call required</span>
+      <form class="hero-audit-form" action="audit.html" method="GET">
+        <input
+          type="url"
+          name="gbp_url"
+          placeholder="Paste your Google Maps link…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Your Google Business Profile link">
+        <button type="submit" class="btn btn-primary btn-arrow">Run free audit</button>
+      </form>
+      <div class="hero-cta-secondary">
+        <span class="hero-trust-meta">60 seconds · No credit card · No call required</span>
+        <span class="hero-trust-meta-sep">·</span>
+        <a href="#contact" class="hero-cta-secondary-link">Or book a 15-min call →</a>
       </div>
     </div>
     <div>
       <!-- Audit score card mock — real product UI, anonymized.
            Shows the kind of output the visitor will get when they run the audit. -->
-      <div class="audit-card-mock" role="img" aria-label="Sample audit output">
+      <div class="audit-card-mock" role="img" aria-label="Sample audit output" data-target-score="70">
         <div class="audit-card-mock-head">
           <div class="audit-card-mock-pill"><span class="audit-card-mock-dot"></span>Sample audit · Adverton</div>
           <div class="audit-card-mock-print">Run yours →</div>
@@ -151,13 +159,12 @@
           <div class="audit-card-mock-gauge">
             <svg viewBox="0 0 120 120" aria-hidden="true">
               <circle cx="60" cy="60" r="50" fill="none" stroke="#f3eeff" stroke-width="12"/>
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#6d28d9" stroke-width="12"
+              <circle class="audit-card-mock-gauge-progress" cx="60" cy="60" r="50" fill="none" stroke="#6d28d9" stroke-width="12"
                       stroke-linecap="round"
-                      stroke-dasharray="220 314"
                       transform="rotate(-90 60 60)"/>
             </svg>
             <div class="audit-card-mock-gauge-num">
-              <span class="audit-card-mock-gauge-big">70</span>
+              <span class="audit-card-mock-gauge-big">0</span>
               <span class="audit-card-mock-gauge-of">/100</span>
             </div>
           </div>
@@ -167,10 +174,10 @@
           </div>
         </div>
         <div class="audit-card-mock-bars">
-          <div class="audit-card-mock-bar"><span>Reviews</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill ok" style="width:85%"></div></div><strong>85</strong></div>
-          <div class="audit-card-mock-bar"><span>Photos</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill warn" style="width:55%"></div></div><strong>55</strong></div>
-          <div class="audit-card-mock-bar"><span>Categories</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill bad" style="width:30%"></div></div><strong>30</strong></div>
-          <div class="audit-card-mock-bar"><span>Posts &amp; Q&amp;A</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill warn" style="width:45%"></div></div><strong>45</strong></div>
+          <div class="audit-card-mock-bar"><span>Reviews</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill ok" style="--bar-target:85%"></div></div><strong>85</strong></div>
+          <div class="audit-card-mock-bar"><span>Photos</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill warn" style="--bar-target:55%"></div></div><strong>55</strong></div>
+          <div class="audit-card-mock-bar"><span>Categories</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill bad" style="--bar-target:30%"></div></div><strong>30</strong></div>
+          <div class="audit-card-mock-bar"><span>Posts &amp; Q&amp;A</span><div class="audit-card-mock-bar-track"><div class="audit-card-mock-bar-fill warn" style="--bar-target:45%"></div></div><strong>45</strong></div>
         </div>
         <div class="audit-card-mock-badge">
           <div class="audit-card-mock-badge-icon">$</div>
@@ -279,49 +286,15 @@
      the $799 bundle. Linked from footer + FAQ "any surprise costs?". -->
 
 
-<section class="section how" id="how">
-  <div class="wrap">
-    <div class="how-header center" style="text-align:center;max-width:680px;margin:0 auto 40px">
-      <div class="eyebrow">How it works</div>
-      <h2>Three steps. One system running it.</h2>
-      <p class="lede" style="margin-top:12px">You don't piece this together yourself. We build it, launch it, and keep optimizing it — every month.</p>
-    </div>
+<!-- "How it works" merged into the timeline section below: the 180-day
+     timeline is the concrete answer to "how does this work?" — keeping
+     both was redundant. -->
 
-    <div class="how-wheel">
-      <!-- Center engine -->
-      <div class="how-engine">
-        <div class="how-engine-icon">⚙</div>
-        <div class="how-engine-name">Adverton</div>
-        <div class="how-engine-desc">Your account manager + tools, running it every day so you don't have to</div>
-      </div>
 
-      <!-- Three steps -->
-      <div class="how-step">
-        <div class="how-step-num">1</div>
-        <div class="week">Week 1 — Setup</div>
-        <h3>We learn your business.</h3>
-        <p>One 60-minute call. We capture your services, area, photos, and goals. You fill one form — we handle the rest.</p>
-      </div>
-      <div class="how-step">
-        <div class="how-step-num">2</div>
-        <div class="week">Weeks 2–3 — Launch</div>
-        <h3>Website live. Ads on. Phone rings.</h3>
-        <p>Website live. Google Business Profile optimized. LSA running. You start getting leads.</p>
-      </div>
-      <div class="how-step">
-        <div class="how-step-num">3</div>
-        <div class="week">Month 1 onward — Grow</div>
-        <h3>You stay on the truck. We run the marketing.</h3>
-        <p>One call a month. We adjust ads, posts, and your Google profile based on what's working. You see the booked jobs in your dashboard — no marketing tasks on your plate.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section timeline-section" id="timeline">
+<section class="section timeline-section" id="how">
   <div class="wrap">
     <div class="center" style="max-width: 720px; margin: 0 auto 48px; text-align: center;">
-      <div class="eyebrow">Your first 180 days</div>
+      <div class="eyebrow">How it works · Your first 180 days</div>
       <h2>What actually happens, week by week.</h2>
       <p class="lede" style="margin-top: 12px;">No vague "we'll get back to you next quarter." Here's exactly what we build, when it goes live, and when results show.</p>
     </div>
@@ -730,6 +703,39 @@
     var b = document.getElementById('cookie-banner'); if (b) b.classList.remove('show');
     window['ga-disable-G-SDEBS959S1'] = true;
   };
+})();
+</script>
+<script>
+// Audit-card-mock animation: fires once when the card enters viewport.
+(function(){
+  var card = document.querySelector('.audit-card-mock');
+  if (!card || !('IntersectionObserver' in window)) return;
+  // Respect users who set reduce-motion at the OS level.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    card.classList.add('in-view'); return;
+  }
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      card.classList.add('in-view');
+      // Number count-up: 0 → target over 1.2s
+      var target = parseInt(card.getAttribute('data-target-score'), 10) || 0;
+      var numEl = card.querySelector('.audit-card-mock-gauge-big');
+      if (numEl) {
+        var start = performance.now();
+        var duration = 1200;
+        (function step(now){
+          var t = Math.min(1, (now - start) / duration);
+          // Ease out cubic
+          var eased = 1 - Math.pow(1 - t, 3);
+          numEl.textContent = Math.round(target * eased);
+          if (t < 1) requestAnimationFrame(step);
+        })(start);
+      }
+      observer.unobserve(card);
+    });
+  }, { threshold: 0.3 });
+  observer.observe(card);
 })();
 </script>
 </body>

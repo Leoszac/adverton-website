@@ -550,5 +550,22 @@
 })();
 </script>
 
+<script>
+// Pre-fill GBP URL when arriving from home hero form (action=audit.html?gbp_url=...)
+(function(){
+  try {
+    var p = new URLSearchParams(window.location.search);
+    var u = p.get('gbp_url');
+    if (!u) return;
+    var input = document.getElementById('gbp_url');
+    if (!input) return;
+    input.value = u;
+    // Scroll the form into view + softly focus for the user to confirm + submit
+    var form = document.getElementById('auditForm');
+    if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (e) { /* no-op */ }
+})();
+</script>
+
 </body>
 </html>
