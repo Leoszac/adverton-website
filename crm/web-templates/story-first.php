@@ -121,6 +121,10 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
     header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
     header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(2){opacity:0}
     header.site .nav-burger-input:checked ~ .nav-burger span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+    /* Tap targets ≥44px (Apple HIG) — audit found brand/footer/phone <44px */
+    header.site .brand{display:inline-flex;align-items:center;min-height:44px;padding:8px 0}
+    footer.site a{display:inline-block;padding:14px 14px 14px 0;min-height:44px;line-height:1.2}
+    .contact .info dd a{display:inline-block;padding:8px 0;line-height:1.5;min-height:32px}
   }
   /* Page header */
   .pagehead{padding:60px 0 20px;background:var(--bg);text-align:center}
