@@ -4,7 +4,9 @@
 //
 // Schedule: */15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php
 //
-// Uses NEW_LEAD_WEBHOOK_URL (Discord/Slack-compatible JSON {content: msg}).
+// Notification: NEW_LEAD_WEBHOOK_URL (Discord/Slack-compatible
+// JSON {content: msg}) if configured; falls back to Resend email →
+// hello@adverton.net otherwise.
 // State file at logs/cron-watchdog.state dedups: don't re-alert within 6h
 // per cron so the channel doesn't spam during prolonged outages.
 
@@ -35,9 +37,13 @@ $logsDir   = '/home2/advertonnet/logs';
 $stateFile = $logsDir . '/cron-watchdog.state';
 $state     = file_exists($stateFile) ? (json_decode((string)file_get_contents($stateFile), true) ?: []) : [];
 
-$webhook = (string) crm_config('NEW_LEAD_WEBHOOK_URL');
-if ($webhook === '') {
-    echo "watchdog: NEW_LEAD_WEBHOOK_URL not set — skipping\n";
+// Notify via webhook (Discord/Slack) if configured, otherwise email via
+// Resend to hello@adverton.net so alerts always reach the operator.
+$webhook   = (string) crm_config('NEW_LEAD_WEBHOOK_URL');
+$resendKey = (string) crm_config('RESEND_API_KEY');
+$useEmail  = $webhook === '';
+if ($useEmail && $resendKey === '') {
+    echo "watchdog: no webhook AND no RESEND_API_KEY — cannot alert. Skipping.\n";
     exit;
 }
 
@@ -58,28 +64,63 @@ foreach ($crons as $name => $maxAge) {
 }
 
 if ($alerts) {
-    $lines = ["⚠️ **Adverton cron watchdog** — stale cron detected:"];
+    $lines = ["Adverton cron watchdog — stale cron detected:"];
     foreach ($alerts as $a) {
-        $lines[] = sprintf("• `%s` — %s", $a['name'], $a['reason']);
+        $lines[] = sprintf("• %s — %s", $a['name'], $a['reason']);
     }
-    $lines[] = "Check `https://adverton.net/crm/_health.php`";
-    $payload = json_encode(['content' => implode("\n", $lines)]);
+    $lines[] = "Check https://adverton.net/crm/_health.php";
+    $body = implode("\n", $lines);
 
-    $ch = curl_init($webhook);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_TIMEOUT        => 8,
-        CURLOPT_CONNECTTIMEOUT => 4,
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    if ($useEmail) {
+        // Email via Resend → hello@adverton.net
+        $from = (string)crm_config('CRM_FROM_ADDRESS') ?: 'Adverton <hello@adverton.net>';
+        $subj = "⚠️ Adverton cron stale: " . implode(', ', array_column($alerts, 'name'));
+        $html = '<p style="font-family:-apple-system,sans-serif"><strong>' . htmlspecialchars($lines[0]) . '</strong></p><ul>';
+        foreach ($alerts as $a) {
+            $html .= '<li><code>' . htmlspecialchars($a['name']) . '</code> — ' . htmlspecialchars($a['reason']) . '</li>';
+        }
+        $html .= '</ul><p><a href="https://adverton.net/crm/_health.php">Open _health.php →</a></p>';
+
+        $payload = json_encode([
+            'from'    => $from,
+            'to'      => ['hello@adverton.net'],
+            'subject' => $subj,
+            'html'    => $html,
+            'text'    => $body,
+        ]);
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $resendKey],
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $channel = "email (Resend HTTP $code)";
+    } else {
+        // Webhook (Discord/Slack-compatible)
+        $payload = json_encode(['content' => "⚠️ " . str_replace('Adverton cron watchdog', '**Adverton cron watchdog**', $body)]);
+        $ch = curl_init($webhook);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $channel = "webhook (HTTP $code)";
+    }
 
     file_put_contents($stateFile, json_encode($state));
-    echo "watchdog: " . count($alerts) . " alert(s) sent (webhook HTTP $code)\n";
+    echo "watchdog: " . count($alerts) . " alert(s) sent via " . $channel . "\n";
 } else {
     echo "watchdog: all crons healthy\n";
 }
