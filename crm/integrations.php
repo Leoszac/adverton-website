@@ -8,7 +8,11 @@ require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireRole(['founder']);
 
-$saved = ($_GET['saved'] ?? '') === '1';
+// Accept both legacy `?saved=1` (settings save) and any non-empty
+// `?saved=<message>` (cron sync passes the summary string).
+$savedRaw = (string)($_GET['saved'] ?? '');
+$saved    = ($savedRaw !== '');
+$savedMsg = ($savedRaw === '1' || $savedRaw === '') ? 'Saved.' : $savedRaw;
 
 // Load current values for each whitelisted key
 $cur = [];
@@ -52,7 +56,7 @@ crm_renderHeader($user, '');
   <h1>Integrations</h1>
   <div class="sub">Configure third-party webhooks and integration secrets. Saved values override <code>crm-config.php</code>.</div>
 
-  <?php if ($saved): ?><div class="saved">Saved.</div><?php endif; ?>
+  <?php if ($saved): ?><div class="saved"><?= crm_h($savedMsg) ?></div><?php endif; ?>
   <?php $err = (string)($_GET['err'] ?? ''); if ($err): ?>
     <div class="saved" style="background:#fee2e2;color:#991b1b">Validation error: <?= crm_h($err) ?></div>
   <?php endif; ?>
@@ -378,12 +382,12 @@ crm_renderHeader($user, '');
   <div class="section" style="margin-top:24px">
     <h2>Cron jobs — server-side scheduled tasks</h2>
     <div class="desc">
-      Adverton runs 7 managed crons (nurture sequences, Calendly sync, client triggers, lost re-engagement, health score, Instantly health, watchdog).
+      Adverton runs 8 managed crons (nurture sequences, Calendly sync, client triggers, lost re-engagement, health score, Instantly health, watchdog, DNC rescrub).
       Click <strong>Sync cron jobs</strong> to install / repair them on the server crontab in one shot. Idempotent: preserves any unrelated lines, replaces only the managed ones, sets <code>CRON_TZ=America/New_York</code> so schedules fire at ET wall-clock.
       Current status is always at <a href="/crm/_health.php" target="_blank">/crm/_health.php</a>.
     </div>
     <form method="post" action="/crm/update.php" style="margin-top:10px"
-          onsubmit="return confirm('Sync the 7 managed cron lines (+ CRON_TZ header) on the server crontab?\\n\\nPreserves any unrelated entries.');">
+          onsubmit="return confirm('Sync the 8 managed cron lines (+ CRON_TZ header) on the server crontab?\\n\\nPreserves any unrelated entries.');">
       <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
       <input type="hidden" name="mode" value="sync_crontab">
       <button type="submit" class="primary">🔧 Sync cron jobs</button>

@@ -13,6 +13,9 @@ $crons = [
     'cron-client-triggers'   => 'Daily 07:05 ET',
     'cron-lost-reengagement' => 'Daily 08:20 ET',
     'cron-health-score'      => 'Weekly Mon 06:00 ET',
+    'cron-instantly-health'  => 'Hourly :00',
+    'cron-watchdog'          => 'Every 15 min',
+    'cron-dnc-rescrub'       => 'Daily 03:00 ET',
 ];
 
 echo "=== Adverton cron health ===\n";
