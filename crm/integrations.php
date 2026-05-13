@@ -143,6 +143,29 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
+    <!-- ============== DNC Scrub (cold calling) ============== -->
+    <div class="section">
+      <h2>DNC scrub — cold-calling compliance</h2>
+      <div class="desc">Every phone imported into <a href="/crm/cold-prospects-import.php" style="color:#6d28d9">Cold Prospects</a> is checked against the National DNC Registry (federal + state lists + wireless flag + litigator list). Without an API key, the system runs in <strong>stub mode</strong> (marks everything <code>clean</code>) — do NOT cold-call until this is configured.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">DNCScrub API key</div>
+          <div class="help">Sign up at <a href="https://www.dncscrub.com" target="_blank" rel="noopener">DNCScrub.com</a> (Contact Center Compliance) or equivalent vendor. Pricing ~$0.005&ndash;$0.015/number. Required for legal cold-calling.</div>
+          <span class="badge <?= $cur['DNCSCRUB_API_KEY']['set']?'set':'unset' ?>"><?= $cur['DNCSCRUB_API_KEY']['set']?'configured':'STUB MODE' ?></span>
+        </div>
+        <div><input type="password" name="DNCSCRUB_API_KEY" value="<?= crm_h($cur['DNCSCRUB_API_KEY']['value']) ?>" placeholder="paste API token here" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">DNCScrub API URL (optional override)</div>
+          <div class="help">Default: <code>https://api.dncscrub.com/v1/scrub</code>. Override only if using a different vendor (PossibleNOW, DNC.com, etc.) with a different endpoint.</div>
+          <span class="badge <?= $cur['DNCSCRUB_API_URL']['set']?'set':'unset' ?>"><?= $cur['DNCSCRUB_API_URL']['set']?'overridden':'default' ?></span>
+        </div>
+        <div><input type="text" name="DNCSCRUB_API_URL" value="<?= crm_h($cur['DNCSCRUB_API_URL']['value']) ?>" placeholder="https://api.dncscrub.com/v1/scrub" autocomplete="off"></div>
+      </div>
+    </div>
+
     <!-- ============== OpenPhone ============== -->
     <div class="section">
       <h2>OpenPhone — auto-log calls + SMS</h2>

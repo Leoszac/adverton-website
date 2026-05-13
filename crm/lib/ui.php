@@ -72,6 +72,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
   <?php
     $isFounder = (($user['role'] ?? '') === 'founder');
     $inLeadsGroup    = in_array($current, ['leads','pipeline'], true);
+    $inColdGroup     = in_array($current, ['cold','cold-import','cold-blocked'], true);
     $inNurtureGroup  = in_array($current, ['nurture','templates','sequences'], true);
     $inSettingsGroup = in_array($current, ['routing','integrations','account'], true);
   ?>
@@ -82,6 +83,15 @@ function crm_renderHeader(array $user, string $current = ''): void {
       <div class="dd-menu">
         <a href="/crm/" class="<?= $current==='leads'?'cur':'' ?>">All leads</a>
         <a href="/crm/pipeline.php" class="<?= $current==='pipeline'?'cur':'' ?>">Pipeline (kanban)</a>
+      </div>
+    </div>
+    <!-- Cold-calling pipeline (separate from inbound leads) -->
+    <div class="dd">
+      <a href="/crm/cold-calling.php" class="<?= $inColdGroup?'cur':'' ?>">Cold</a>
+      <div class="dd-menu">
+        <a href="/crm/cold-calling.php" class="<?= $current==='cold'?'cur':'' ?>">Dialer</a>
+        <a href="/crm/cold-prospects-import.php" class="<?= $current==='cold-import'?'cur':'' ?>">Import CSV</a>
+        <a href="/crm/cold-calling.php?view=blocked" class="<?= $current==='cold-blocked'?'cur':'' ?>">Blocked (audit)</a>
       </div>
     </div>
     <a href="/crm/clients.php" class="<?= $current==='clients'?'cur':'' ?>">Clients</a>
@@ -150,6 +160,7 @@ function crm_sourceLabel(?string $source): string {
         'referral'             => 'Referral',
         'affiliate'            => 'Affiliate',
         'csv_import'           => 'CSV import',
+        'cold_call'            => 'Cold call (VA)',
     ];
     if (!$source) return '—';
     return $labels[$source] ?? str_replace('_', ' ', $source);

@@ -35,6 +35,11 @@ const CRM_DB_BACKED_KEYS = [
     'NAMECHEAP_API_KEY',
     'NAMECHEAP_CLIENT_IP',
     'NAMECHEAP_SANDBOX',
+    // Cold-calling DNC scrub (Sprint cold-call, schema-v13). When empty,
+    // crm/lib/dnc_scrub.php falls into STUB mode (returns 'clean' for all)
+    // and the import + calling pages show a yellow warning.
+    'DNCSCRUB_API_KEY',
+    'DNCSCRUB_API_URL',
     // OpenSign keys are intentionally NOT whitelisted right now — the lib
     // (crm/lib/opensign.php) is dormant pending a paid OpenSign plan. The
     // pre-contract flow uses Stripe Checkout + click-wrap T&C instead.

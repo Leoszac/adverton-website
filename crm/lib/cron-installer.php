@@ -22,6 +22,7 @@ const CRM_CANONICAL_CRONTAB = [
     '0 6 * * 1 /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/cron-health-score.log 2>&1',
     '0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php >> /home2/advertonnet/logs/cron-instantly-health.log 2>&1',
     '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php >> /home2/advertonnet/logs/cron-watchdog.log 2>&1',
+    '0 3 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-dnc-rescrub.php >> /home2/advertonnet/logs/cron-dnc-rescrub.log 2>&1',
 ];
 
 const CRM_MANAGED_CRON_SCRIPTS = [
@@ -32,6 +33,7 @@ const CRM_MANAGED_CRON_SCRIPTS = [
     'cron-health-score.php',
     'cron-instantly-health.php',
     'cron-watchdog.php',
+    'cron-dnc-rescrub.php',
 ];
 
 // Sync the user's crontab to the canonical set. Preserves any unrelated

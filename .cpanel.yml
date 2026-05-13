@@ -25,6 +25,10 @@ deployment:
     - /bin/rm -f $DEPLOYPATH/crm/_run-v10.php
     - /bin/rm -f $DEPLOYPATH/crm/_run-v11.php
     - /bin/rm -f $DEPLOYPATH/crm/_run-v12.php
+    # _run-v13.php (cold-calling pipeline schema) — self-destructs on success;
+    # this rm guards against accidental leftovers if the run failed mid-way.
+    # Comment out the line below until the first run; uncomment after.
+    # - /bin/rm -f $DEPLOYPATH/crm/_run-v13.php
     - /bin/rm -f $DEPLOYPATH/crm/_fix-cron.php
     - /bin/rm -f $DEPLOYPATH/crm/_diag-cron.php
     # _install-cron.php (CRON_TZ variant) self-destructs after success;
