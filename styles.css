@@ -152,10 +152,11 @@ p.lede { font-size: 18px; color: var(--ink-2); }
     box-shadow: none; border: 0; padding: 0 0 0 16px; margin: 0 0 8px;
     background: transparent; min-width: 0;
   }
-  .dropdown-menu a { padding: 8px 10px; font-size: 14px; }
+  /* Tap targets ≥44px (Apple HIG) — was 8px 10px = 30px height (audit flagged) */
+  .dropdown-menu a { padding: 14px 12px; font-size: 15px; }
   .nav-link-pill {
-    background: var(--purple-tint); padding: 10px 14px; border-radius: 8px;
-    margin: 6px 0; font-size: 14px !important; text-align: center;
+    background: var(--purple-tint); padding: 14px 14px; border-radius: 8px;
+    margin: 6px 0; font-size: 15px !important; text-align: center;
   }
   /* Animated X when burger is checked */
   .nav-burger-input:checked ~ .nav-burger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
@@ -595,7 +596,8 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 .form-row input, .form-row select, .form-row textarea {
   width: 100%; padding: 12px 14px;
   border: 1.5px solid var(--line); border-radius: 8px;
-  font-size: 15px; font-family: inherit; color: var(--ink);
+  /* 16px prevents iOS zoom-on-focus (audit found 15px caused the zoom) */
+  font-size: 16px; font-family: inherit; color: var(--ink);
   background: #fff;
   transition: border-color .15s, box-shadow .15s;
 }
@@ -636,8 +638,13 @@ p.lede { font-size: 18px; color: var(--ink-2); }
 .footer-brand p { font-size: 13px; max-width: 320px; opacity: 0.7; }
 .footer-links { display: flex; gap: 48px; flex-wrap: wrap; }
 .footer-col h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; margin-bottom: 12px; }
-.footer-col a { display: block; font-size: 14px; padding: 4px 0; opacity: 0.75; }
+.footer-col a { display: block; font-size: 14px; padding: 10px 0; opacity: 0.75; line-height: 1.2; }
 .footer-col a:hover { opacity: 1; }
+@media (max-width: 800px) {
+  /* Tap targets ≥44px on mobile (Apple HIG) */
+  .footer-col a { padding: 12px 0; font-size: 15px; }
+  .footer-bottom a { padding: 12px 8px; display: inline-block; }
+}
 .footer-bottom {
   border-top: 1px solid #232027; margin-top: 40px; padding-top: 20px;
   font-size: 12px; opacity: 0.6;
