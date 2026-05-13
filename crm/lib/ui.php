@@ -39,10 +39,14 @@ function crm_renderHead(string $title): void {
   header.crm nav .dd{position:relative}
   header.crm nav .dd > a::after{content:' ▾';font-size:9px;opacity:.6;margin-left:1px}
   header.crm nav .dd-menu{display:none;position:absolute;top:100%;left:0;background:#1a1820;border:1px solid #2a2730;border-radius:8px;padding:6px;min-width:180px;z-index:20;flex-direction:column;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-top:4px}
+  /* Hover bridge: 8px transparent strip above the menu so cursor can cross
+     the visual gap from the trigger link without losing :hover and closing
+     the menu. Combined with `.dd-menu:hover` keeping the menu open. */
+  header.crm nav .dd-menu::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px}
   header.crm nav .dd-menu a{padding:8px 12px;border-radius:6px;font-size:13px;color:#bcb6ca;white-space:nowrap}
   header.crm nav .dd-menu a:hover{color:#fff;background:#2a2730}
   header.crm nav .dd-menu a.cur{color:#fff;background:#2a2730}
-  header.crm nav .dd:hover .dd-menu,header.crm nav .dd:focus-within .dd-menu{display:flex}
+  header.crm nav .dd:hover .dd-menu,header.crm nav .dd:focus-within .dd-menu,header.crm nav .dd-menu:hover{display:flex}
   header.crm .right{font-size:13px;color:#bcb6ca}
   header.crm .right a{color:#fff;text-decoration:none;margin-left:14px;border-bottom:1px dotted #6b6877}
   main{max-width:1280px;margin:0 auto;padding:22px}
