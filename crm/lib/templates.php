@@ -60,5 +60,9 @@ function crm_renderTemplate(string $text, array $lead): string {
         if ($val === null) $val = '';
         $repl['{' . $v . '}'] = (string)$val;
     }
+    // Alias: templates written with {company} get business_name. Existing
+    // nurture templates use this spelling — without the alias they ship with
+    // the literal "{company}" string in the delivered email.
+    $repl['{company}'] = (string)($lead['business_name'] ?? '');
     return strtr($text, $repl);
 }
