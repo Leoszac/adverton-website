@@ -95,7 +95,8 @@ while ($next) {
 
         foreach ($inv['collection'] as $invitee) {
             $email = strtolower(trim((string)($invitee['email'] ?? '')));
-            if ($email === '' || str_ends_with($email, '@adverton.net')) { $skipped++; continue; }
+            // str_ends_with() is PHP 8 only; cron runs under PHP 7.4 CLI.
+            if ($email === '' || preg_match('/@adverton\.net$/', $email)) { $skipped++; continue; }
 
             $leadId = crm_findDuplicateLead($email, '');
             if (!$leadId) { $skipped++; continue; }
