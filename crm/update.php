@@ -721,6 +721,103 @@ case 'intake_send_preview': {
     exit;
 }
 
+case 'intake_draft_save': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+
+    // Allowed HTML in *_html fields. Anything else gets stripped.
+    $allowedHtml = '<p><strong><em><ul><li><br>';
+    $clean      = fn(string $s) => trim($s);
+    $cleanHtml  = fn(string $s) => trim(strip_tags($s, $allowedHtml));
+
+    // Reconstruct the schema from POST fields. Mirror ai-generator's schema
+    // exactly — the templates expect this shape.
+    $heroHeadline    = $clean((string)($_POST['hero_headline']    ?? ''));
+    $heroSubheadline = $clean((string)($_POST['hero_subheadline'] ?? ''));
+    $heroCtaPrimary  = $clean((string)($_POST['hero_cta_primary']  ?? ''));
+    $heroCtaSecondary= $clean((string)($_POST['hero_cta_secondary']?? ''));
+
+    $trustStripIn = (array)($_POST['trust_strip'] ?? []);
+    $trustStrip   = [];
+    foreach ($trustStripIn as $t) {
+        $v = $clean((string)$t);
+        if ($v !== '') $trustStrip[] = $v;
+    }
+
+    $aboutTitle    = $clean((string)($_POST['about_title']     ?? ''));
+    $aboutBodyHtml = $cleanHtml((string)($_POST['about_body_html'] ?? ''));
+
+    $svcNames   = (array)($_POST['service_name']             ?? []);
+    $svcDescs   = (array)($_POST['service_description_html'] ?? []);
+    $svcEmojis  = (array)($_POST['service_icon_emoji']       ?? []);
+    $services   = [];
+    foreach ($svcNames as $i => $name) {
+        $services[] = [
+            'name'             => $clean((string)$name),
+            'description_html' => $cleanHtml((string)($svcDescs[$i]  ?? '')),
+            'icon_emoji'       => $clean((string)($svcEmojis[$i] ?? '')),
+        ];
+    }
+
+    $faqQ = (array)($_POST['faq_question']    ?? []);
+    $faqA = (array)($_POST['faq_answer_html'] ?? []);
+    $faq  = [];
+    foreach ($faqQ as $i => $q) {
+        $qq = $clean((string)$q);
+        $aa = $cleanHtml((string)($faqA[$i] ?? ''));
+        if ($qq === '' && $aa === '') continue;   // skip empty rows
+        $faq[] = ['question' => $qq, 'answer_html' => $aa];
+    }
+
+    $footerBlurb = $clean((string)($_POST['footer_blurb'] ?? ''));
+
+    if ($heroHeadline === '') {
+        header('Location: /crm/draft-editor.php?id=' . $clientId
+            . '&err=' . urlencode('Hero headline is required'));
+        exit;
+    }
+
+    $payload = [
+        'hero' => [
+            'headline'      => $heroHeadline,
+            'subheadline'   => $heroSubheadline,
+            'cta_primary'   => $heroCtaPrimary,
+            'cta_secondary' => $heroCtaSecondary,
+        ],
+        'trust_strip'  => $trustStrip,
+        'about'        => ['title' => $aboutTitle, 'body_html' => $aboutBodyHtml],
+        'services'     => $services,
+        'faq'          => $faq,
+        'footer_blurb' => $footerBlurb,
+    ];
+
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) {
+        header('Location: /crm/draft-editor.php?id=' . $clientId
+            . '&err=' . urlencode('Could not encode JSON: ' . json_last_error_msg()));
+        exit;
+    }
+
+    try {
+        $stmt = crm_db()->prepare(
+            "UPDATE client_intake
+             SET ai_drafts_json = ?, ai_generated_at = NOW()
+             WHERE client_id = ?"
+        );
+        $stmt->execute([$json, $clientId]);
+        crm_logClientEvent($clientId, (int)$user['id'], 'note',
+            'Website draft edited manually by ' . ($user['display_name'] ?? 'operator'));
+    } catch (Throwable $e) {
+        error_log('[intake_draft_save] ' . $e->getMessage());
+        header('Location: /crm/draft-editor.php?id=' . $clientId
+            . '&err=' . urlencode('Save failed: ' . $e->getMessage()));
+        exit;
+    }
+    header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1');
+    exit;
+}
+
 case 'intake_approve': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $clientId = (int)($_POST['client_id'] ?? 0);

@@ -145,7 +145,10 @@ crm_renderHeader($user, '');
 
           <?php if (!empty($intake['ai_drafts_json'])): ?>
             <a class="btn-secondary" href="<?= crm_h($internalPreviewUrl) ?>" target="_blank">↗ Open preview in new tab</a>
+            <a class="btn-secondary" href="/crm/draft-editor.php?id=<?= (int)$client['id'] ?>">✏️ Edit draft text</a>
           <?php endif; ?>
+
+          <a class="btn-secondary" href="/crm/client.php?id=<?= (int)$client['id'] ?>#assets" target="_blank">🖼️ Manage photos</a>
 
           <?php if (!empty($intake['ai_drafts_json']) && (!empty($client['billing_email']) || !empty($client['primary_email']))): ?>
             <form method="post" action="/crm/update.php"
