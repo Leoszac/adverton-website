@@ -105,6 +105,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
       <?php elseif ($counts['today']): ?><span class="badge amber"><?= $counts['today'] ?></span>
       <?php endif; ?>
     </a>
+    <a href="/crm/system-health.php" class="<?= $current==='health'?'cur':'' ?>">Health</a>
     <a href="/crm/reports.php" class="<?= $current==='reports'?'cur':'' ?>">Reports</a>
     <!-- Nurture group: stats + templates + sequences -->
     <div class="dd">
