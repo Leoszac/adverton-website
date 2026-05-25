@@ -188,6 +188,16 @@ crm_renderHeader($user, '');
             </button>
           </form>
 
+          <?php if ($status === 'deployed'): ?>
+            <form method="post" action="/crm/update.php"
+                  onsubmit="return confirm('Roll back the LAST deploy?\n\nSwaps the current live HTML files with their backup copies (the previous deploy). This is reversible — clicking Rollback again brings back the current deploy.\n\nWordPress sites can't be rolled back automatically — use wp-admin → Pages → Revisions.')">
+              <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+              <input type="hidden" name="mode" value="deploy_rollback">
+              <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+              <button type="submit" class="btn-secondary" style="border-color:#92400e;color:#92400e">↩️ Rollback last deploy</button>
+            </form>
+          <?php endif; ?>
+
           <a class="btn-secondary" href="/crm/client-credentials.php?id=<?= (int)$client['id'] ?>">🔑 Manage credentials</a>
 
           <form method="post" action="/crm/update.php"

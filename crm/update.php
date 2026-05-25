@@ -833,6 +833,22 @@ case 'deploy_test_connection': {
     exit;
 }
 
+case 'deploy_rollback': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/deploy.php';
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    $r = crm_deployRollbackLast($clientId, (int)$user['id']);
+    if ($r['ok']) {
+        $msg = 'Rolled back ' . ($r['detail'] ?? '');
+        header('Location: /crm/client-review.php?id=' . $clientId . '&saved=1&msg=' . urlencode($msg));
+    } else {
+        header('Location: /crm/client-review.php?id=' . $clientId
+            . '&sendErr=' . urlencode('Rollback failed: ' . ($r['error'] ?? 'unknown')));
+    }
+    exit;
+}
+
 case 'intake_approve': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $clientId = (int)($_POST['client_id'] ?? 0);

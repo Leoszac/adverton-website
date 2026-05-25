@@ -566,6 +566,126 @@ function crm_deployTestConnection(int $clientId, ?int $actorUserId): array {
     return ['ok' => false, 'adapter' => null, 'error' => 'No deploy credential on file'];
 }
 
+// ─── ROLLBACK ──────────────────────────────────────────────────────────
+//
+// Swap each {filename}.html with its {filename}.adv-bak counterpart.
+// This is REVERSIBLE: a second rollback brings back the original deploy
+// because the swap turns the previous bad-live into the new .adv-bak.
+//
+// Per-file algorithm (3 renames):
+//   1. .adv-bak → .adv-rollback-tmp     (fails if no .adv-bak — first deploy)
+//   2. .html    → .adv-bak              (current live becomes the new bak)
+//   3. .adv-rollback-tmp → .html        (old bak becomes the new live)
+//
+// WordPress: no automatic rollback. The adapter creates fresh posts each
+// deploy; old content lives in WP revisions and must be restored via
+// wp-admin (Pages → Revisions). Return a clear message.
+function crm_deployRollbackLast(int $clientId, ?int $actorUserId): array {
+    $client = crm_getClient($clientId);
+    if (!$client) return ['ok' => false, 'adapter' => null, 'error' => 'Client not found'];
+
+    $intake = crm_getIntake($clientId);
+    if (!$intake || ($intake['status'] ?? '') !== 'deployed') {
+        return ['ok' => false, 'adapter' => null,
+                'error' => 'Nothing to roll back (intake.status is not "deployed")'];
+    }
+
+    $cred = null; $kindUsed = null;
+    foreach (CRM_DEPLOY_PRIORITIES as $kind) {
+        $r = crm_getFirstCredentialOfKind($clientId, $kind, $actorUserId);
+        if ($r['ok']) { $cred = $r; $kindUsed = $kind; break; }
+    }
+    if (!$cred) return ['ok' => false, 'adapter' => null, 'error' => 'No deploy credential on file'];
+
+    if ($kindUsed === 'wordpress' || $kindUsed === 'custom') {
+        return ['ok' => false, 'adapter' => $kindUsed,
+                'error' => 'Rollback not supported for ' . $kindUsed
+                         . ' — restore via wp-admin Pages → Revisions'];
+    }
+
+    // Resolve host/user/pass + remote dir (mirrors the cpanel/sftp adapters)
+    $host = preg_replace('#^[a-z]+://#i', '', trim((string)($cred['row']['url'] ?? '')));
+    $host = rtrim((string)$host, '/');
+    $user = (string)($cred['row']['username'] ?? '');
+    $pass = (string)($cred['value'] ?? '');
+    if ($host === '' || $user === '' || $pass === '') {
+        return ['ok' => false, 'adapter' => $kindUsed, 'error' => 'Credential missing host/username/password'];
+    }
+    $remoteDir = $kindUsed === 'cpanel'
+        ? '/public_html'
+        : (rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/') ?: '/');
+
+    $filenames = ['index.html','about.html','services.html','service-area.html','contact.html'];
+    $swapped = []; $skipped = []; $errors = [];
+
+    foreach ($filenames as $fn) {
+        $live = $remoteDir . '/' . $fn;
+        $bak  = $live . '.adv-bak';
+        $tmp  = $live . '.adv-rollback-tmp';
+
+        // Step 1: move .adv-bak aside. If this fails, there's no backup —
+        // skip this file silently (likely the first deploy ever).
+        $r1 = crm_deployFtpRename($host, $user, $pass, $bak, $tmp);
+        if (!$r1['ok']) { $skipped[] = $fn; continue; }
+
+        // Step 2: current live → .adv-bak  (so this rollback is reversible)
+        $r2 = crm_deployFtpRename($host, $user, $pass, $live, $bak);
+        if (!$r2['ok']) {
+            // Put bak back where it was so site keeps serving current
+            crm_deployFtpRename($host, $user, $pass, $tmp, $bak);
+            $errors[] = "{$fn}: " . ($r2['error'] ?? 'step 2 failed');
+            continue;
+        }
+
+        // Step 3: old bak → live
+        $r3 = crm_deployFtpRename($host, $user, $pass, $tmp, $live);
+        if (!$r3['ok']) {
+            // Try to put things back: bak → live (the recent good state)
+            crm_deployFtpRename($host, $user, $pass, $bak, $live);
+            crm_deployFtpRename($host, $user, $pass, $tmp, $bak);  // best-effort
+            $errors[] = "{$fn}: " . ($r3['error'] ?? 'step 3 failed');
+            continue;
+        }
+        $swapped[] = $fn;
+    }
+
+    if (!$swapped) {
+        $reason = $errors
+            ? 'All swaps failed: ' . implode(' | ', $errors)
+            : 'No .adv-bak files found — this client has no prior deploy to restore';
+        crm_logClientEvent($clientId, $actorUserId, 'note', 'Rollback failed: ' . substr($reason, 0, 200));
+        return ['ok' => false, 'adapter' => $kindUsed, 'error' => $reason];
+    }
+
+    // Flip intake.status back to 'approved' so the operator can re-deploy
+    // a fresh build over the rolled-back site (after fixing whatever was
+    // wrong). The deployed_url stays — rollback served the previous
+    // content from the same URL.
+    try {
+        $stmt = crm_db()->prepare(
+            "UPDATE client_intake SET status = 'approved' WHERE client_id = ? AND status = 'deployed'"
+        );
+        $stmt->execute([$clientId]);
+    } catch (Throwable $e) {
+        error_log('[crm_deployRollbackLast status] ' . $e->getMessage());
+    }
+
+    $detail = count($swapped) . '/' . count($filenames) . ' pages';
+    if ($skipped) $detail .= ' (skipped: ' . implode(',', $skipped) . ')';
+    if ($errors)  $detail .= ' (errors: ' . implode(' | ', $errors) . ')';
+    crm_logClientEvent($clientId, $actorUserId, 'note', 'Deploy rolled back via ' . $kindUsed . ' — ' . $detail);
+
+    return [
+        'ok'      => true,
+        'adapter' => $kindUsed,
+        'detail'  => $detail,
+        'swapped' => count($swapped),
+        'skipped' => count($skipped),
+        'errors'  => $errors,
+        'error'   => null,
+    ];
+}
+
 // Probe a FTPS server: just connect + list the remote dir. No state change.
 function crm_deployFtpProbe(string $host, string $user, string $pass, string $remoteDir): array {
     $remoteDir = rtrim($remoteDir, '/');
