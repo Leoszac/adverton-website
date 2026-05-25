@@ -28,15 +28,20 @@ if (!$client) { http_response_code(404); header('Location: /crm/clients.php'); e
 $intake = crm_getIntake($clientId);
 $status = (string)($intake['status'] ?? 'not_started');
 
-// Compute a fresh token + URL for "Send preview link" / "Open preview" buttons.
-// Token only useful if AI copy exists.
-$previewToken = null;
-$previewUrl   = null;
+// Operator-only preview URL — no token, no client notification.
+// Loaded by the iframe and "Open preview in new tab" button.
+$internalPreviewUrl = '/crm/preview-internal.php?id=' . $clientId;
+
+// Client-facing preview URL (magic-link). Only populated after operator
+// clicks "Send preview link to client" — that action mints the token AND
+// emails the client. Surfaced in the UI as confirmation of last send.
+$clientPreviewToken = null;
+$clientPreviewUrl   = null;
 if (!empty($intake) && !empty($client['magic_token'])
     && !empty($client['magic_token_expires_at'])
     && strtotime($client['magic_token_expires_at']) > time()) {
-    $previewToken = (string)$client['magic_token'];
-    $previewUrl   = 'https://adverton.net/preview/' . $clientId . '?t=' . urlencode($previewToken);
+    $clientPreviewToken = (string)$client['magic_token'];
+    $clientPreviewUrl   = 'https://adverton.net/preview/' . $clientId . '?t=' . urlencode($clientPreviewToken);
 }
 
 $saved   = ($_GET['saved'] ?? '') === '1';
@@ -138,18 +143,23 @@ crm_renderHeader($user, '');
             </button>
           </form>
 
-          <?php if (!empty($intake['ai_drafts_json']) && !empty($client['billing_email']) || !empty($client['primary_email'])): ?>
+          <?php if (!empty($intake['ai_drafts_json'])): ?>
+            <a class="btn-secondary" href="<?= crm_h($internalPreviewUrl) ?>" target="_blank">↗ Open preview in new tab</a>
+          <?php endif; ?>
+
+          <?php if (!empty($intake['ai_drafts_json']) && (!empty($client['billing_email']) || !empty($client['primary_email']))): ?>
             <form method="post" action="/crm/update.php"
-                  onsubmit="return confirm('Email the preview link to <?= crm_h($client['billing_email'] ?: $client['primary_email']) ?>?')">
+                  onsubmit="return confirm('This will EMAIL the preview link to <?= crm_h($client['billing_email'] ?: $client['primary_email']) ?> — they will see the draft.\n\nProceed?')">
               <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
               <input type="hidden" name="mode" value="intake_send_preview">
               <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
-              <button type="submit" class="btn-secondary">📧 Send preview link to client</button>
+              <button type="submit" class="btn-secondary">📧 Email preview link to client (notifies them)</button>
             </form>
-          <?php endif; ?>
-
-          <?php if ($previewUrl): ?>
-            <a class="btn-secondary" href="<?= crm_h($previewUrl) ?>" target="_blank">↗ Open preview in new tab</a>
+            <?php if ($clientPreviewUrl): ?>
+              <div style="font-size:12px;color:#6b6877;padding:6px 4px;line-height:1.4">
+                ✓ Client link active · expires <?= crm_h(date('M j', strtotime($client['magic_token_expires_at']))) ?>
+              </div>
+            <?php endif; ?>
           <?php endif; ?>
 
           <form method="post" action="/crm/update.php"
@@ -194,15 +204,8 @@ crm_renderHeader($user, '');
               <span>Click "Generate AI copy" on the left. Generation takes 30–45 seconds.</span>
             </div>
           </div>
-        <?php elseif ($previewUrl): ?>
-          <iframe class="preview-frame" src="<?= crm_h($previewUrl) ?>" title="Preview"></iframe>
         <?php else: ?>
-          <div class="preview-empty">
-            <div>
-              <strong style="color:#0e0d12">Preview link not provisioned.</strong><br>
-              <span>Click "Send preview link to client" — that mints the magic token used here too.</span>
-            </div>
-          </div>
+          <iframe class="preview-frame" src="<?= crm_h($internalPreviewUrl) ?>" title="Preview"></iframe>
         <?php endif; ?>
       </div>
     </div>
