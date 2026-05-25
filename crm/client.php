@@ -12,6 +12,7 @@ require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/files.php';
 require_once __DIR__ . '/lib/intake.php';
 require_once __DIR__ . '/lib/photos.php';
+require_once __DIR__ . '/lib/deploy.php';
 require_once __DIR__ . '/lib/ui.php';
 
 $user = crm_requireLogin();
@@ -205,6 +206,75 @@ crm_renderHeader($user, 'clients');
       <?php endif; ?>
     </div>
   </div>
+
+  <?php
+    // Post-deploy progress card — only appears once a deploy has actually
+    // happened. Shows the 5 canonical milestones from crm_postDeployTaskCatalog()
+    // with status pulled from the tasks table.
+    if ($intakeStatus === 'deployed'):
+      $progress    = crm_postDeployProgress((int)$client['id'], !empty($client['lead_id']) ? (int)$client['lead_id'] : null);
+      $doneCount   = count(array_filter($progress, fn($p) => $p['status'] === 'done'));
+      $totalCount  = count($progress);
+      $pct         = $totalCount > 0 ? (int)round(100 * $doneCount / $totalCount) : 0;
+  ?>
+  <div class="card" style="border-color:#dbeafe">
+    <h2 style="margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Post-deploy setup</h2>
+    <p style="margin:0 0 14px;color:#6b6877;font-size:13px">Website is live. Five hand-managed setups remain on third-party platforms.</p>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="flex:1;height:8px;background:#f3f1f8;border-radius:999px;overflow:hidden">
+        <div style="height:100%;width:<?= $pct ?>%;background:<?= $pct === 100 ? '#16a34a' : '#6d28d9' ?>;transition:width .3s"></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:<?= $pct === 100 ? '#166534' : '#0e0d12' ?>"><?= $doneCount ?>/<?= $totalCount ?></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:0">
+      <?php foreach ($progress as $i => $row):
+        $done       = $row['status'] === 'done';
+        $notCreated = $row['status'] === 'not_created';
+      ?>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:<?= $i === 0 ? '0' : '1px solid #f3f1f8' ?>">
+          <?php if ($notCreated): ?>
+            <div title="No task created — was this client deployed before the post-deploy task system existed?" style="width:24px;height:24px;border-radius:6px;background:#fef3c7;color:#92400e;display:grid;place-items:center;font-size:14px">!</div>
+          <?php else: ?>
+            <form method="post" action="/crm/update.php" style="margin:0">
+              <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+              <input type="hidden" name="mode" value="<?= $done ? 'task_uncomplete' : 'task_complete' ?>">
+              <input type="hidden" name="task_id" value="<?= (int)$row['task_id'] ?>">
+              <button type="submit"
+                      title="<?= $done ? 'Mark as not done' : 'Mark as done' ?>"
+                      style="width:24px;height:24px;border-radius:6px;background:<?= $done ? '#dcfce7' : '#fff' ?>;color:<?= $done ? '#166534' : '#9ca3af' ?>;border:1px solid <?= $done ? '#86efac' : '#d6d3e0' ?>;display:grid;place-items:center;font-size:14px;font-weight:700;cursor:pointer;padding:0">
+                <?= $done ? '✓' : '' ?>
+              </button>
+            </form>
+          <?php endif; ?>
+
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:<?= $done ? '500' : '600' ?>;color:<?= $done ? '#6b6877' : '#0e0d12' ?>;text-decoration:<?= $done ? 'line-through' : 'none' ?>">
+              <?= crm_h($row['short']) ?>
+            </div>
+            <div style="font-size:12px;color:#6b6877;margin-top:2px">
+              <?php if ($done): ?>
+                Done <?= !empty($row['done_at']) ? crm_h(crm_fmtRelative($row['done_at'])) : '' ?>
+                <?php if (!empty($row['done_by_name'])): ?> · by <?= crm_h($row['done_by_name']) ?><?php endif; ?>
+              <?php elseif ($notCreated): ?>
+                Not auto-created — manually add a task or redeploy to backfill
+              <?php else: ?>
+                Pending<?php if (!empty($row['due_at'])): ?> · due <?= crm_h(date('M j', strtotime($row['due_at']))) ?><?php endif; ?>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+
+    <?php if (!empty($intake['deployed_url'])): ?>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f3f1f8;font-size:13px">
+        Site live at <a href="<?= crm_h($intake['deployed_url']) ?>" target="_blank" style="color:#6d28d9;font-weight:600"><?= crm_h(preg_replace('#^https?://#', '', (string)$intake['deployed_url'])) ?></a>
+      </div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 
   <?php
     // Onboarding pack — pre-check guides based on active addons

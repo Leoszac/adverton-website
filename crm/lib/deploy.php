@@ -345,14 +345,72 @@ function crm_deployAdapterCustom(array $pages, array $cred, array $client): arra
 // these by hand because they live on third-party platforms (Google Business
 // Profile, Local Services Ads, Tradio CRM). The deploy adapter only does
 // the website file upload.
-function crm_postDeployTaskTitles(): array {
+//
+// Keep ['key', 'title'] in this canonical list and reference the title from
+// crm_postDeployTaskTitles(); crm_postDeployProgress() reads the same list
+// to render the per-client progress card.
+function crm_postDeployTaskCatalog(): array {
     return [
-        'Setup Google Business Profile (claim/optimize/add photos)',
-        'Configure Google Local Services Ads (categories, area, hours)',
-        'Seed Tradio CRM account (services, hours, team)',
-        'Setup cold-email outreach with personalized scripts',
-        'Verify domain DNS + SSL on the deployed site',
+        ['key' => 'gbp',        'title' => 'Setup Google Business Profile (claim/optimize/add photos)',  'short' => 'Google Business Profile'],
+        ['key' => 'lsa',        'title' => 'Configure Google Local Services Ads (categories, area, hours)', 'short' => 'Local Services Ads'],
+        ['key' => 'tradio',     'title' => 'Seed Tradio CRM account (services, hours, team)',           'short' => 'Tradio CRM'],
+        ['key' => 'cold_email', 'title' => 'Setup cold-email outreach with personalized scripts',       'short' => 'Cold email outreach'],
+        ['key' => 'dns',        'title' => 'Verify domain DNS + SSL on the deployed site',              'short' => 'DNS + SSL verified'],
     ];
+}
+
+function crm_postDeployTaskTitles(): array {
+    return array_column(crm_postDeployTaskCatalog(), 'title');
+}
+
+// Returns one row per canonical post-deploy milestone with its current
+// status from the tasks table. Used by client.php to render the progress
+// card. Matches tasks by title prefix + lead_id (the deploy code creates
+// them with "<title> — <bizName>", so prefix match is enough).
+//
+// Each row: ['key','title','short','task_id','done_at','done_by_name','due_at','status'].
+// status ∈ { 'done', 'pending', 'not_created' }.
+function crm_postDeployProgress(int $clientId, ?int $leadId): array {
+    $catalog = crm_postDeployTaskCatalog();
+    if (!$leadId) {
+        // Tasks are keyed by lead_id; no lead → can't find them.
+        return array_map(fn($c) => $c + ['task_id' => null, 'done_at' => null, 'done_by_name' => null, 'due_at' => null, 'status' => 'not_created'], $catalog);
+    }
+
+    try {
+        $stmt = crm_db()->prepare(
+            'SELECT t.id, t.title, t.done_at, t.due_at, u.display_name AS done_by_name
+             FROM tasks t
+             LEFT JOIN users u ON u.id = t.assigned_to
+             WHERE t.lead_id = ?
+             ORDER BY t.id ASC'
+        );
+        $stmt->execute([$leadId]);
+        $rows = $stmt->fetchAll();
+    } catch (Throwable $e) {
+        error_log('[crm_postDeployProgress] ' . $e->getMessage());
+        $rows = [];
+    }
+
+    $out = [];
+    foreach ($catalog as $cat) {
+        $task = null;
+        foreach ($rows as $r) {
+            if (strpos((string)$r['title'], $cat['title']) === 0) {  // prefix match
+                $task = $r;
+                break;
+            }
+        }
+        $status = !$task ? 'not_created' : (!empty($task['done_at']) ? 'done' : 'pending');
+        $out[] = $cat + [
+            'task_id'      => $task ? (int)$task['id'] : null,
+            'done_at'      => $task['done_at']      ?? null,
+            'done_by_name' => $task['done_by_name'] ?? null,
+            'due_at'       => $task['due_at']       ?? null,
+            'status'       => $status,
+        ];
+    }
+    return $out;
 }
 
 // FTP/FTPS upload helper. We use curl's ftps:// scheme so credentials are
