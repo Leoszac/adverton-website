@@ -103,6 +103,25 @@ crm_renderHeader($user, 'clients');
       </div>
     </div>
 
+    <label>Billing mode</label>
+    <div class="row3">
+      <div>
+        <select name="billing_mode" id="billing_mode_select" onchange="document.getElementById('barter_fields').style.display = this.value === 'barter' ? 'grid' : 'none'">
+          <option value="stripe">Stripe (monthly $799)</option>
+          <option value="barter">Barter (work-for-service)</option>
+          <option value="comp">Comp (free / beta)</option>
+        </select>
+      </div>
+      <div id="barter_fields" style="display:none;grid-template-columns:1fr;gap:0">
+        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Barter monthly FMV ($) — for taxes</label>
+        <input type="number" step="0.01" min="0" name="barter_monthly_value_usd" placeholder="e.g. 799">
+      </div>
+      <div>
+        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Billing notes</label>
+        <input type="text" name="billing_notes" placeholder="What's exchanged / terms">
+      </div>
+    </div>
+
     <label>Notes</label>
     <textarea name="notes" placeholder="Anything relevant — onboarding context, past relationship, special terms..."></textarea>
 

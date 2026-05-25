@@ -17,7 +17,9 @@ $db = crm_db();
 
 // ─── PAYMENTS ─────────────────────────────────────────────────────────
 
-// Clients currently past_due or cancelled — actionable now
+// Clients currently past_due or cancelled — actionable now.
+// Filter out billing_mode != 'stripe' since barter/comp clients don't go
+// through Stripe and can't be past_due in the Stripe sense.
 $pastDue = $db->query(
     "SELECT c.id, c.business_name, c.payment_status, c.account_manager_id,
             u.display_name AS am_name,
@@ -26,6 +28,7 @@ $pastDue = $db->query(
      FROM clients c
      LEFT JOIN users u ON u.id = c.account_manager_id
      WHERE c.payment_status = 'past_due'
+       AND COALESCE(c.billing_mode,'stripe') = 'stripe'
      ORDER BY last_fail_at DESC"
 )->fetchAll();
 
@@ -36,6 +39,7 @@ $cancelled = $db->query(
                AND body LIKE '%cancelled%') AS cancelled_at
      FROM clients c
      WHERE c.payment_status = 'cancelled'
+       AND COALESCE(c.billing_mode,'stripe') = 'stripe'
        AND c.updated_at > DATE_SUB(NOW(), INTERVAL 60 DAY)
      ORDER BY c.updated_at DESC
      LIMIT 30"

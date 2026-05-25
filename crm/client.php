@@ -94,6 +94,15 @@ crm_renderHeader($user, 'clients');
     <h1>
       <?= crm_h($client['business_name'] ?? 'Unnamed client') ?>
       <span class="pill cs-<?= crm_h($client['status']) ?>"><?= crm_h($client['status']) ?></span>
+      <?php
+        $billingMode = (string)($client['billing_mode'] ?? 'stripe');
+        if ($billingMode === 'barter'):
+            $bmVal = $client['barter_monthly_value_usd'] ?? null;
+      ?>
+        <span class="pill" style="background:#fef3c7;color:#92400e">🔄 BARTER<?= $bmVal !== null ? ' · $' . number_format((float)$bmVal, 0) . '/mo FMV' : '' ?></span>
+      <?php elseif ($billingMode === 'comp'): ?>
+        <span class="pill" style="background:#dbeafe;color:#1e40af">🎁 COMP</span>
+      <?php endif; ?>
       <span class="mrr-tag"><?= crm_h(crm_fmtMoney($mrr)) ?>/mo</span>
     </h1>
     <div class="sub">
@@ -313,6 +322,54 @@ crm_renderHeader($user, 'clients');
     <button type="submit" class="primary" style="margin-top:0" <?= empty($client['primary_email'])?'disabled':'' ?>>📧 Email pack to <?= crm_h($client['primary_email'] ?: '(no email on file)') ?></button>
   </form>
 
+  <!-- ── BILLING MODE ─────────────────────────────────────────── -->
+  <div class="card">
+    <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Billing mode</h2>
+    <form method="post" action="/crm/update.php" style="display:grid;grid-template-columns:200px 1fr 1fr auto;gap:10px;align-items:end">
+      <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+      <input type="hidden" name="mode" value="client_billing_update">
+      <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+
+      <div>
+        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Mode</label>
+        <select name="billing_mode" onchange="this.form.querySelector('.barter-val').style.display = this.value === 'barter' ? '' : 'none'" style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
+          <option value="stripe" <?= $billingMode==='stripe'?'selected':'' ?>>Stripe ($799/mo)</option>
+          <option value="barter" <?= $billingMode==='barter'?'selected':'' ?>>Barter (work-for-service)</option>
+          <option value="comp"   <?= $billingMode==='comp'  ?'selected':'' ?>>Comp (free / beta)</option>
+        </select>
+      </div>
+
+      <div class="barter-val" style="<?= $billingMode==='barter'?'':'display:none' ?>">
+        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Barter monthly FMV ($)</label>
+        <input type="number" step="0.01" min="0" name="barter_monthly_value_usd"
+               value="<?= crm_h((string)($client['barter_monthly_value_usd'] ?? '')) ?>"
+               placeholder="e.g. 799"
+               style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Billing notes</label>
+        <input type="text" name="billing_notes"
+               value="<?= crm_h((string)($client['billing_notes'] ?? '')) ?>"
+               placeholder="What's exchanged, terms, etc."
+               style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
+      </div>
+
+      <button type="submit" style="background:#6d28d9;color:#fff;border:0;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Save</button>
+    </form>
+
+    <?php if ($billingMode === 'barter'): ?>
+      <div style="margin-top:12px;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;line-height:1.5">
+        ⚠️ <strong>Tax reminder:</strong> IRS treats barter as taxable income at fair market value. Track the monthly FMV (above) — your accountant needs it at year-end. If &gt;$600/yr per partner, may require Form 1099-B. The Service Agreement assumes cash billing — get an addendum signed that defines the exchange and term.
+      </div>
+    <?php elseif ($billingMode === 'comp'): ?>
+      <div style="margin-top:12px;padding:10px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;line-height:1.5">
+        ℹ️ Comp client — no expected payment. Service Agreement should be replaced with a comp/beta-tester agreement specifying the term and what gets cut off when it ends.
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <?php if ($billingMode === 'stripe'): ?>
   <div class="card" style="background:#faf9ff;border-color:#e0d6f5">
     <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Billing &amp; Stripe</h2>
     <?php
@@ -433,6 +490,7 @@ crm_renderHeader($user, 'clients');
       </div>
     <?php endif; ?>
   </div>
+  <?php endif; /* billing_mode === 'stripe' */ ?>
 
   <div class="grid2">
     <div>

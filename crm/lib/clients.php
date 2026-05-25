@@ -9,6 +9,11 @@ require_once __DIR__ . '/db.php';
 
 const CRM_CLIENT_STATUSES = ['onboarding','active','past_due','paused','cancelled','renewed'];
 const CRM_PAYMENT_STATUSES = ['pending','current','past_due','failed','cancelled'];
+// How the client compensates Adverton. 'stripe' = monthly subscription via
+// Stripe (default). 'barter' = exchange of services (FMV tracked for taxes).
+// 'comp' = free / beta tester / friend — no expected return.
+// IRS: barter is taxable income at fair market value — operator must track.
+const CRM_BILLING_MODES = ['stripe','barter','comp'];
 
 // Promote a won lead into a client. Idempotent: if a client already exists
 // for this lead_id, returns its id without creating a duplicate.
@@ -198,6 +203,8 @@ function crm_updateClient(int $id, array $patch, ?int $actorUserId = null): bool
         'buyout_eligible','cancellation_reason','cancellation_note',
         'account_manager_id','stripe_customer_id','stripe_subscription_id',
         'pandadoc_doc_id','health_score','notes','addons',
+        // billing-mode (added 2026-05-25) — non-cash clients
+        'billing_mode','barter_monthly_value_usd','billing_notes',
         // schema-v11: billing fields populated by the pre-contract form
         'legal_entity_name','billing_email','billing_address',
         'billing_city','billing_state','billing_zip','tax_id',
@@ -218,6 +225,10 @@ function crm_updateClient(int $id, array $patch, ?int $actorUserId = null): bool
         $v = $patch[$k];
         if ($k === 'status'         && !in_array($v, CRM_CLIENT_STATUSES, true)) continue;
         if ($k === 'payment_status' && !in_array($v, CRM_PAYMENT_STATUSES, true)) continue;
+        if ($k === 'billing_mode'   && !in_array($v, CRM_BILLING_MODES,   true)) continue;
+        if ($k === 'barter_monthly_value_usd') {
+            $v = ($v === '' || $v === null) ? null : round((float)$v, 2);
+        }
         if (in_array($k, ['monthly_fee','ad_budget','mgmt_fee_pct'], true)) {
             $v = ($v === '' || $v === null) ? null : (float)$v;
         }
