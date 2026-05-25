@@ -26,6 +26,9 @@ const CRM_DEPLOY_PRIORITIES = ['cpanel', 'sftp', 'wordpress', 'custom'];
 // Top-level dispatch. Returns ['ok','url','adapter','error'].
 // Multi-page: renders all 5 pages (home/about/services/service-area/contact)
 // and hands the array {filename => html} to the adapter.
+//
+// Preflight: validates credentials BEFORE rendering / uploading so we fail
+// fast on bad credentials instead of mid-deploy with partial state.
 function crm_deployToClient(int $clientId, ?int $actorUserId): array {
     $client = crm_getClient($clientId);
     if (!$client) return ['ok' => false, 'url' => null, 'adapter' => null, 'error' => 'Client not found'];
@@ -35,14 +38,6 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
         return ['ok' => false, 'url' => null, 'adapter' => null,
                 'error' => 'Client intake must be approved before deploying'];
     }
-
-    // Render all 5 pages
-    $rendered = crm_renderAllPages($clientId);
-    if (!$rendered['ok']) {
-        return ['ok' => false, 'url' => null, 'adapter' => null,
-                'error' => 'Render failed: ' . ($rendered['error'] ?? 'unknown')];
-    }
-    $pages = $rendered['pages'];  // ['index.html' => '<html>...', 'about.html' => ..., ...]
 
     // Pick the highest-priority credential the client has
     $cred = null;
@@ -55,6 +50,24 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
         return ['ok' => false, 'url' => null, 'adapter' => null,
                 'error' => 'No deploy credential on file (need one of: ' . implode(', ', CRM_DEPLOY_PRIORITIES) . ')'];
     }
+
+    // Preflight — test the credential before we render or touch anything.
+    // Cheaper than rendering 5 pages and discovering bad password.
+    $pre = crm_deployRunPreflight($kindUsed, $cred);
+    if (!$pre['ok']) {
+        crm_logClientEvent($clientId, $actorUserId, 'note',
+            'Deploy preflight failed (' . $kindUsed . '): ' . substr((string)$pre['error'], 0, 200));
+        return ['ok' => false, 'url' => null, 'adapter' => $kindUsed,
+                'error' => 'Preflight: ' . $pre['error']];
+    }
+
+    // Render all 5 pages
+    $rendered = crm_renderAllPages($clientId);
+    if (!$rendered['ok']) {
+        return ['ok' => false, 'url' => null, 'adapter' => $kindUsed,
+                'error' => 'Render failed: ' . ($rendered['error'] ?? 'unknown')];
+    }
+    $pages = $rendered['pages'];  // ['index.html' => '<html>...', 'about.html' => ..., ...]
 
     // Dispatch
     $result = match ($kindUsed) {
@@ -90,8 +103,19 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
 
 // ─── ADAPTERS ──────────────────────────────────────────────────────────
 
-// cPanel SFTP adapter — uploads via FTP curl. Multi-page: uploads each
-// {filename => html} entry to /public_html/{filename}.
+// cPanel adapter — two-phase upload with rollback.
+//
+//   Phase 1: upload all N pages to {filename}.adv-new
+//            (existing .html files untouched; site keeps serving old content)
+//   Phase 2: for each page, rename .html → .adv-bak, then .adv-new → .html
+//            (.adv-bak left as 1-deploy rollback safety)
+//
+//   If phase 1 fails on any page → cleanup .adv-new files we created, abort.
+//   If phase 2 fails midway     → attempt to restore .adv-bak → .html for
+//                                 the pages we already swapped.
+//
+// Stale .adv-bak from a prior successful deploy gets cleaned at the START
+// of this run so they don't accumulate.
 function crm_deployAdapterCpanel(array $pages, array $cred, array $client): array {
     $host = trim((string)($cred['row']['url'] ?? ''));
     if ($host === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing host (set url field)'];
@@ -102,57 +126,103 @@ function crm_deployAdapterCpanel(array $pages, array $cred, array $client): arra
     $host = preg_replace('#^[a-z]+://#i', '', $host);
     $host = rtrim($host, '/');
 
-    $uploaded = 0;
-    $errors = [];
-    foreach ($pages as $filename => $html) {
-        $r = crm_deployFtpUpload($host, $user, $pass, '/public_html/' . $filename, $html, $client);
-        if ($r['ok']) {
-            $uploaded++;
-        } else {
-            $errors[] = "{$filename}: " . ($r['error'] ?? 'unknown');
-        }
-    }
-    if ($errors) {
-        return ['ok' => false, 'url' => null, 'error' => "Uploaded {$uploaded}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
-    }
-    // Derive public URL from host (best-effort — same logic as crm_deployFtpUpload)
-    $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
-    return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
+    return crm_deployTwoPhaseFtp($host, $user, $pass, '/public_html', $pages, $client);
 }
 
-// Generic SFTP adapter — same multi-page pattern. Uses notes field as
-// remote dir prefix (default '/'); each page lands at {prefix}/{filename}.
+// Generic SFTP adapter — same two-phase pattern as cPanel. The notes
+// field on the credential row carries the remote dir prefix (default '/').
 function crm_deployAdapterSftp(array $pages, array $cred, array $client): array {
     $host = trim((string)($cred['row']['url'] ?? ''));
     if ($host === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing host'];
     $host = preg_replace('#^[a-z]+://#i', '', $host);
     $host = rtrim($host, '/');
+    $user = (string)($cred['row']['username'] ?? '');
+    $pass = (string)($cred['value'] ?? '');
+    if ($user === '' || $pass === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing username/password'];
 
     $prefix = rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/');
-    $uploaded = 0;
-    $errors = [];
+    if ($prefix === '') $prefix = '/';
+
+    return crm_deployTwoPhaseFtp($host, $user, $pass, $prefix, $pages, $client);
+}
+
+// Shared two-phase FTP/FTPS deploy. Both cPanel and SFTP adapters call
+// this; difference is just the remote dir.
+function crm_deployTwoPhaseFtp(string $host, string $user, string $pass,
+                                string $remoteDir, array $pages, array $client): array {
+    $remoteDir = rtrim($remoteDir, '/');
+    $names     = array_keys($pages);
+
+    // Sweep stale .adv-bak from a prior deploy. Best-effort — not fatal.
+    foreach ($names as $fn) {
+        crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $fn . '.adv-bak');
+    }
+
+    // PHASE 1 — upload each page to filename.adv-new
+    $uploadedNew = [];   // filenames that landed as .adv-new
     foreach ($pages as $filename => $html) {
-        $r = crm_deployFtpUpload(
-            $host, (string)$cred['row']['username'], (string)$cred['value'],
-            $prefix . '/' . $filename, $html, $client
-        );
-        if ($r['ok']) {
-            $uploaded++;
-        } else {
-            $errors[] = "{$filename}: " . ($r['error'] ?? 'unknown');
+        $target = $remoteDir . '/' . $filename . '.adv-new';
+        $r = crm_deployFtpUpload($host, $user, $pass, $target, $html, $client);
+        if (!$r['ok']) {
+            // Rollback Phase 1: delete any .adv-new files we created. Site
+            // (the live .html files) was never touched.
+            foreach ($uploadedNew as $cleanup) {
+                crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $cleanup . '.adv-new');
+            }
+            return ['ok' => false, 'url' => null,
+                    'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"];
         }
+        $uploadedNew[] = $filename;
     }
-    if ($errors) {
-        return ['ok' => false, 'url' => null, 'error' => "Uploaded {$uploaded}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
+
+    // PHASE 2 — swap. For each page:
+    //   1) Rename existing .html → .adv-bak  (skip silently if no current file)
+    //   2) Rename .adv-new → .html
+    $swapped = [];   // filenames we successfully swapped (for rollback)
+    foreach ($names as $filename) {
+        $live = $remoteDir . '/' . $filename;
+        $bak  = $live . '.adv-bak';
+        $new  = $live . '.adv-new';
+
+        // Best-effort backup of the existing live file. May fail if no
+        // previous file existed — that's fine, just means first deploy.
+        crm_deployFtpRename($host, $user, $pass, $live, $bak);
+
+        // Atomic swap: rename .adv-new → .html
+        $r = crm_deployFtpRename($host, $user, $pass, $new, $live);
+        if (!$r['ok']) {
+            // Phase 2 failure: try to restore what we swapped so far.
+            foreach ($swapped as $restored) {
+                $rl = $remoteDir . '/' . $restored;
+                crm_deployFtpDelete($host, $user, $pass, $rl);                  // remove the new .html we just put there
+                crm_deployFtpRename($host, $user, $pass, $rl . '.adv-bak', $rl); // put the old one back
+            }
+            // Also clean any remaining .adv-new files for pages we hadn't
+            // gotten to yet, plus the failing one.
+            foreach ($names as $remaining) {
+                crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $remaining . '.adv-new');
+            }
+            return ['ok' => false, 'url' => null,
+                    'error' => "Swap failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — restored " . count($swapped) . " pages from backup"];
+        }
+        $swapped[] = $filename;
     }
+
     $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
     return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
 }
 
-// Wordpress adapter — POSTs to WP REST API to create 5 pages.
-// home → set as front page (slug: home). Others as standard pages.
-// NOTE: setting WP front_page option requires settings:write — operator
-// flips it manually if needed (we just create the pages here).
+// Wordpress adapter — POSTs to WP REST API to create 5 pages, then sets
+// the home page as the site's front page.
+//
+//   On partial failure: deletes every page created so far (DELETE
+//   /wp/v2/pages/{id}?force=true) so WP isn't left with orphan pages.
+//   On success: POSTs /wp/v2/settings to set show_on_front=page +
+//   page_on_front=<home_id>. Best-effort — if the auth user lacks
+//   manage_options, the deploy still counts as successful and the
+//   operator flips the setting manually (post-deploy task list).
+//
+// The user must use a WP Application Password (NOT the login password).
 function crm_deployAdapterWordpress(array $pages, array $cred, array $client): array {
     $base = rtrim((string)($cred['row']['url'] ?? ''), '/');
     if ($base === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing url (e.g. https://site.com)'];
@@ -168,13 +238,14 @@ function crm_deployAdapterWordpress(array $pages, array $cred, array $client): a
         'contact.html'      => 'contact',
     ];
 
-    $created = 0;
-    $errors = [];
-    $homeLink = null;
+    $createdIds = [];   // [postId, postId, ...] in creation order — for rollback
+    $homeId     = null;
+    $homeLink   = null;
+
     foreach ($pages as $filename => $html) {
-        $slug = $slugMap[$filename] ?? pathinfo($filename, PATHINFO_FILENAME);
+        $slug  = $slugMap[$filename] ?? pathinfo($filename, PATHINFO_FILENAME);
         $title = ucfirst(str_replace('-', ' ', $slug));
-        $body = json_encode([
+        $body  = json_encode([
             'title'   => $title,
             'content' => $html,
             'status'  => 'publish',
@@ -193,18 +264,73 @@ function crm_deployAdapterWordpress(array $pages, array $cred, array $client): a
         $resp = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
         if ($resp === false || $code >= 400) {
-            $errors[] = "{$slug}: HTTP {$code}";
-            continue;
+            // Rollback: delete every page we created so far so the site
+            // isn't left in a partial state.
+            foreach ($createdIds as $pid) {
+                crm_deployWpDeletePost($base, $user, $pass, $pid);
+            }
+            return ['ok' => false, 'url' => null,
+                    'error' => "Page create failed on {$slug}: HTTP {$code} — rolled back " . count($createdIds) . " prior pages"];
         }
         $data = json_decode((string)$resp, true) ?: [];
-        if ($slug === 'home') $homeLink = (string)($data['link'] ?? $base);
-        $created++;
+        $pid  = (int)($data['id'] ?? 0);
+        if ($pid > 0) $createdIds[] = $pid;
+        if ($slug === 'home') {
+            $homeId   = $pid;
+            $homeLink = (string)($data['link'] ?? $base);
+        }
     }
-    if ($errors) {
-        return ['ok' => false, 'url' => $homeLink, 'error' => "Created {$created}/" . count($pages) . " pages. Errors: " . implode(' | ', $errors)];
+
+    // Set the home page as the site front page (best-effort, doesn't fail
+    // the deploy if it doesn't work — usually a permission issue, fixable
+    // in wp-admin).
+    if ($homeId) {
+        crm_deployWpSetFrontPage($base, $user, $pass, $homeId);
     }
+
     return ['ok' => true, 'url' => $homeLink ?: $base, 'error' => null];
+}
+
+// WP helper: delete a page by ID (force=true skips trash bin).
+function crm_deployWpDeletePost(string $base, string $user, string $pass, int $postId): bool {
+    $ch = curl_init($base . '/wp-json/wp/v2/pages/' . $postId . '?force=true');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 6,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return $code >= 200 && $code < 300;
+}
+
+// WP helper: POST /wp/v2/settings to set show_on_front=page + page_on_front.
+// Returns true if WP accepted the setting, false otherwise. Best-effort —
+// requires manage_options capability on the auth user.
+function crm_deployWpSetFrontPage(string $base, string $user, string $pass, int $homePageId): bool {
+    $body = json_encode([
+        'show_on_front' => 'page',
+        'page_on_front' => $homePageId,
+    ]);
+    $ch = curl_init($base . '/wp-json/wp/v2/settings');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => 'POST',
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 6,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return $code >= 200 && $code < 300;
 }
 
 // Custom adapter — host doesn't fit our patterns. The dispatcher logs the
@@ -271,4 +397,163 @@ function crm_deployFtpUpload(string $host, string $user, string $pass,
     // from the host minus 'ftp.' or 'sftp.' prefix.
     $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
     return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
+}
+
+// FTP/FTPS delete helper. Best-effort — returns true on success, false
+// on any failure (no-op semantics for cleanup paths).
+function crm_deployFtpDelete(string $host, string $user, string $pass, string $remotePath): bool {
+    if (strpos($remotePath, '/') !== 0) $remotePath = '/' . $remotePath;
+    $dir = dirname($remotePath);
+    if ($dir === '.' || $dir === '') $dir = '/';
+    $base = basename($remotePath);
+
+    $ch = curl_init('ftps://' . $host . $dir . '/');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_USE_SSL        => CURLUSESSL_TRY,
+        CURLOPT_FTP_SSL        => CURLFTPSSL_TRY,
+        CURLOPT_NOBODY         => true,
+        CURLOPT_POSTQUOTE      => ['DELE ' . $base],
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_CONNECTTIMEOUT => 8,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    // FTP DELE returns 250 on success; curl maps to HTTP 226 or 0 on
+    // success-without-body. Treat anything below 400 as success.
+    return ($code === 0 || $code < 400);
+}
+
+// FTP/FTPS rename helper. Returns ['ok'=>bool, 'error'=>?string].
+function crm_deployFtpRename(string $host, string $user, string $pass,
+                              string $fromPath, string $toPath): array {
+    if (strpos($fromPath, '/') !== 0) $fromPath = '/' . $fromPath;
+    if (strpos($toPath, '/') !== 0)   $toPath   = '/' . $toPath;
+    $dir = dirname($fromPath);
+    if ($dir === '.' || $dir === '') $dir = '/';
+
+    $ch = curl_init('ftps://' . $host . $dir . '/');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_USE_SSL        => CURLUSESSL_TRY,
+        CURLOPT_FTP_SSL        => CURLFTPSSL_TRY,
+        CURLOPT_NOBODY         => true,
+        CURLOPT_POSTQUOTE      => ['RNFR ' . $fromPath, 'RNTO ' . $toPath],
+        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_CONNECTTIMEOUT => 8,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    if ($code !== 0 && $code >= 400) {
+        return ['ok' => false, 'error' => "FTP rename {$code}: " . ($err ?: 'failed')];
+    }
+    return ['ok' => true, 'error' => null];
+}
+
+// ─── PREFLIGHT / TEST CONNECTION ───────────────────────────────────────
+//
+// Internal dispatcher used by crm_deployToClient (auto-preflight) and the
+// public crm_deployTestConnection (callable from a future "Test connection"
+// button). Both share the same per-adapter probe.
+function crm_deployRunPreflight(string $kindUsed, array $cred): array {
+    switch ($kindUsed) {
+        case 'cpanel':
+        case 'sftp':
+            $host = trim((string)($cred['row']['url'] ?? ''));
+            $user = (string)($cred['row']['username'] ?? '');
+            $pass = (string)($cred['value'] ?? '');
+            if ($host === '' || $user === '' || $pass === '') {
+                return ['ok' => false, 'error' => 'Credential missing host/username/password'];
+            }
+            $host = preg_replace('#^[a-z]+://#i', '', $host);
+            $host = rtrim($host, '/');
+            $prefix = $kindUsed === 'cpanel'
+                ? '/public_html'
+                : (rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/') ?: '/');
+            return crm_deployFtpProbe($host, $user, $pass, $prefix);
+
+        case 'wordpress':
+            $base = rtrim((string)($cred['row']['url'] ?? ''), '/');
+            $user = (string)($cred['row']['username'] ?? '');
+            $pass = (string)($cred['value'] ?? '');
+            if ($base === '' || $user === '' || $pass === '') {
+                return ['ok' => false, 'error' => 'WP credential missing url/username/app-password'];
+            }
+            return crm_deployWpProbe($base, $user, $pass);
+
+        case 'custom':
+            // Custom hosting needs manual deploy — preflight always fails
+            // so we never even render. Operator handles the upload by hand.
+            return ['ok' => false, 'error' => 'Custom hosting — manual deploy required'];
+    }
+    return ['ok' => false, 'error' => 'Unknown adapter kind: ' . $kindUsed];
+}
+
+// Public entry point — pick the credential the same way deploy would, then
+// run preflight. Used by /crm/update.php?mode=deploy_test_connection so the
+// operator can verify a credential without committing to a deploy.
+function crm_deployTestConnection(int $clientId, ?int $actorUserId): array {
+    foreach (CRM_DEPLOY_PRIORITIES as $kind) {
+        $r = crm_getFirstCredentialOfKind($clientId, $kind, $actorUserId);
+        if ($r['ok']) {
+            $pre = crm_deployRunPreflight($kind, $r);
+            return ['ok' => $pre['ok'], 'adapter' => $kind, 'error' => $pre['error']];
+        }
+    }
+    return ['ok' => false, 'adapter' => null, 'error' => 'No deploy credential on file'];
+}
+
+// Probe a FTPS server: just connect + list the remote dir. No state change.
+function crm_deployFtpProbe(string $host, string $user, string $pass, string $remoteDir): array {
+    $remoteDir = rtrim($remoteDir, '/');
+    if ($remoteDir === '') $remoteDir = '/';
+    $ch = curl_init('ftps://' . $host . $remoteDir . '/');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_USE_SSL        => CURLUSESSL_TRY,
+        CURLOPT_FTP_SSL        => CURLFTPSSL_TRY,
+        CURLOPT_NOBODY         => true,    // list, don't download
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+    ]);
+    curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    if ($code !== 0 && $code >= 400) {
+        return ['ok' => false, 'error' => "FTP probe {$code}: " . ($err ?: 'connection failed')];
+    }
+    return ['ok' => true, 'error' => null];
+}
+
+// Probe a WordPress site: GET /wp-json/wp/v2/types/page with auth.
+// Lightweight (returns small JSON), only succeeds with valid app password.
+function crm_deployWpProbe(string $base, string $user, string $pass): array {
+    $ch = curl_init($base . '/wp-json/wp/v2/types/page');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_CONNECTTIMEOUT => 6,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+    if ($resp === false || $code >= 400) {
+        $hint = '';
+        if ($code === 401 || $code === 403) {
+            $hint = ' (check username + that the password is a WP Application Password, NOT the login password)';
+        } elseif ($code === 404) {
+            $hint = ' (REST API endpoint not found — check URL or that WP REST is enabled)';
+        }
+        return ['ok' => false, 'error' => "WP probe HTTP {$code}" . $hint . ($err ? ' — ' . $err : '')];
+    }
+    return ['ok' => true, 'error' => null];
 }

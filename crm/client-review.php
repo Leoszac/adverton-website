@@ -45,6 +45,7 @@ if (!empty($intake) && !empty($client['magic_token'])
 }
 
 $saved   = ($_GET['saved'] ?? '') === '1';
+$msg     = trim((string)($_GET['msg']     ?? ''));   // success-side detail (e.g. test connection result)
 $genErr  = trim((string)($_GET['genErr']  ?? ''));
 $sendErr = trim((string)($_GET['sendErr'] ?? ''));
 
@@ -105,9 +106,9 @@ crm_renderHeader($user, '');
     </h1>
   </div>
 
-  <?php if ($saved):   ?><div class="ok">Saved.</div><?php endif; ?>
+  <?php if ($saved):   ?><div class="ok"><?= $msg !== '' ? crm_h($msg) : 'Saved.' ?></div><?php endif; ?>
   <?php if ($genErr):  ?><div class="err">AI generation failed: <?= crm_h($genErr) ?></div><?php endif; ?>
-  <?php if ($sendErr): ?><div class="err">Send failed: <?= crm_h($sendErr) ?></div><?php endif; ?>
+  <?php if ($sendErr): ?><div class="err"><?= crm_h($sendErr) ?></div><?php endif; ?>
 
   <div class="grid">
     <!-- LEFT: intake snapshot + actions -->
@@ -188,6 +189,14 @@ crm_renderHeader($user, '');
           </form>
 
           <a class="btn-secondary" href="/crm/client-credentials.php?id=<?= (int)$client['id'] ?>">🔑 Manage credentials</a>
+
+          <form method="post" action="/crm/update.php"
+                onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Testing connection…'">
+            <input type="hidden" name="csrf" value="<?= crm_h(crm_csrfToken()) ?>">
+            <input type="hidden" name="mode" value="deploy_test_connection">
+            <input type="hidden" name="client_id" value="<?= (int)$client['id'] ?>">
+            <button type="submit" class="btn-secondary">🔌 Test deploy connection</button>
+          </form>
 
           <?php if (!empty($intake['deployed_url'])): ?>
             <a class="btn-secondary" href="<?= crm_h($intake['deployed_url']) ?>" target="_blank">↗ Visit deployed site</a>

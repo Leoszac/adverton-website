@@ -818,6 +818,21 @@ case 'intake_draft_save': {
     exit;
 }
 
+case 'deploy_test_connection': {
+    if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
+    require_once __DIR__ . '/lib/deploy.php';
+    $clientId = (int)($_POST['client_id'] ?? 0);
+    if ($clientId <= 0) { http_response_code(400); exit('bad request'); }
+    $r = crm_deployTestConnection($clientId, (int)$user['id']);
+    $msg = $r['ok']
+        ? 'Connection OK · ' . ($r['adapter'] ?? '?')
+        : 'Connection FAILED (' . ($r['adapter'] ?? '?') . '): ' . ($r['error'] ?? 'unknown');
+    crm_logClientEvent($clientId, (int)$user['id'], 'note', 'Test connection: ' . substr($msg, 0, 200));
+    $param = $r['ok'] ? 'saved=1&msg=' . urlencode($msg) : 'sendErr=' . urlencode($msg);
+    header('Location: /crm/client-review.php?id=' . $clientId . '&' . $param);
+    exit;
+}
+
 case 'intake_approve': {
     if (!in_array($user['role'] ?? 'sales', ['founder','sales'], true)) { http_response_code(403); exit; }
     $clientId = (int)($_POST['client_id'] ?? 0);
