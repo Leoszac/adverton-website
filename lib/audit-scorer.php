@@ -242,14 +242,14 @@ function tradeCtaCopy(string $temperature): array {
     if ($temperature === 'HOT') {
         return [
             'headline' => "These fixes are 1-2 weeks of focused work — or a 15-minute call.",
-            'body'     => "We bundle website + Google ads + reviews + GBP management at <strong>$799/month flat</strong>. If your score is in the red, we'll show you exactly what we'd change in week 1.",
+            'body'     => "We bundle website + Google ads + GBP management at <strong>$799/month flat</strong>. If your score is in the red, we'll show you exactly what we'd change in week 1.",
             'button'   => "Show me what you'd fix",
         ];
     }
     if ($temperature === 'WARM') {
         return [
             'headline' => "Want us to take this from \"okay\" to \"top of the pack\"?",
-            'body'     => "We run the website, Google ads, GBP, and review automation for <strong>$799/month flat</strong> — one team, one bill. If you'd rather DIY the fixes, this audit is yours to keep.",
+            'body'     => "We run the website, Google ads, and GBP for <strong>$799/month flat</strong> — one team, one bill. If you'd rather DIY the fixes, this audit is yours to keep.",
             'button'   => "Book a 15-min call",
         ];
     }

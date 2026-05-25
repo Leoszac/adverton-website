@@ -74,7 +74,7 @@ $t1 = upsertTemplate(
     "But here's the trap I see all the time: the audit gets opened, nodded at, and then it sits in an inbox. Three months later the calls still aren't coming, and the report's still sitting there.\n\n" .
     "A contractor I worked with — call him Ray, ran a small electrical shop — did exactly that. Audit, nod, inbox. He finally called me first thing on a Monday, after spending the weekend watching a competitor he'd never heard of show up above him on every search. Within a few weeks we'd handled his #1 issue, rebuilt his site to actually turn visits into calls, and pointed his ads at people ready to hire. The competitor stopped being a problem.\n\n" .
     "Your audit already did the hard part — it found what's wrong. The only thing between that report and a phone that rings more is someone actually doing the work.\n\n" .
-    "That's the whole job we do for contractors: website, reviews, and ads, handled. Want me to walk through your specific report and what I'd fix first? Grab a free 15-minute call: https://calendly.com/meet-adverton/15\n\n" .
+    "That's the whole job we do for contractors: website, Google profile, and ads, handled. Want me to walk through your specific report and what I'd fix first? Grab a free 15-minute call: https://calendly.com/meet-adverton/15\n\n" .
     "Leo from Adverton"
 );
 
@@ -123,7 +123,7 @@ $t5 = upsertTemplate(
     "This is the last email I'll send about your audit, so I'll be straight.\n\n" .
     "You ran it because some part of you already knew the phone could ring more than it does. The report just put numbers on it. And numbers like that don't fade — they sit there until someone acts on them.\n\n" .
     "Most contractors I talk to don't lack the will to fix it. They lack a free evening. They're on the job all day, and \"deal with the marketing\" loses every single time to an actual paying customer. That's not a failing — it's just the math of running a crew.\n\n" .
-    "It's also the exact reason Adverton exists: \$799 a month, and your website, your reviews, and your ads are handled — a full marketing team without the hire, the salaries, or the management.\n\n" .
+    "It's also the exact reason Adverton exists: \$799 a month, and your website, your Google profile, and your ads are handled — a full marketing team without the hire, the salaries, or the management.\n\n" .
     "If you want it off your plate, here's my calendar one more time: https://calendly.com/meet-adverton/15\n\n" .
     "If not, no hard feelings — the audit's yours to keep and the door stays open. Wishing {company} a strong rest of the year.\n\n" .
     "Leo from Adverton\n\n" .
