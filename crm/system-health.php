@@ -57,6 +57,31 @@ $recentEvents = $db->query(
      LIMIT 25"
 )->fetchAll();
 
+// ─── COMP EXPIRATIONS ────────────────────────────────────────────────
+// Comp clients whose free term is ending. Two buckets:
+//   - Already expired (decision overdue: convert / extend / sunset)
+//   - Expiring in <=30 days (start the conversion conversation now)
+$compExpired = $db->query(
+    "SELECT id, business_name, comp_expires_at,
+            DATEDIFF(CURDATE(), comp_expires_at) AS days_since
+     FROM clients
+     WHERE billing_mode = 'comp'
+       AND comp_expires_at IS NOT NULL
+       AND comp_expires_at < CURDATE()
+     ORDER BY comp_expires_at ASC"
+)->fetchAll();
+
+$compExpiringSoon = $db->query(
+    "SELECT id, business_name, comp_expires_at,
+            DATEDIFF(comp_expires_at, CURDATE()) AS days_left
+     FROM clients
+     WHERE billing_mode = 'comp'
+       AND comp_expires_at IS NOT NULL
+       AND comp_expires_at >= CURDATE()
+       AND comp_expires_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+     ORDER BY comp_expires_at ASC"
+)->fetchAll();
+
 // ─── ASSETS ───────────────────────────────────────────────────────────
 
 // Pending classification (cron picks ai_description IS NULL)
@@ -204,6 +229,48 @@ crm_renderHeader($user, 'health');
       <?php endforeach; endif; ?>
     </div>
   </div>
+
+  <!-- ── COMP EXPIRATIONS ──────────────────────────────────── -->
+  <?php if ($compExpired || $compExpiringSoon): ?>
+  <div class="grid2">
+    <div class="panel">
+      <h2>Comp expired · decision overdue
+        <span class="count <?= count($compExpired) ? 'danger' : 'ok' ?>"><?= count($compExpired) ?></span>
+      </h2>
+      <p class="hint">Comps que ya vencieron. Decidí: convertir a paid, extender, o cortar el servicio.</p>
+      <?php if (!$compExpired): ?>
+        <div class="empty">No expired comps.</div>
+      <?php else: foreach ($compExpired as $r): ?>
+        <div class="row">
+          <span class="badge b-fail">expired</span>
+          <div class="name"><?= crm_h($r['business_name']) ?></div>
+          <div class="meta">
+            <?= (int)$r['days_since'] ?> day<?= $r['days_since']==='1'?'':'s' ?> ago
+            · <?= crm_h(date('M j, Y', strtotime($r['comp_expires_at']))) ?>
+          </div>
+          <a href="/crm/client.php?id=<?= (int)$r['id'] ?>">Open →</a>
+        </div>
+      <?php endforeach; endif; ?>
+    </div>
+
+    <div class="panel">
+      <h2>Comp expiring soon · &le;30d
+        <span class="count <?= count($compExpiringSoon) ? 'warn' : 'ok' ?>"><?= count($compExpiringSoon) ?></span>
+      </h2>
+      <p class="hint">Empezá la conversación de conversión ya — no esperes a que venza.</p>
+      <?php if (!$compExpiringSoon): ?>
+        <div class="empty">Nothing expiring in the next 30 days.</div>
+      <?php else: foreach ($compExpiringSoon as $r): ?>
+        <div class="row">
+          <span class="badge b-update"><?= (int)$r['days_left'] ?>d left</span>
+          <div class="name"><?= crm_h($r['business_name']) ?></div>
+          <div class="meta"><?= crm_h(date('M j, Y', strtotime($r['comp_expires_at']))) ?></div>
+          <a href="/crm/client.php?id=<?= (int)$r['id'] ?>">Open →</a>
+        </div>
+      <?php endforeach; endif; ?>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- ── ASSETS ────────────────────────────────────────────── -->
   <div class="panel">

@@ -204,7 +204,7 @@ function crm_updateClient(int $id, array $patch, ?int $actorUserId = null): bool
         'account_manager_id','stripe_customer_id','stripe_subscription_id',
         'pandadoc_doc_id','health_score','notes','addons',
         // billing-mode (added 2026-05-25) — non-cash clients
-        'billing_mode','barter_monthly_value_usd','billing_notes',
+        'billing_mode','barter_monthly_value_usd','billing_notes','comp_expires_at',
         // schema-v11: billing fields populated by the pre-contract form
         'legal_entity_name','billing_email','billing_address',
         'billing_city','billing_state','billing_zip','tax_id',

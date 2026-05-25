@@ -106,21 +106,25 @@ crm_renderHeader($user, 'clients');
     <label>Billing mode</label>
     <div class="row3">
       <div>
-        <select name="billing_mode" id="billing_mode_select" onchange="document.getElementById('barter_fields').style.display = this.value === 'barter' ? 'grid' : 'none'">
+        <select name="billing_mode" id="billing_mode_select" onchange="
+            document.getElementById('barter_fields').style.display = this.value === 'barter' ? '' : 'none';
+            document.getElementById('comp_fields').style.display   = this.value === 'comp'   ? '' : 'none';
+          ">
           <option value="stripe">Stripe (monthly $799)</option>
-          <option value="barter">Barter (work-for-service)</option>
+          <option value="barter">Barter (trueque — work-for-service)</option>
           <option value="comp">Comp (free / beta)</option>
         </select>
       </div>
-      <div id="barter_fields" style="display:none;grid-template-columns:1fr;gap:0">
-        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Barter monthly FMV ($) — for taxes</label>
-        <input type="number" step="0.01" min="0" name="barter_monthly_value_usd" placeholder="e.g. 799">
+      <div id="barter_fields" style="display:none">
+        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Equivalent value ($ — optional)</label>
+        <input type="number" step="0.01" min="0" name="barter_monthly_value_usd" placeholder="e.g. 799 (internal note)">
       </div>
-      <div>
-        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Billing notes</label>
-        <input type="text" name="billing_notes" placeholder="What's exchanged / terms">
+      <div id="comp_fields" style="display:none">
+        <label style="margin:6px 0 4px;text-transform:none;font-size:12px;color:#6b6877;font-weight:500">Comp expires on</label>
+        <input type="date" name="comp_expires_at">
       </div>
     </div>
+    <input type="text" name="billing_notes" placeholder="Billing notes — what's exchanged / terms / who's the contact" style="margin-top:6px">
 
     <label>Notes</label>
     <textarea name="notes" placeholder="Anything relevant — onboarding context, past relationship, special terms..."></textarea>

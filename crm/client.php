@@ -323,6 +323,17 @@ crm_renderHeader($user, 'clients');
   </form>
 
   <!-- ── BILLING MODE ─────────────────────────────────────────── -->
+  <?php
+    // Comp expiration status — surfaced as a chip + colored hint
+    $compExp = $client['comp_expires_at'] ?? null;
+    $compStatus = null;   // 'expired' | 'soon' | 'ok' | null
+    if ($billingMode === 'comp' && $compExp) {
+        $daysLeft = (int)floor((strtotime($compExp) - time()) / 86400);
+        if ($daysLeft < 0)        $compStatus = ['expired', abs($daysLeft) . ' days ago'];
+        elseif ($daysLeft <= 30)  $compStatus = ['soon',    $daysLeft . ' days left'];
+        else                      $compStatus = ['ok',      $daysLeft . ' days left'];
+    }
+  ?>
   <div class="card">
     <h2 style="margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b6877">Billing mode</h2>
     <form method="post" action="/crm/update.php" style="display:grid;grid-template-columns:200px 1fr 1fr auto;gap:10px;align-items:end">
@@ -332,18 +343,28 @@ crm_renderHeader($user, 'clients');
 
       <div>
         <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Mode</label>
-        <select name="billing_mode" onchange="this.form.querySelector('.barter-val').style.display = this.value === 'barter' ? '' : 'none'" style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
+        <select name="billing_mode" onchange="
+              this.form.querySelector('.barter-val').style.display = this.value === 'barter' ? '' : 'none';
+              this.form.querySelector('.comp-exp').style.display   = this.value === 'comp'   ? '' : 'none';
+            " style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
           <option value="stripe" <?= $billingMode==='stripe'?'selected':'' ?>>Stripe ($799/mo)</option>
-          <option value="barter" <?= $billingMode==='barter'?'selected':'' ?>>Barter (work-for-service)</option>
+          <option value="barter" <?= $billingMode==='barter'?'selected':'' ?>>Barter (trueque — work-for-service)</option>
           <option value="comp"   <?= $billingMode==='comp'  ?'selected':'' ?>>Comp (free / beta)</option>
         </select>
       </div>
 
       <div class="barter-val" style="<?= $billingMode==='barter'?'':'display:none' ?>">
-        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Barter monthly FMV ($)</label>
+        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Equivalent monthly value ($ — optional)</label>
         <input type="number" step="0.01" min="0" name="barter_monthly_value_usd"
                value="<?= crm_h((string)($client['barter_monthly_value_usd'] ?? '')) ?>"
-               placeholder="e.g. 799"
+               placeholder="e.g. 799 (internal note only)"
+               style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
+      </div>
+
+      <div class="comp-exp" style="<?= $billingMode==='comp'?'':'display:none' ?>">
+        <label style="display:block;font-size:11px;color:#6b6877;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:4px">Comp expires on</label>
+        <input type="date" name="comp_expires_at"
+               value="<?= crm_h((string)$compExp) ?>"
                style="width:100%;padding:8px 11px;border:1px solid #d6d3e0;border-radius:7px;font-size:14px;background:#fff">
       </div>
 
@@ -360,12 +381,28 @@ crm_renderHeader($user, 'clients');
 
     <?php if ($billingMode === 'barter'): ?>
       <div style="margin-top:12px;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;line-height:1.5">
-        ⚠️ <strong>Tax reminder:</strong> IRS treats barter as taxable income at fair market value. Track the monthly FMV (above) — your accountant needs it at year-end. If &gt;$600/yr per partner, may require Form 1099-B. The Service Agreement assumes cash billing — get an addendum signed that defines the exchange and term.
+        🔄 <strong>Barter (trueque)</strong> — el cliente entrega trabajo o servicios en vez de pagar cash. No se factura ni se registra como ingreso/egreso. Asegurate de tener algo escrito (aunque sea email) que defina qué entrega cada parte y por cuánto tiempo. Documentado en "Billing notes" arriba.
       </div>
     <?php elseif ($billingMode === 'comp'): ?>
-      <div style="margin-top:12px;padding:10px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;line-height:1.5">
-        ℹ️ Comp client — no expected payment. Service Agreement should be replaced with a comp/beta-tester agreement specifying the term and what gets cut off when it ends.
-      </div>
+      <?php if ($compStatus): [$cls, $when] = $compStatus; ?>
+        <?php if ($cls === 'expired'): ?>
+          <div style="margin-top:12px;padding:10px 12px;background:#fee2e2;border-radius:8px;font-size:13px;color:#991b1b;line-height:1.5">
+            🚨 <strong>Comp EXPIRED <?= crm_h($when) ?></strong> — decide: convert to paid, extend the comp, or sunset the service.
+          </div>
+        <?php elseif ($cls === 'soon'): ?>
+          <div style="margin-top:12px;padding:10px 12px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;line-height:1.5">
+            ⏰ <strong>Comp expires in <?= crm_h($when) ?></strong> (<?= crm_h(date('M j, Y', strtotime($compExp))) ?>) — start the conversion conversation now.
+          </div>
+        <?php else: ?>
+          <div style="margin-top:12px;padding:10px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;line-height:1.5">
+            🎁 Comp active · expires <?= crm_h(date('M j, Y', strtotime($compExp))) ?> (<?= crm_h($when) ?>).
+          </div>
+        <?php endif; ?>
+      <?php else: ?>
+        <div style="margin-top:12px;padding:10px 12px;background:#dbeafe;border-radius:8px;font-size:12px;color:#1e40af;line-height:1.5">
+          ℹ️ Comp client — no expected payment. Set an <strong>expiration date</strong> above so you don't forget to revisit the relationship.
+        </div>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
 

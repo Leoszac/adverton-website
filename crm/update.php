@@ -342,10 +342,12 @@ case 'client_create': {
     // CRM_BILLING_MODES validation runs and we keep the create INSERT lean.
     $bm = trim((string)($_POST['billing_mode'] ?? 'stripe'));
     if ($bm !== '' && $bm !== 'stripe') {
+        $compExp = trim((string)($_POST['comp_expires_at'] ?? ''));
         crm_updateClient($clientId, [
             'billing_mode'             => $bm,
-            'barter_monthly_value_usd' => $_POST['barter_monthly_value_usd'] ?? null,
-            'billing_notes'            => $_POST['billing_notes']            ?? null,
+            'barter_monthly_value_usd' => $bm === 'barter' ? ($_POST['barter_monthly_value_usd'] ?? null) : null,
+            'comp_expires_at'          => $bm === 'comp' && $compExp !== '' ? $compExp : null,
+            'billing_notes'            => $_POST['billing_notes'] ?? null,
         ], (int)$user['id']);
     }
     header('Location: /crm/client.php?id=' . $clientId . '&saved=1');
@@ -383,11 +385,12 @@ case 'client_billing_update': {
     $id = (int)($_POST['client_id'] ?? 0);
     if ($id <= 0 || !crm_getClient($id)) { http_response_code(404); header('Location: /crm/clients.php'); exit; }
     $bm = trim((string)($_POST['billing_mode'] ?? 'stripe'));
-    // If billing_mode is stripe, clear barter-specific fields so they don't
-    // linger as misleading values.
+    // Clear mode-specific fields when not in that mode so they don't linger.
+    $compExp = trim((string)($_POST['comp_expires_at'] ?? ''));
     $patch = [
         'billing_mode'             => $bm,
         'barter_monthly_value_usd' => $bm === 'barter' ? ($_POST['barter_monthly_value_usd'] ?? null) : null,
+        'comp_expires_at'          => $bm === 'comp' && $compExp !== '' ? $compExp : null,
         'billing_notes'            => $_POST['billing_notes'] ?? null,
     ];
     crm_updateClient($id, $patch, (int)$user['id']);
