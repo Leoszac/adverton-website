@@ -357,44 +357,28 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
 
 <section class="pagehead"><div class="wrap">
   <h1>Get in touch</h1>
-  <p class="lead">Free estimates. We'll get back to you within one business day.</p>
+  <p class="lead">Call us for a free estimate — we pick up.</p>
 </div></section>
 
-<section class="contact"><div class="wrap"><div class="contact-grid">
-  <div>
-    <h2>Send us a message</h2>
-    <form action="https://adverton.net/crm/client-form-submit.php?client_id=<?= (int)$client['id'] ?>" method="post" class="form">
-      <input type="hidden" name="redirect" value="1">
-      <input type="text" name="hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
-      <input type="text" name="name" placeholder="Your name" required>
-      <div class="row2">
-        <input type="tel" name="phone" placeholder="Phone" required>
-        <input type="email" name="email" placeholder="Email">
-      </div>
-      <textarea name="message" placeholder="What do you need help with?" rows="4"></textarea>
-      <button type="submit" class="btn-primary">Send →</button>
-    </form>
-  </div>
-  <div>
-    <h2>Or reach us directly</h2>
-    <dl class="info">
-      <?php if ($phone): ?><dt>📞 Phone</dt><dd><a href="tel:<?= $h($phoneTel) ?>" style="font-weight:700"><?= $h($phone) ?></a></dd><?php endif; ?>
-      <?php if (!empty($client['billing_address'])): ?><dt>📍 Address</dt><dd><?= $h((string)$client['billing_address']) ?><?= !empty($client['billing_city']) ? '<br>' . $h((string)$client['billing_city']) . ', ' . $h((string)($client['billing_state'] ?? '')) . ' ' . $h((string)($client['billing_zip'] ?? '')) : '' ?></dd><?php endif; ?>
-      <?php if ($hours): ?>
-      <dt>🕒 Hours</dt>
-      <dd>
-        <?php foreach (['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'] as $k=>$lbl):
-          if (empty($hours[$k]['open']) && empty($hours[$k]['close'])) continue; ?>
-          <div><?= $lbl ?>: <?= $h($hours[$k]['open']) ?> – <?= $h($hours[$k]['close']) ?></div>
-        <?php endforeach; ?>
-      </dd>
-      <?php endif; ?>
-    </dl>
-    <div class="mapwrap" style="margin-top:18px;padding:0">
-      <div class="mapplaceholder">[Google Maps embed]</div>
-    </div>
-  </div>
-</div></div></section>
+<section class="contact"><div class="wrap" style="max-width:560px;margin:0 auto;text-align:center">
+  <?php if ($phone): ?>
+  <a href="tel:<?= $h($phoneTel) ?>" style="display:inline-block;background:var(--primary);color:#fff;padding:20px 44px;border-radius:12px;font-size:28px;font-weight:800;text-decoration:none;margin-bottom:28px">📞 <?= $h($phone) ?></a>
+  <?php endif; ?>
+  <?php if ($hours): ?>
+  <dl class="info" style="text-align:left;display:inline-block;margin:0 auto">
+    <dt style="font-weight:700;margin-bottom:6px">🕒 Hours</dt>
+    <dd>
+      <?php foreach (['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'] as $k=>$lbl):
+        if (empty($hours[$k]['open']) && empty($hours[$k]['close'])) continue; ?>
+        <div><?= $lbl ?>: <?= $h($hours[$k]['open']) ?> – <?= $h($hours[$k]['close']) ?></div>
+      <?php endforeach; ?>
+    </dd>
+  </dl>
+  <?php endif; ?>
+</div></section>
+
+<?php $mapQ = urlencode($name . ' Toledo OH'); ?>
+<iframe src="https://maps.google.com/maps?q=<?= $mapQ ?>&output=embed&zoom=12" width="100%" height="360" style="border:0;display:block" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 
 <?php break; default: /* HOME */ ?>
 
@@ -425,16 +409,31 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
 </div></div></section>
 <?php endif; ?>
 
-<?php if ($googleUrl || $yearsInBiz): ?>
+<?php
+  $testimonials = (array)($copy['testimonials'] ?? []);
+?>
+<?php if ($googleUrl || $yearsInBiz || !empty($testimonials)): ?>
 <section class="reviews"><div class="wrap">
   <div class="lead">
     <div class="stars">★★★★★</div>
     <h2>What our customers say</h2>
-    <p><?= $yearsInBiz ? $yearsInBiz . ' years of trusted service' : 'Real reviews from local customers' ?>.</p>
+    <p><?= $yearsInBiz ? $h($yearsInBiz) . ' years of trusted service' : 'Real reviews from local customers' ?>.</p>
   </div>
+  <?php if (!empty($testimonials)): ?>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:32px 0">
+    <?php foreach (array_slice($testimonials, 0, 3) as $r): ?>
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:22px">
+      <div style="color:#f59e0b;font-size:18px;margin-bottom:10px">★★★★★</div>
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#374151">"<?= $h((string)($r['text'] ?? '')) ?>"</p>
+      <div style="font-weight:700;font-size:14px;color:#111827"><?= $h((string)($r['name'] ?? '')) ?></div>
+      <?php if (!empty($r['location'])): ?><div style="font-size:13px;color:#6b7280"><?= $h((string)$r['location']) ?></div><?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
   <?php if ($googleUrl): ?>
   <div class="review-cta">
-    <a href="<?= $h($googleUrl) ?>" target="_blank" rel="noopener">See reviews on Google →</a>
+    <a href="<?= $h($googleUrl) ?>" target="_blank" rel="noopener">See all reviews on Google →</a>
   </div>
   <?php endif; ?>
 </div></section>

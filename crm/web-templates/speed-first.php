@@ -329,44 +329,28 @@ function crm_renderTemplate_speed_first(array $client, array $intake, array $cop
 
 <section class="pagehead"><div class="wrap">
   <h1>Don't wait — get help now</h1>
-  <p class="lead">Fastest is to call. Or send a message and we'll respond same day.</p>
+  <p class="lead">Call us for a free estimate — we pick up.</p>
 </div></section>
 
-<section class="contact"><div class="wrap"><div class="contact-grid">
-  <div>
-    <h2>Send a message</h2>
-    <form action="https://adverton.net/crm/client-form-submit.php?client_id=<?= (int)$client['id'] ?>" method="post" class="form">
-      <input type="hidden" name="redirect" value="1">
-      <input type="text" name="hp" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
-      <input type="text" name="name" placeholder="Your name" required>
-      <div class="row2">
-        <input type="tel" name="phone" placeholder="Phone" required>
-        <input type="email" name="email" placeholder="Email">
-      </div>
-      <textarea name="message" placeholder="What's going on?" rows="4"></textarea>
-      <button type="submit" style="background:var(--primary);color:#fff;padding:14px 22px;border-radius:9px;font-weight:700;font-size:16px;cursor:pointer;border:0;font-family:inherit">Send →</button>
-    </form>
-  </div>
-  <div>
-    <h2>Or reach us directly</h2>
-    <dl class="info">
-      <?php if ($phone): ?><dt>📞 Phone</dt><dd><a href="tel:<?= $h($phoneTel) ?>" style="font-weight:700;font-size:18px"><?= $h($phone) ?></a><?= $emergency ? '<br><span style="font-size:13px;color:var(--ink-3)">Answered 24/7</span>' : '' ?></dd><?php endif; ?>
-      <?php if (!empty($client['billing_address'])): ?><dt>📍 Address</dt><dd><?= $h((string)$client['billing_address']) ?><?= !empty($client['billing_city']) ? '<br>' . $h((string)$client['billing_city']) . ', ' . $h((string)($client['billing_state'] ?? '')) . ' ' . $h((string)($client['billing_zip'] ?? '')) : '' ?></dd><?php endif; ?>
-      <?php if ($hours): ?>
-      <dt>🕒 Hours</dt>
-      <dd>
-        <?php foreach (['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'] as $k=>$lbl):
-          if (empty($hours[$k]['open']) && empty($hours[$k]['close'])) continue; ?>
-          <div><?= $lbl ?>: <?= $h($hours[$k]['open']) ?> – <?= $h($hours[$k]['close']) ?></div>
-        <?php endforeach; ?>
-      </dd>
-      <?php endif; ?>
-    </dl>
-    <div class="mapwrap" style="margin-top:18px;padding:0">
-      <div class="mapplaceholder">[Google Maps embed]</div>
-    </div>
-  </div>
-</div></div></section>
+<section class="contact"><div class="wrap" style="max-width:560px;margin:0 auto;text-align:center">
+  <?php if ($phone): ?>
+  <a href="tel:<?= $h($phoneTel) ?>" style="display:inline-block;background:var(--primary);color:#fff;padding:20px 44px;border-radius:12px;font-size:28px;font-weight:800;text-decoration:none;margin-bottom:28px">📞 <?= $h($phone) ?></a>
+  <?php endif; ?>
+  <?php if ($hours): ?>
+  <dl class="info" style="text-align:left;display:inline-block;margin:0 auto">
+    <dt style="font-weight:700;margin-bottom:6px">🕒 Hours</dt>
+    <dd>
+      <?php foreach (['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'] as $k=>$lbl):
+        if (empty($hours[$k]['open']) && empty($hours[$k]['close'])) continue; ?>
+        <div><?= $lbl ?>: <?= $h($hours[$k]['open']) ?> – <?= $h($hours[$k]['close']) ?></div>
+      <?php endforeach; ?>
+    </dd>
+  </dl>
+  <?php endif; ?>
+</div></section>
+
+<?php $mapQ = urlencode($name); ?>
+<iframe src="https://maps.google.com/maps?q=<?= $mapQ ?>&output=embed&zoom=12" width="100%" height="360" style="border:0;display:block" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 
 <?php break; default: /* HOME */ ?>
 
