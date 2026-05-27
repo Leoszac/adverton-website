@@ -166,6 +166,7 @@ function crm_sourceLabel(?string $source): string {
         'affiliate'            => 'Affiliate',
         'csv_import'           => 'CSV import',
         'cold_call'            => 'Cold call (VA)',
+        'leos_contacts'        => "Leo's Contacts",
     ];
     if (!$source) return '—';
     return $labels[$source] ?? str_replace('_', ' ', $source);
