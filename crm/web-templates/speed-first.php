@@ -310,7 +310,8 @@ function crm_renderTemplate_speed_first(array $client, array $intake, array $cop
     <?php endforeach; ?>
   </div>
   <div class="mapwrap">
-    <div class="mapplaceholder">[Google Maps embed — paste your Maps Embed API key + address at onboarding]</div>
+    <?php $mapQ = urlencode($name . ($areaCities ? ' ' . $areaCities[0] : '')); ?>
+    <iframe src="https://maps.google.com/maps?q=<?= $mapQ ?>&output=embed&zoom=10" width="100%" height="360" style="border:0;display:block;border-radius:12px" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
   </div>
 </div></section>
 <?php endif; ?>
