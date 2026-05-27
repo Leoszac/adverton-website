@@ -8,12 +8,15 @@ if (($_GET['t'] ?? '') !== 'd7e61ea740d7b15c6fea6e050ef682287dd0014ae4d16d25') {
 }
 
 $db = crm_db();
-$row = $db->query("SELECT id, service_area_json, copy_json, reviews_links_json FROM clients WHERE id=6")->fetch();
+$row = $db->query("SELECT * FROM client_intake WHERE client_id=6 LIMIT 1")->fetch();
+
+$drafts = json_decode($row['ai_drafts_json'] ?? 'null', true);
 
 header('Content-Type: application/json');
 echo json_encode([
-    'service_area' => json_decode($row['service_area_json'] ?? 'null', true),
-    'copy_keys'    => array_keys((array)json_decode($row['copy_json'] ?? '{}', true)),
-    'faq_count'    => count((array)(json_decode($row['copy_json'] ?? '{}', true)['faq'] ?? [])),
-    'reviews'      => json_decode($row['reviews_links_json'] ?? 'null', true),
+    'service_area'  => json_decode($row['service_area_json'] ?? 'null', true),
+    'reviews_links' => json_decode($row['reviews_links_json'] ?? 'null', true),
+    'draft_keys'    => array_keys((array)$drafts),
+    'faq'           => $drafts['faq'] ?? null,
+    'template'      => $row['template_choice'] ?? null,
 ], JSON_PRETTY_PRINT);
