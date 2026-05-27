@@ -425,6 +425,22 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
 </div></section>
 <?php endif; ?>
 
+<?php if (!empty($gallery)): ?>
+<section style="padding:64px 0;background:#fff"><div class="wrap">
+  <h2 style="text-align:center;margin:0 0 8px;font-size:30px;font-family:Georgia,serif;font-weight:400">Our work</h2>
+  <p style="text-align:center;color:var(--ink-3);margin:0 0 32px">Recent projects in the area.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+    <?php foreach (array_slice($gallery, 0, 6) as $a): ?>
+    <div style="border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:#ece9f3">
+      <img src="/clients/<?= (int)$client['id'] ?>/photos/<?= $h($a['category']) ?>/<?= $h($a['stored_name']) ?>"
+           alt="<?= $h((string)($a['ai_description'] ?? $name)) ?>"
+           style="width:100%;height:100%;object-fit:cover;display:block">
+    </div>
+    <?php endforeach; ?>
+  </div>
+</div></section>
+<?php endif; ?>
+
 <?php if ($areaSummary): ?>
 <section class="area"><div class="wrap"><?= $h($areaSummary) ?> · <a href="/service-area.html">See full area →</a></div></section>
 <?php endif; ?>
