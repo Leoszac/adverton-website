@@ -417,7 +417,7 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
   <div class="lead">
     <div class="stars">★★★★★</div>
     <h2>What our customers say</h2>
-    <p><?= $yearsInBiz ? $h($yearsInBiz) . ' years of trusted service' : 'Real reviews from local customers' ?>.</p>
+    <p><?= $yearsInBiz ? $yearsInBiz . ' years of trusted service' : 'Real reviews from local customers' ?>.</p>
   </div>
   <?php if (!empty($testimonials)): ?>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:32px 0">
