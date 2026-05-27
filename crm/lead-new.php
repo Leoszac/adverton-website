@@ -49,7 +49,7 @@ crm_renderHeader($user, 'leads');
         <label>Trade</label>
         <select name="trade">
           <option value="">—</option>
-          <?php foreach (['HVAC','Plumbing','Roofing','Electrical','Pest Control','Landscaping','Solar','Restoration','Garage Door','Other'] as $t): ?>
+          <?php foreach (['HVAC','Plumbing','Roofing','Electrical','Pest Control','Landscaping','Solar','Restoration','Garage Door','Handyman','Home Cleaning','Home Inspector','Other'] as $t): ?>
             <option value="<?= $t ?>"><?= $t ?></option>
           <?php endforeach; ?>
         </select>
