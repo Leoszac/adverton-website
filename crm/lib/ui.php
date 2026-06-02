@@ -76,7 +76,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
   <?php
     $isFounder = (($user['role'] ?? '') === 'founder');
     $inLeadsGroup    = in_array($current, ['leads','pipeline'], true);
-    $inColdGroup     = in_array($current, ['cold','cold-import','cold-blocked'], true);
+    $inColdGroup     = in_array($current, ['cold','cold-import','cold-blocked','cold-outbound'], true);
     $inNurtureGroup  = in_array($current, ['nurture','templates','sequences'], true);
     $inSettingsGroup = in_array($current, ['routing','integrations','account'], true);
   ?>
@@ -93,6 +93,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
     <div class="dd">
       <a href="/crm/cold-calling.php" class="<?= $inColdGroup?'cur':'' ?>">Cold</a>
       <div class="dd-menu">
+        <a href="/crm/cold-outbound.php" class="<?= $current==='cold-outbound'?'cur':'' ?>">Outbound (email)</a>
         <a href="/crm/cold-calling.php" class="<?= $current==='cold'?'cur':'' ?>">Dialer</a>
         <a href="/crm/cold-prospects-import.php" class="<?= $current==='cold-import'?'cur':'' ?>">Import CSV</a>
         <a href="/crm/cold-calling.php?view=blocked" class="<?= $current==='cold-blocked'?'cur':'' ?>">Blocked (audit)</a>
