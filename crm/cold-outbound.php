@@ -28,9 +28,16 @@ if ($action && in_array($action, ['activate','pause'], true) && !empty($_POST['c
 
 // --- Pull data ---
 
-// Campaigns + analytics
+// Campaigns + analytics. Only fetch analytics for campaigns we created
+// ("Cold Batch *") to avoid the dashboard timing out on workspaces with
+// many placeholder / AI-SDR campaigns. Analytics endpoint is ~2-3s per call.
 $campaignsResp = crm_instantlyListCampaigns(50);
-$campaigns = $campaignsResp['items'] ?? [];
+$allCampaigns = $campaignsResp['items'] ?? [];
+$campaigns = [];
+foreach ($allCampaigns as $c) {
+    $name = (string)($c['name'] ?? '');
+    if (stripos($name, 'Cold Batch') === 0) $campaigns[] = $c;
+}
 $campaignAnalytics = [];
 foreach ($campaigns as $c) {
     if (empty($c['id'])) continue;
