@@ -130,10 +130,17 @@ foreach ($batch as $c) {
     foreach ($sample as $l) echo "    - " . ($l['email'] ?? '?') . "\n";
 
     if ($confirm) {
-        // Collect the role-based lead IDs and delete them in ONE bulk call.
-        // Instantly v2: DELETE /api/v2/leads with body {ids:[...]}. We ALWAYS
-        // pass a non-empty ids array AND scope to this campaign — never an
-        // empty body (which could match far more than intended).
+        // Instantly v2: DELETE /api/v2/leads with body {campaign_id, ids:[...]}.
+        // The schema REQUIRES campaign_id (or list_id); `ids` restricts the
+        // delete to those specific leads. Helper returns the deleted count.
+        $delCount = static function (array $d) {
+            if (!$d['ok'] || !is_array($d['data'])) return -1;
+            foreach (['deleted', 'count', 'deleted_count', 'deleted_leads_count'] as $k) {
+                if (isset($d['data'][$k])) return (int)$d['data'][$k];
+            }
+            return -2;  // ok but unknown shape — treat cautiously
+        };
+
         $ids = [];
         foreach ($roleLeads as $l) {
             $id = (string)($l['id'] ?? '');
@@ -142,16 +149,27 @@ foreach ($batch as $c) {
         if (!$ids) {
             echo "  nothing to delete.\n";
         } else {
-            $d = crm_instantlyRequest('DELETE', '/leads', ['ids' => $ids, 'campaign' => $cid]);
-            if ($d['ok']) {
-                $n = is_array($d['data'])
-                    ? (int)($d['data']['deleted'] ?? $d['data']['count'] ?? $d['data']['deleted_count'] ?? count($ids))
-                    : count($ids);
-                $deletedTotal += $n;
-                echo "  DELETED {$n} role-based leads (sent " . count($ids) . " ids)\n";
+            // SAFETY CANARY: delete ONE id first. If the API reports it deleted
+            // more than 1, the ids filter isn't being honored — abort before we
+            // nuke the whole campaign.
+            $c1 = crm_instantlyRequest('DELETE', '/leads', ['campaign_id' => $cid, 'ids' => [$ids[0]]]);
+            $n1 = $delCount($c1);
+            if (!$c1['ok']) {
+                echo "  DELETE FAILED (canary): http={$c1['http']} error=\"{$c1['error']}\" raw="
+                   . substr(json_encode($c1['data']), 0, 250) . "\n";
+            } elseif ($n1 > 1) {
+                echo "  ⚠ ABORT: canary reported {$n1} deleted for 1 id — ids filter NOT honored. "
+                   . "Stopping so the campaign isn't wiped. (No further deletes.)\n";
             } else {
-                echo "  DELETE FAILED: http={$d['http']} error=\"{$d['error']}\" raw="
-                   . substr(json_encode($d['data']), 0, 250) . "\n";
+                $deletedTotal += max(0, $n1);
+                $rest = array_slice($ids, 1);
+                $n2 = 0;
+                if ($rest) {
+                    $c2 = crm_instantlyRequest('DELETE', '/leads', ['campaign_id' => $cid, 'ids' => $rest]);
+                    if ($c2['ok']) { $n2 = max(0, $delCount($c2)); $deletedTotal += $n2; }
+                    else echo "  DELETE FAILED (rest): http={$c2['http']} error=\"{$c2['error']}\"\n";
+                }
+                echo "  DELETED " . (max(0,$n1) + $n2) . " role-based leads (sent " . count($ids) . " ids)\n";
             }
         }
     }
