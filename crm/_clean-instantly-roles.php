@@ -28,6 +28,16 @@ if (($_GET['t'] ?? '') !== '0c2fbc549075cdc47452691ec06f9e0be739f4533229824a') {
 }
 header('Content-Type: text/plain; charset=utf-8');
 
+// Deleting 100+ leads = 100+ sequential API calls. Lift the time limit and
+// stream output so the run survives and shows live progress. A per-run cap
+// guarantees each request finishes even if the host enforces a hard limit —
+// re-run to continue (the script re-reads current state each time).
+@set_time_limit(0);
+@ini_set('max_execution_time', '0');
+while (ob_get_level() > 0) { @ob_end_flush(); }
+@ob_implicit_flush(true);
+const DELETE_CAP_PER_RUN = 80;
+
 $confirm = ($_GET['confirm'] ?? '') === '1';
 
 // Same role rule used to build the *-personal.csv files.
@@ -92,6 +102,8 @@ function list_campaign_leads(string $campaignId): array {
 
 // 3) Process Batch 02 + 03
 $deletedTotal = 0;
+$deleteBudget = DELETE_CAP_PER_RUN;
+$roleRemaining = 0;
 foreach ($batch as $c) {
     $name = (string)($c['name'] ?? '');
     $isTarget = stripos($name, 'Batch 02') !== false || stripos($name, 'Batch 03') !== false;
@@ -122,20 +134,26 @@ foreach ($batch as $c) {
 
     if ($confirm) {
         $del = 0; $errs = 0;
+        echo "  deleting: ";
         foreach ($roleLeads as $l) {
+            if ($deleteBudget <= 0) { $roleRemaining++; continue; }
             $id = (string)($l['id'] ?? '');
             if ($id === '') { $errs++; continue; }
             $d = crm_instantlyRequest('DELETE', '/leads/' . rawurlencode($id));
-            if ($d['ok']) $del++; else $errs++;
+            if ($d['ok']) { $del++; $deleteBudget--; echo "."; }
+            else { $errs++; echo "x"; }
+            @flush();
         }
         $deletedTotal += $del;
-        echo "  DELETED {$del} role-based leads" . ($errs ? " ({$errs} errors)" : '') . "\n";
+        echo "\n  DELETED {$del} role-based leads" . ($errs ? " ({$errs} errors)" : '') . "\n";
     }
     echo "\n";
 }
 
 if (!$confirm) {
     echo "Dry-run complete. If the counts + lead keys above look right, re-run with &confirm=1 to delete.\n";
+} elseif ($roleRemaining > 0) {
+    echo "Deleted {$deletedTotal} this run; hit the per-run cap. {$roleRemaining}+ still queued — re-run the SAME &confirm=1 URL to continue.\n";
 } else {
     echo "Done. Deleted {$deletedTotal} role-based leads across Batch 02 + 03. You can delete this script now.\n";
 }
