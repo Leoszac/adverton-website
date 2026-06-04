@@ -30,10 +30,22 @@ function crm_aiGenerateClientCopy(int $clientId): array {
     $intake = crm_getIntake($clientId);
     if (!$intake) return ['ok' => false, 'copy' => null, 'error' => 'No intake row for client'];
 
+    // The seo_local template asks for a unique blurb per city + per-service
+    // detail copy, so its output is much larger — scale max_tokens with the
+    // city/service counts (capped) instead of the flat default.
+    $tc = (string)($intake['template_choice'] ?? '');
+    $maxTok = CRM_AI_MAXTOK;
+    if ($tc === 'seo_local') {
+        $area    = (array)($intake['service_area_decoded'] ?? []);
+        $nCities = ($area['type'] ?? '') === 'cities' ? count((array)($area['cities'] ?? [])) : 0;
+        $nSvcs   = count((array)($intake['services_decoded'] ?? []));
+        $maxTok  = min(16000, 4096 + $nCities * 230 + $nSvcs * 160);
+    }
+
     $payload = [
         'model'      => CRM_AI_MODEL,
-        'max_tokens' => CRM_AI_MAXTOK,
-        'system'     => crm_aiSystemPrompt(),
+        'max_tokens' => $maxTok,
+        'system'     => crm_aiSystemPrompt($tc),
         'messages'   => [
             ['role' => 'user', 'content' => crm_aiUserPrompt($intake)],
         ],
@@ -94,8 +106,8 @@ function crm_aiGenerateClientCopy(int $clientId): array {
 
 // System prompt: persona + format + safety. Keep this short; per-client info
 // lives in the user prompt.
-function crm_aiSystemPrompt(): string {
-    return <<<SYS
+function crm_aiSystemPrompt(string $templateChoice = ''): string {
+    $base = <<<SYS
 You are a senior copywriter for U.S. home-service contractors writing
 production website copy. Tone: plain English, contractor-language, never
 agency-speak. Short sentences. Concrete claims. No buzzwords ("synergy",
@@ -139,6 +151,40 @@ JSON schema:
 services[] must contain ONE entry per service from the input (same order,
 exact `name`). faq[] should contain 5 items.
 SYS;
+
+    if ($templateChoice !== 'seo_local') {
+        return $base;
+    }
+
+    // The seo_local template builds one landing page per service and one per
+    // city. It needs longer per-service copy AND a unique paragraph per city.
+    $extra = <<<SEO
+
+ADDITIONAL FIELDS — this site has a dedicated page per service and per city:
+
+1. Add to EACH services[] item a field:
+   "detail_html": "string  // 2–3 short <p> paragraphs for the service's own
+                   page: what it covers, why it matters, what the homeowner
+                   gets. Concrete, plain English. NO '#1' / unverifiable claims."
+
+2. Add a TOP-LEVEL field:
+   "locations": [
+     {
+       "city":       "string  // exactly one of the input cities, verbatim",
+       "blurb_html": "string  // ONE <p>, 50–70 words, UNIQUE to this city.
+                      Reference something real and specific about the city
+                      (terrain, weather exposure, housing, community) and tie
+                      it to why the service matters there. Each city's blurb
+                      must read differently — no templated boilerplate."
+     }
+   ]
+
+locations[] must contain ONE entry per city in the input list (verbatim names),
+in the same order. Do not invent cities. Vary sentence structure across
+blurbs so they are not detectably duplicated content.
+SEO;
+
+    return $base . $extra;
 }
 
 // User prompt: feed the intake row as a clean structured snapshot.
@@ -151,10 +197,13 @@ function crm_aiUserPrompt(array $intake): string {
     $certs    = $intake['certifications_decoded'] ?? [];
     $compete  = $intake['competitors_admired_decoded'] ?? [];
 
-    // Compact area description
+    // Compact area description. The seo_local template renders one page per
+    // city, so it needs the FULL list (not capped at 12) to emit a blurb each.
+    $isSeoLocal = (string)($intake['template_choice'] ?? '') === 'seo_local';
+    $cityCap = $isSeoLocal ? 60 : 12;
     $areaText = '';
     if (($area['type'] ?? '') === 'cities' && !empty($area['cities'])) {
-        $areaText = 'Cities: ' . implode(', ', array_slice((array)$area['cities'], 0, 12));
+        $areaText = 'Cities: ' . implode(', ', array_slice((array)$area['cities'], 0, $cityCap));
     } elseif (($area['type'] ?? '') === 'radius' && !empty($area['zip'])) {
         $areaText = 'Within ' . (int)$area['radius_mi'] . ' miles of ' . (string)$area['zip'];
     }
@@ -206,6 +255,10 @@ function crm_aiUserPrompt(array $intake): string {
 
     $head = "Generate the website copy JSON for this contractor. Match the trade vocabulary "
           . "and area in the answers. Return ONLY the JSON object — no preface, no fence.";
+    if ($isSeoLocal) {
+        $head .= " This is a local-SEO site: include `detail_html` on every service AND a "
+               . "`locations` array with one UNIQUE blurb per city listed above (verbatim city names).";
+    }
     return $head . "\n\n--- INTAKE ---\n" . implode("\n\n", $blocks);
 }
 

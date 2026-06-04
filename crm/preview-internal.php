@@ -19,8 +19,12 @@ $user = crm_requireRole(['founder','sales']);
 
 $clientId = (int)($_GET['id'] ?? 0);
 $page     = (string)($_GET['page'] ?? 'home');
-$allowedPages = ['home','about','services','service-area','contact'];
-if (!in_array($page, $allowedPages, true)) $page = 'home';
+// Flat pages (all templates) + seo_local pages (locations/reviews) + the
+// programmatic "service:<slug>" / "location:<slug>" keys.
+$flatAllowed = ['home','about','services','service-area','contact','locations','reviews'];
+$validPage = in_array($page, $flatAllowed, true)
+    || preg_match('#^(service|location):[a-z0-9-]+$#', $page) === 1;
+if (!$validPage) $page = 'home';
 
 if ($clientId <= 0) {
     http_response_code(400);
@@ -44,6 +48,14 @@ if (!$res['ok']) {
 //   /xyz.html → /crm/preview-internal.php?id={id}&page=xyz
 $base = '/crm/preview-internal.php?id=' . $clientId;
 $html = $res['html'];
+// Nested seo_local pages first: /services/x.html → page=service:x,
+// /locations/y.html → page=location:y.
+$html = preg_replace_callback(
+    '#href="/(services|locations)/([a-z0-9-]+)\.html"#i',
+    fn($m) => 'href="' . $base . '&page=' . (strtolower($m[1]) === 'services' ? 'service' : 'location') . ':' . $m[2] . '"',
+    $html
+);
+// Flat pages: /xyz.html → page=xyz.
 $html = preg_replace_callback(
     '#href="/([a-z0-9-]+)\.html"#i',
     fn($m) => 'href="' . $base . '&page=' . $m[1] . '"',

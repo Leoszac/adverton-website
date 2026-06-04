@@ -35,7 +35,39 @@ function crm_templateRegistry(): array {
             'fn'   => 'crm_renderTemplate_story_first',
             'label'=> 'Story-First',
         ],
+        'seo_local' => [
+            'file' => __DIR__ . '/../web-templates/seo-local.php',
+            'fn'   => 'crm_renderTemplate_seo_local',
+            'label'=> 'SEO Local',
+        ],
     ];
+}
+
+// URL-safe slug from a city or service name. Shared by the file-map builder
+// in crm_renderAllPages() AND by seo-local.php's internal hrefs so the two
+// agree exactly (a mismatch = a 404 on the deployed site).
+// "Monsey, NY" → "monsey-ny", "New City" → "new-city".
+function crm_slugify(string $s): string {
+    $s = strtolower(trim($s));
+    $s = preg_replace('/[^a-z0-9]+/', '-', $s) ?? '';
+    $s = trim($s, '-');
+    return $s !== '' ? $s : 'item';
+}
+
+// Slugify a list of names, de-duplicating collisions ("St. John" and
+// "St John" both → "st-john" → second becomes "st-john-2"). Returns an
+// ordered map [slug => original name] so callers can iterate deterministically.
+function crm_slugifyList(array $names): array {
+    $out = [];
+    foreach ($names as $name) {
+        $name = trim((string)$name);
+        if ($name === '') continue;
+        $slug = crm_slugify($name);
+        $base = $slug; $n = 2;
+        while (isset($out[$slug])) { $slug = $base . '-' . $n; $n++; }
+        $out[$slug] = $name;
+    }
+    return $out;
 }
 
 // Best-effort asset listing for the renderer. Returns rows from client_assets
@@ -94,16 +126,20 @@ function crm_renderPreviewHtml(int $clientId, string $page = 'home'): array {
     }
 }
 
-// Render all 5 pages of a client site for deploy.
+// Render all pages of a client site for deploy.
 // Returns ['ok'=>bool, 'pages'=>['index.html'=>'<html>', ...], 'error'=>?string].
+//
+// Most templates emit a FIXED 5-page set. The 'seo_local' template instead
+// emits a VARIABLE set: the core pages PLUS one page per service
+// (services/{slug}.html) and one per city (locations/{slug}.html). The cPanel
+// and SFTP adapters already create nested dirs on upload (CURLFTP_CREATE_DIR),
+// so no adapter change is needed — only the page→filename map below.
 function crm_renderAllPages(int $clientId): array {
-    $filenameMap = [
-        'home'         => 'index.html',
-        'about'        => 'about.html',
-        'services'     => 'services.html',
-        'service-area' => 'service-area.html',
-        'contact'      => 'contact.html',
-    ];
+    // Page-key → output filename. Page keys for programmatic pages carry a
+    // "service:" / "location:" prefix that crm_renderPreviewHtml passes through
+    // to the template (which parses it).
+    $filenameMap = crm_pageFilenameMap($clientId);
+
     $pages = [];
     foreach ($filenameMap as $pageKey => $filename) {
         $r = crm_renderPreviewHtml($clientId, $pageKey);
@@ -113,4 +149,58 @@ function crm_renderAllPages(int $clientId): array {
         $pages[$filename] = $r['html'];
     }
     return ['ok' => true, 'pages' => $pages, 'error' => null];
+}
+
+// Build the [pageKey => filename] map for a client, branching on the chosen
+// template. Exposed separately so the seo-local template can reuse the SAME
+// city/service slug lists to build matching internal hrefs.
+function crm_pageFilenameMap(int $clientId): array {
+    $intake = crm_getIntake($clientId);
+    $choice = (string)($intake['template_choice'] ?? '') ?: CRM_TEMPLATE_DEFAULT;
+
+    if ($choice !== 'seo_local') {
+        return [
+            'home'         => 'index.html',
+            'about'        => 'about.html',
+            'services'     => 'services.html',
+            'service-area' => 'service-area.html',
+            'contact'      => 'contact.html',
+        ];
+    }
+
+    // seo_local: core pages + one page per service + one per city.
+    $map = [
+        'home'     => 'index.html',
+        'services' => 'services.html',
+        'locations'=> 'locations.html',
+        'reviews'  => 'reviews.html',
+        'contact'  => 'contact.html',
+    ];
+
+    foreach (crm_seoLocalServiceSlugs($intake) as $slug => $_name) {
+        $map['service:' . $slug] = 'services/' . $slug . '.html';
+    }
+    foreach (crm_seoLocalCitySlugs($intake) as $slug => $_name) {
+        $map['location:' . $slug] = 'locations/' . $slug . '.html';
+    }
+    return $map;
+}
+
+// [slug => service name] for the seo_local template. Source: intake services.
+function crm_seoLocalServiceSlugs(?array $intake): array {
+    $services = is_array($intake['services_decoded'] ?? null) ? $intake['services_decoded'] : [];
+    $names = [];
+    foreach ($services as $s) {
+        $n = trim((string)($s['name'] ?? ''));
+        if ($n !== '') $names[] = $n;
+    }
+    return crm_slugifyList($names);
+}
+
+// [slug => city name] for the seo_local template. Source: intake service area
+// (only the "cities" mode produces per-city pages; a radius has no city list).
+function crm_seoLocalCitySlugs(?array $intake): array {
+    $area = is_array($intake['service_area_decoded'] ?? null) ? $intake['service_area_decoded'] : [];
+    $cities = ($area['type'] ?? '') === 'cities' && !empty($area['cities']) ? (array)$area['cities'] : [];
+    return crm_slugifyList($cities);
 }

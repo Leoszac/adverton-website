@@ -39,8 +39,12 @@ function previewError(int $status, string $title, string $msg): void {
 $clientId = (int)($_GET['id'] ?? 0);
 $token    = trim((string)($_GET['t'] ?? ''));
 $page     = (string)($_GET['page'] ?? 'home');
-$allowedPages = ['home', 'about', 'services', 'service-area', 'contact'];
-if (!in_array($page, $allowedPages, true)) $page = 'home';
+// Flat pages (all templates) + seo_local index pages + the programmatic
+// "service:<slug>" / "location:<slug>" keys.
+$flatAllowed = ['home', 'about', 'services', 'service-area', 'contact', 'locations', 'reviews'];
+$validPage = in_array($page, $flatAllowed, true)
+    || preg_match('#^(service|location):[a-z0-9-]+$#', $page) === 1;
+if (!$validPage) $page = 'home';
 
 if ($clientId <= 0) {
     previewError(400, 'Missing preview id',
@@ -67,6 +71,15 @@ if (!$res['ok']) {
 // /xyz.html → /preview/{id}/xyz?t=TOKEN
 $qs = '?t=' . urlencode($token);
 $html = $res['html'];
+// seo_local nested pages (/services/x.html, /locations/y.html) can't ride the
+// pretty /preview/{id}/{page} path (the rewrite only allows [a-z0-9-]+), so
+// route them through the query-string form — the ^preview/(\d+) rule is [QSA].
+$html = preg_replace_callback(
+    '#href="/(services|locations)/([a-z0-9-]+)\.html"#i',
+    fn($m) => 'href="/preview/' . $clientId . $qs . '&page=' . (strtolower($m[1]) === 'services' ? 'service' : 'location') . ':' . $m[2] . '"',
+    $html
+);
+// Flat pages: /xyz.html → /preview/{id}/xyz?t=TOKEN
 $html = preg_replace_callback(
     '#href="/([a-z0-9-]+)\.html"#i',
     fn($m) => 'href="/preview/' . $clientId . '/' . $m[1] . $qs . '"',

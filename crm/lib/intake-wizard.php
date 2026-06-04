@@ -283,6 +283,24 @@ function intake_step4(array $intake): void {
         <input type="url" name="reviews_bbb" maxlength="500" placeholder="https://bbb.org/..." value="<?= intake_h($reviews['bbb'] ?? '') ?>">
       </div>
     </div>
+
+    <?php
+      // Pasted reviews — shown on the site as review cards. Real reviews only
+      // (we never invent them). Used heavily by the "SEO Local" template.
+      $cards = is_array($reviews['cards'] ?? null) ? $reviews['cards'] : [];
+      while (count($cards) < 3) $cards[] = ['text' => '', 'name' => '', 'location' => ''];
+    ?>
+    <label style="margin-top:22px">Paste 3–5 real customer reviews <span class="opt">(optional but recommended)</span></label>
+    <div class="help" style="margin-top:0">Copy your best reviews straight from Google. We show them as review cards. Real reviews only — leave blank if you'd rather just link to Google above.</div>
+    <?php foreach (array_slice($cards, 0, 5) as $i => $c): ?>
+      <div style="border:1px solid #e7e4ee;border-radius:10px;padding:12px;margin-bottom:10px;background:#faf9ff">
+        <textarea name="reviews_cards[<?= $i ?>][text]" rows="2" maxlength="600" placeholder="What the customer wrote…" style="margin-bottom:8px"><?= intake_h((string)($c['text'] ?? '')) ?></textarea>
+        <div class="row2">
+          <input type="text" name="reviews_cards[<?= $i ?>][name]" maxlength="80" placeholder="Customer name (e.g. Mike R.)" value="<?= intake_h((string)($c['name'] ?? '')) ?>">
+          <input type="text" name="reviews_cards[<?= $i ?>][location]" maxlength="80" placeholder="Town (optional)" value="<?= intake_h((string)($c['location'] ?? '')) ?>">
+        </div>
+      </div>
+    <?php endforeach; ?>
 <?php
 }
 
@@ -345,34 +363,50 @@ function intake_step6(array $intake): void {
 // ─── STEP 7: Pick a template ──────────────────────────────────────────
 function intake_step7(array $intake): void {
     $sel = (string)($intake['template_choice'] ?? '');
-    $tiles = [
-        'trust_first' => [
-            'title' => 'Trust-First',
-            'desc'  => 'Reviews + ratings front and center. Social proof above the fold.',
-            'for'   => 'Best for: established contractors with 4.5+ stars',
-        ],
-        'speed_first' => [
-            'title' => 'Speed-First',
-            'desc'  => 'Big click-to-call hero. 24/7 messaging. Built to capture emergencies.',
-            'for'   => 'Best for: emergency services (plumbing, locksmith, electrical, HVAC)',
-        ],
-        'story_first' => [
-            'title' => 'Story-First',
-            'desc'  => 'Project gallery + family story. For higher-consideration jobs.',
-            'for'   => 'Best for: landscaping, painting, remodeling, hardscaping',
-        ],
-    ];
-    // Page menu order — must match the template nav: Home, About, Services,
-    // Service Area, Contact. The preview thumbnails are rendered in this order.
-    $pageOrder = [
+    // Each tile carries its own preview page set, since templates differ in
+    // their page structure (SEO Local has per-city/per-service pages, not the
+    // flat About/Service-Area pages). Preview thumbnails are {key}_{slug}.png.
+    $flatPages = [
         'home'         => 'Home',
         'about'        => 'About',
         'services'     => 'Services',
         'service-area' => 'Service Area',
         'contact'      => 'Contact',
     ];
+    $tiles = [
+        'trust_first' => [
+            'title' => 'Trust-First',
+            'desc'  => 'Reviews + ratings front and center. Social proof above the fold.',
+            'for'   => 'Best for: established contractors with 4.5+ stars',
+            'pages' => $flatPages,
+        ],
+        'speed_first' => [
+            'title' => 'Speed-First',
+            'desc'  => 'Big click-to-call hero. 24/7 messaging. Built to capture emergencies.',
+            'for'   => 'Best for: emergency services (plumbing, locksmith, electrical, HVAC)',
+            'pages' => $flatPages,
+        ],
+        'story_first' => [
+            'title' => 'Story-First',
+            'desc'  => 'Project gallery + family story. For higher-consideration jobs.',
+            'for'   => 'Best for: landscaping, painting, remodeling, hardscaping',
+            'pages' => $flatPages,
+        ],
+        'seo_local' => [
+            'title' => 'SEO Local',
+            'desc'  => 'A separate page for every service AND every town you serve — built to rank for "[service] in [town]" searches. Navy + green, mobile-first.',
+            'for'   => 'Best for: local-search growth (one trade or many) across many towns',
+            'pages' => [
+                'home'      => 'Home',
+                'services'  => 'Services',
+                'locations' => 'Service Areas',
+                'reviews'   => 'Reviews',
+                'contact'   => 'Contact',
+            ],
+        ],
+    ];
     ?>
-    <p class="lede">Each option is a 5-page website. Pick the layout that fits the business — we can swap later if it doesn't feel right.</p>
+    <p class="lede">Each option is a full multi-page website. Pick the layout that fits the business — we can swap later if it doesn't feel right.</p>
 
     <style>
       .tpl-tile{border:2px solid #e7e4ee;border-radius:12px;padding:18px;cursor:pointer;background:#fff;margin-bottom:14px;display:block}
@@ -394,9 +428,9 @@ function intake_step7(array $intake): void {
         <h3><?= intake_h($t['title']) ?></h3>
         <p class="desc"><?= intake_h($t['desc']) ?></p>
         <div class="pages">
-          <?php foreach ($pageOrder as $slug => $label): ?>
+          <?php foreach ($t['pages'] as $slug => $label): ?>
             <div class="page-thumb">
-              <img src="/crm/web-templates/previews/<?= intake_h($key) ?>_<?= intake_h($slug) ?>.png" alt="<?= intake_h($label) ?> preview" loading="lazy">
+              <img src="/crm/web-templates/previews/<?= intake_h($key) ?>_<?= intake_h($slug) ?>.png" alt="<?= intake_h($label) ?> preview" loading="lazy" onerror="this.closest('.page-thumb').style.display='none'">
               <span><?= intake_h($label) ?></span>
             </div>
           <?php endforeach; ?>
@@ -469,6 +503,19 @@ function crm_intakeNormalizePost(array $post, int $step): array {
         case 4:
             $certs = array_values(array_filter(array_map('trim',
                 explode(',', (string)($post['certifications'] ?? '')))));
+            // Pasted review cards — keep only rows with actual review text.
+            $cardsRaw = is_array($post['reviews_cards'] ?? null) ? $post['reviews_cards'] : [];
+            $cards = [];
+            foreach ($cardsRaw as $row) {
+                if (!is_array($row)) continue;
+                $text = trim((string)($row['text'] ?? ''));
+                if ($text === '') continue;
+                $cards[] = [
+                    'text'     => $text,
+                    'name'     => trim((string)($row['name'] ?? '')),
+                    'location' => trim((string)($row['location'] ?? '')),
+                ];
+            }
             return [
                 'license_number'      => trim((string)($post['license_number']    ?? '')),
                 'insurance_carrier'   => trim((string)($post['insurance_carrier'] ?? '')),
@@ -478,6 +525,7 @@ function crm_intakeNormalizePost(array $post, int $step): array {
                     'google' => trim((string)($post['reviews_google'] ?? '')),
                     'yelp'   => trim((string)($post['reviews_yelp']   ?? '')),
                     'bbb'    => trim((string)($post['reviews_bbb']    ?? '')),
+                    'cards'  => $cards,
                 ],
             ];
         case 5:

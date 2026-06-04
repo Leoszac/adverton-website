@@ -104,7 +104,7 @@ function crm_saveIntakeStep(int $clientId, int $step, array $data): bool {
             $allowed = ['more_calls','more_bookings','more_reviews','brand_awareness'];
             if (!in_array($v, $allowed, true)) continue;
         } elseif ($col === 'template_choice') {
-            $allowed = ['trust_first','speed_first','story_first'];
+            $allowed = ['trust_first','speed_first','story_first','seo_local'];
             if (!in_array($v, $allowed, true)) continue;
         } else {
             $v = ($v === '') ? null : (string)$v;

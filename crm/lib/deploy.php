@@ -51,6 +51,15 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
                 'error' => 'No deploy credential on file (need one of: ' . implode(', ', CRM_DEPLOY_PRIORITIES) . ')'];
     }
 
+    // The seo_local template emits nested pages (services/x.html,
+    // locations/y.html). The WordPress adapter creates flat pages by slug, so
+    // the nested internal links would 404. Fail clearly instead of deploying a
+    // broken site — this template needs static hosting (cPanel/SFTP).
+    if ($kindUsed === 'wordpress' && (string)($intake['template_choice'] ?? '') === 'seo_local') {
+        return ['ok' => false, 'url' => null, 'adapter' => $kindUsed,
+                'error' => 'The "SEO Local" template needs static hosting (cPanel/SFTP) for its per-city/per-service pages — WordPress is not supported for this layout. Add a cPanel/SFTP credential or pick another template.'];
+    }
+
     // Preflight — test the credential before we render or touch anything.
     // Cheaper than rendering 5 pages and discovering bad password.
     $pre = crm_deployRunPreflight($kindUsed, $cred);
