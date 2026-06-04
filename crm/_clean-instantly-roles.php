@@ -149,28 +149,27 @@ foreach ($batch as $c) {
         if (!$ids) {
             echo "  nothing to delete.\n";
         } else {
-            // SAFETY CANARY: delete ONE id first. If the API reports it deleted
-            // more than 1, the ids filter isn't being honored — abort before we
-            // nuke the whole campaign.
-            $c1 = crm_instantlyRequest('DELETE', '/leads', ['campaign_id' => $cid, 'ids' => [$ids[0]]]);
-            $n1 = $delCount($c1);
-            if (!$c1['ok']) {
-                echo "  DELETE FAILED (canary): http={$c1['http']} error=\"{$c1['error']}\" raw="
-                   . substr(json_encode($c1['data']), 0, 250) . "\n";
-            } elseif ($n1 > 1) {
-                echo "  ⚠ ABORT: canary reported {$n1} deleted for 1 id — ids filter NOT honored. "
-                   . "Stopping so the campaign isn't wiped. (No further deletes.)\n";
-            } else {
-                $deletedTotal += max(0, $n1);
-                $rest = array_slice($ids, 1);
-                $n2 = 0;
-                if ($rest) {
-                    $c2 = crm_instantlyRequest('DELETE', '/leads', ['campaign_id' => $cid, 'ids' => $rest]);
-                    if ($c2['ok']) { $n2 = max(0, $delCount($c2)); $deletedTotal += $n2; }
-                    else echo "  DELETE FAILED (rest): http={$c2['http']} error=\"{$c2['error']}\"\n";
+            // Delete in chunks of 40 (API caps ~50 deleted per call). Sanity:
+            // if a chunk reports MORE deleted than ids sent, the filter isn't
+            // honored → abort before wiping the campaign.
+            $deleted = 0;
+            foreach (array_chunk($ids, 40) as $chunk) {
+                $d = crm_instantlyRequest('DELETE', '/leads', ['campaign_id' => $cid, 'ids' => $chunk]);
+                if (!$d['ok']) {
+                    echo "  DELETE FAILED: http={$d['http']} error=\"{$d['error']}\" raw="
+                       . substr(json_encode($d['data']), 0, 200) . "\n";
+                    break;
                 }
-                echo "  DELETED " . (max(0,$n1) + $n2) . " role-based leads (sent " . count($ids) . " ids)\n";
+                $n = $delCount($d);
+                if ($n > count($chunk)) {
+                    echo "  ⚠ ABORT: chunk reported {$n} deleted for " . count($chunk) . " ids — filter not honored.\n";
+                    break;
+                }
+                $deleted += max(0, $n);
+                @flush();
             }
+            $deletedTotal += $deleted;
+            echo "  DELETED {$deleted} role-based leads (of " . count($ids) . ")\n";
         }
     }
     echo "\n";
