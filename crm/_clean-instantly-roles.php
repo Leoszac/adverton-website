@@ -36,7 +36,6 @@ header('Content-Type: text/plain; charset=utf-8');
 @ini_set('max_execution_time', '0');
 while (ob_get_level() > 0) { @ob_end_flush(); }
 @ob_implicit_flush(true);
-const DELETE_CAP_PER_RUN = 80;
 
 $confirm = ($_GET['confirm'] ?? '') === '1';
 
@@ -102,8 +101,6 @@ function list_campaign_leads(string $campaignId): array {
 
 // 3) Process Batch 02 + 03
 $deletedTotal = 0;
-$deleteBudget = DELETE_CAP_PER_RUN;
-$roleRemaining = 0;
 foreach ($batch as $c) {
     $name = (string)($c['name'] ?? '');
     $isTarget = stripos($name, 'Batch 02') !== false || stripos($name, 'Batch 03') !== false;
@@ -133,27 +130,36 @@ foreach ($batch as $c) {
     foreach ($sample as $l) echo "    - " . ($l['email'] ?? '?') . "\n";
 
     if ($confirm) {
-        $del = 0; $errs = 0;
-        echo "  deleting: ";
+        // Collect the role-based lead IDs and delete them in ONE bulk call.
+        // Instantly v2: DELETE /api/v2/leads with body {ids:[...]}. We ALWAYS
+        // pass a non-empty ids array AND scope to this campaign — never an
+        // empty body (which could match far more than intended).
+        $ids = [];
         foreach ($roleLeads as $l) {
-            if ($deleteBudget <= 0) { $roleRemaining++; continue; }
             $id = (string)($l['id'] ?? '');
-            if ($id === '') { $errs++; continue; }
-            $d = crm_instantlyRequest('DELETE', '/leads/' . rawurlencode($id));
-            if ($d['ok']) { $del++; $deleteBudget--; echo "."; }
-            else { $errs++; echo "x"; }
-            @flush();
+            if ($id !== '') $ids[] = $id;
         }
-        $deletedTotal += $del;
-        echo "\n  DELETED {$del} role-based leads" . ($errs ? " ({$errs} errors)" : '') . "\n";
+        if (!$ids) {
+            echo "  nothing to delete.\n";
+        } else {
+            $d = crm_instantlyRequest('DELETE', '/leads', ['ids' => $ids, 'campaign' => $cid]);
+            if ($d['ok']) {
+                $n = is_array($d['data'])
+                    ? (int)($d['data']['deleted'] ?? $d['data']['count'] ?? $d['data']['deleted_count'] ?? count($ids))
+                    : count($ids);
+                $deletedTotal += $n;
+                echo "  DELETED {$n} role-based leads (sent " . count($ids) . " ids)\n";
+            } else {
+                echo "  DELETE FAILED: http={$d['http']} error=\"{$d['error']}\" raw="
+                   . substr(json_encode($d['data']), 0, 250) . "\n";
+            }
+        }
     }
     echo "\n";
 }
 
 if (!$confirm) {
     echo "Dry-run complete. If the counts + lead keys above look right, re-run with &confirm=1 to delete.\n";
-} elseif ($roleRemaining > 0) {
-    echo "Deleted {$deletedTotal} this run; hit the per-run cap. {$roleRemaining}+ still queued — re-run the SAME &confirm=1 URL to continue.\n";
 } else {
     echo "Done. Deleted {$deletedTotal} role-based leads across Batch 02 + 03. You can delete this script now.\n";
 }
