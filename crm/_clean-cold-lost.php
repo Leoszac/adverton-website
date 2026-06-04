@@ -29,7 +29,7 @@ $where = "source = 'cold_email_instantly' AND status = 'lost'";
 
 $count = (int)$db->query("SELECT COUNT(*) FROM leads WHERE {$where}")->fetchColumn();
 $sample = $db->query(
-    "SELECT id, created_at, email, source_page, score
+    "SELECT id, created_at, email, source_page
      FROM leads WHERE {$where} ORDER BY created_at DESC LIMIT 25"
 )->fetchAll();
 
@@ -46,12 +46,11 @@ if ($count === 0) {
     exit;
 }
 
-echo "<p>Sample (most recent 25):</p><table><tr><th>id</th><th>created</th><th>email</th><th>source_page</th><th>score</th></tr>";
+echo "<p>Sample (most recent 25):</p><table><tr><th>id</th><th>created</th><th>email</th><th>source_page</th></tr>";
 foreach ($sample as $r) {
     echo '<tr><td>' . (int)$r['id'] . '</td><td>' . htmlspecialchars((string)$r['created_at'])
        . '</td><td>' . htmlspecialchars((string)$r['email'])
-       . '</td><td>' . htmlspecialchars((string)$r['source_page'])
-       . '</td><td>' . htmlspecialchars((string)$r['score']) . '</td></tr>';
+       . '</td><td>' . htmlspecialchars((string)$r['source_page']) . '</td></tr>';
 }
 echo '</table>';
 
