@@ -2,9 +2,11 @@
 // Instantly cold-email webhook receiver.
 //
 // Subscribes in Instantly to: email_reply, email_bounced, email_opened,
-// email_link_clicked, lead_unsubscribed. On reply, auto-creates a lead in
+// email_link_clicked, lead_unsubscribed. ONLY a reply auto-creates a lead in
 // the CRM (source=cold_email_instantly), logs the reply body as activity,
 // bumps lead status to 'qualified', and unenrolls from any active sequences.
+// Bounces/unsubscribes only act on contacts that are ALREADY leads — they
+// never create new ones (Instantly suppresses dead addresses on its side).
 //
 // URL format:
 //   https://adverton.net/crm/instantly-webhook.php?token=<INSTANTLY_WEBHOOK_SECRET>
@@ -86,13 +88,13 @@ if ($leadEmail === '') {
 // --- Find or create lead ---
 $leadId = crm_findDuplicateLead($leadEmail, '');
 
-$shouldCreate = !$leadId && (
-    str_contains($type, 'reply')
-    || str_contains($type, 'open')
-    || str_contains($type, 'click')
-    || str_contains($type, 'bounc')
-    || str_contains($type, 'unsubscrib')
-);
+// Only a REPLY makes someone a lead. Bounces and unsubscribes are dead
+// addresses, not prospects — auto-creating leads for them just floods the
+// pipeline with "LOST" cold-email rows (Instantly already suppresses them on
+// its side). Opens/clicks are off (we run with tracking disabled) and too
+// weak to be a lead anyway. If the contact already exists as a lead, the
+// bounce/unsubscribe side-effects below still apply to it.
+$shouldCreate = !$leadId && str_contains($type, 'reply');
 
 if ($shouldCreate) {
     // Pull whatever name / company info is in the payload

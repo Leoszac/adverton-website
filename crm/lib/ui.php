@@ -89,12 +89,14 @@ function crm_renderHeader(array $user, string $current = ''): void {
         <a href="/crm/pipeline.php" class="<?= $current==='pipeline'?'cur':'' ?>">Pipeline (kanban)</a>
       </div>
     </div>
-    <!-- Cold-calling pipeline (separate from inbound leads) -->
+    <!-- Cold outbound (separate from inbound leads). Parent click goes to the
+         ACTIVE channel — cold email via Instantly. The paused dialer lives in
+         the dropdown. -->
     <div class="dd">
-      <a href="/crm/cold-calling.php" class="<?= $inColdGroup?'cur':'' ?>">Cold</a>
+      <a href="/crm/cold-outbound.php" class="<?= $inColdGroup?'cur':'' ?>">Cold</a>
       <div class="dd-menu">
         <a href="/crm/cold-outbound.php" class="<?= $current==='cold-outbound'?'cur':'' ?>">Outbound (email)</a>
-        <a href="/crm/cold-calling.php" class="<?= $current==='cold'?'cur':'' ?>">Dialer</a>
+        <a href="/crm/cold-calling.php" class="<?= $current==='cold'?'cur':'' ?>">Dialer (paused)</a>
         <a href="/crm/cold-prospects-import.php" class="<?= $current==='cold-import'?'cur':'' ?>">Import CSV</a>
         <a href="/crm/cold-calling.php?view=blocked" class="<?= $current==='cold-blocked'?'cur':'' ?>">Blocked (audit)</a>
       </div>
