@@ -196,7 +196,11 @@ if(!$confirm){echo "Dry-run done. Verify the var names + sequence above, then re
 
 $payload=array_filter([
   'name'=>$NAME,
-  'campaign_schedule'=>$s['campaign_schedule']??null,
+  'campaign_schedule'=>['schedules'=>[[
+    'name'=>'Default','timing'=>['from'=>'09:00','to'=>'16:00'],
+    'days'=>['0'=>false,'1'=>true,'2'=>true,'3'=>true,'4'=>true,'5'=>true,'6'=>false],
+    'timezone'=>'America/Detroit',
+  ]]],
   'sequences'=>$s['sequences']??null,
   'email_list'=>$s['email_list']??null,
   'daily_limit'=>$DAILY_LIMIT,
@@ -223,6 +227,7 @@ $ok=0;$err=0;
 echo "uploading: ";
 foreach($all as $L){
   $email=$L['email']; unset($L['email']);
+  if(isset($L['trade_plural'])){$L['tradePlural']=$L['trade_plural'];unset($L['trade_plural']);} // Instantly var is camelCase
   $r=crm_instantlyAddLead($cid,$email,$L);
   if($r['ok']){$ok++; echo ".";} else {$err++; echo "x"; if($err<=3)echo "[{$r['error']}]";}
   @flush();
