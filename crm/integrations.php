@@ -170,6 +170,20 @@ crm_renderHeader($user, '');
       </div>
     </div>
 
+    <!-- ============== Outscraper ============== -->
+    <div class="section">
+      <h2>Outscraper — prospect sourcing</h2>
+      <div class="desc">Pulls contractor lists (Google Maps search + email enrichment + validation) for cold-email batches. Get the key at <a href="https://app.outscraper.com/profile" target="_blank" rel="noopener">app.outscraper.com → Profile → API key</a>. Paste it once here — sourcing scripts read it automatically (no re-pasting).</div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Outscraper API key</div>
+          <div class="help">Sent as the <code>X-API-KEY</code> header to <code>api.app.outscraper.com</code>.</div>
+          <span class="badge <?= $cur['OUTSCRAPER_API_KEY']['set']?'set':'unset' ?>"><?= $cur['OUTSCRAPER_API_KEY']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="OUTSCRAPER_API_KEY" value="<?= crm_h($cur['OUTSCRAPER_API_KEY']['value']) ?>" placeholder="paste Outscraper API key" autocomplete="off"></div>
+      </div>
+    </div>
+
     <!-- ============== OpenPhone ============== -->
     <div class="section">
       <h2>OpenPhone — auto-log calls + SMS</h2>

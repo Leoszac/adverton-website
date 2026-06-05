@@ -40,6 +40,9 @@ const CRM_DB_BACKED_KEYS = [
     // and the import + calling pages show a yellow warning.
     'DNCSCRUB_API_KEY',
     'DNCSCRUB_API_URL',
+    // Outscraper — prospect sourcing (search + email enrichment + validator).
+    // Stored here so sourcing scripts read it via crm_config() — no re-pasting.
+    'OUTSCRAPER_API_KEY',
     // OpenSign keys are intentionally NOT whitelisted right now — the lib
     // (crm/lib/opensign.php) is dormant pending a paid OpenSign plan. The
     // pre-contract flow uses Stripe Checkout + click-wrap T&C instead.
