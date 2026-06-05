@@ -198,7 +198,7 @@ $payload=array_filter([
   'name'=>$NAME,
   'campaign_schedule'=>['schedules'=>[[
     'name'=>'Default','timing'=>['from'=>'09:00','to'=>'16:00'],
-    'days'=>['0'=>false,'1'=>true,'2'=>true,'3'=>true,'4'=>true,'5'=>true,'6'=>false],
+    'days'=>(object)['0'=>false,'1'=>true,'2'=>true,'3'=>true,'4'=>true,'5'=>true,'6'=>false], // (object) so JSON is {"0":false,...} not an array
     'timezone'=>'America/Detroit',
   ]]],
   'sequences'=>$s['sequences']??null,
