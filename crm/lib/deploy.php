@@ -252,6 +252,9 @@ function crm_deployAdapterWordpress(array $pages, array $cred, array $client): a
     $homeLink   = null;
 
     foreach ($pages as $filename => $html) {
+        // Image assets ride in $pages for the FTP adapters; WP can't take them
+        // as pages (they'd need media-library upload), so skip non-HTML here.
+        if (substr($filename, -5) !== '.html') { continue; }
         $slug  = $slugMap[$filename] ?? pathinfo($filename, PATHINFO_FILENAME);
         $title = ucfirst(str_replace('-', ' ', $slug));
         $body  = json_encode([

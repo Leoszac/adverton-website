@@ -2,7 +2,7 @@
 // Process pending client_assets through Anthropic Vision.
 //
 // Trigger: cron every 5 minutes.
-//   */5 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-photo-classify.php >> /home2/advertonnet/logs/cron-photo-classify.log 2>&1
+//   */5 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-photo-classify.php >> /home/advertonnet/logs/cron-photo-classify.log 2>&1
 // Or via curl with token:
 //   /usr/bin/curl -sS 'https://adverton.net/crm/cron-photo-classify.php?token=SEED_TOKEN'
 //

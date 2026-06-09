@@ -15,7 +15,7 @@ cPanel → **MySQL® Databases**:
 
 ## 2. Place the secret config OUTSIDE public_html
 
-cPanel → **File Manager** → navigate one level above `public_html` (i.e. `/home2/advertonnet/`).
+cPanel → **File Manager** → navigate one level above `public_html` (i.e. `/home/advertonnet/`).
 
 Create `crm-config.php` with this content (use the exact DB name + user from step 1):
 
@@ -67,7 +67,7 @@ You should now have 16 tables: `users`, `leads`, `lead_activities`, `tasks`,
 
 **Create the file storage dir** (one-time): cPanel → File Manager → up one level
 from `public_html`, create folder `crm-files` and set permissions to `700`.
-Full path should be `/home2/advertonnet/crm-files`.
+Full path should be `/home/advertonnet/crm-files`.
 
 ## 4. Seed the two user accounts
 
@@ -89,7 +89,7 @@ The `.htaccess` blocks `seed-users.php` by default. To run it once:
 
 ## 4b. (Optional) Import the historical audit.log
 
-If you have leads in `/home2/advertonnet/logs/audit.log` from before the CRM
+If you have leads in `/home/advertonnet/logs/audit.log` from before the CRM
 existed, you can back-fill them:
 
 1. With `.htaccess` still in "open" mode (from step 4.1), visit:
@@ -106,7 +106,7 @@ cPanel → **File Manager** → `public_html/crm/`:
 - Delete `seed-users.php`
 - Delete `import-audit-log.php` (if you ran the optional import)
 
-Then edit `/home2/advertonnet/crm-config.php` and remove the three `SEED_*` lines.
+Then edit `/home/advertonnet/crm-config.php` and remove the three `SEED_*` lines.
 
 ## 6. Test
 
@@ -176,7 +176,7 @@ The CRM can poll your Calendly scheduled events every 15 min via API and log a
    - Schedule: every 15 minutes (`*/15 * * * *`)
    - Command:
      ```
-     /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-calendly.php > /home2/advertonnet/logs/calendly.log 2>&1
+     /usr/local/bin/php /home/advertonnet/public_html/crm/cron-calendly.php > /home/advertonnet/logs/calendly.log 2>&1
      ```
 
 When a prospect books via your Calendly link, the next cron run will:
@@ -242,16 +242,16 @@ cPanel → Cron Jobs → Add four jobs:
 
 ```
 # Daily client triggers (renewal, upsells, at-risk)
-0 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php >> /home2/advertonnet/logs/crm-cron.log 2>&1
+0 8 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-client-triggers.php >> /home/advertonnet/logs/crm-cron.log 2>&1
 
 # Sequence runner — every 30 min
-*/30 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-sequences.php >> /home2/advertonnet/logs/crm-cron.log 2>&1
+*/30 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-sequences.php >> /home/advertonnet/logs/crm-cron.log 2>&1
 
 # Daily health score recalc + day-90 commission credits
-15 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/crm-cron.log 2>&1
+15 8 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-health-score.php >> /home/advertonnet/logs/crm-cron.log 2>&1
 
 # Daily lost-by-timing re-engagement (day 60)
-30 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home2/advertonnet/logs/crm-cron.log 2>&1
+30 8 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home/advertonnet/logs/crm-cron.log 2>&1
 ```
 
 These scripts are **blocked from web access** by `.htaccess` and only run
@@ -276,10 +276,10 @@ UPDATE users SET totp_secret = NULL, totp_enabled = FALSE WHERE username = 'X';
 Create a cron job that mysqldumps + tar's the file storage:
 
 ```
-30 4 * * * mkdir -p /home2/advertonnet/backups && \
-  mysqldump --single-transaction -u DB_USER -pDB_PASS DB_NAME | gzip > /home2/advertonnet/backups/crm-$(date +\%F).sql.gz && \
-  tar -czf /home2/advertonnet/backups/crm-files-$(date +\%F).tar.gz -C /home2/advertonnet crm-files && \
-  find /home2/advertonnet/backups -mtime +30 -delete
+30 4 * * * mkdir -p /home/advertonnet/backups && \
+  mysqldump --single-transaction -u DB_USER -pDB_PASS DB_NAME | gzip > /home/advertonnet/backups/crm-$(date +\%F).sql.gz && \
+  tar -czf /home/advertonnet/backups/crm-files-$(date +\%F).tar.gz -C /home/advertonnet crm-files && \
+  find /home/advertonnet/backups -mtime +30 -delete
 ```
 
 (Replace `DB_USER`, `DB_PASS`, `DB_NAME` with the values from your `crm-config.php`.)
@@ -292,7 +292,7 @@ Create a cron job that mysqldumps + tar's the file storage:
   `accounts` array, set fresh `SEED_*` values, run, delete again. Or insert
   directly via phpMyAdmin using a bcrypt hash:
   `password_hash('thePassword', PASSWORD_BCRYPT)` from any PHP playground.
-- **Logs**: auth events are logged to `/home2/advertonnet/logs/crm.log`.
+- **Logs**: auth events are logged to `/home/advertonnet/logs/crm.log`.
 - **Forgot password**: easiest path is to re-seed (see above) — the seeder
   upserts on conflict, so it overwrites the existing hash.
 
@@ -402,7 +402,7 @@ classification.
    - Address: `assets@adverton.net`
    - Forward to: **Pipe to a Program**:
      ```
-     /usr/local/bin/php /home2/advertonnet/public_html/crm/email-pipe.php
+     /usr/local/bin/php /home/advertonnet/public_html/crm/email-pipe.php
      ```
 3. Test: send an image to `assets@adverton.net` from a known
    client's `primary_email`. Within ~5 minutes the row appears in
@@ -420,7 +420,7 @@ photos get classified — that case is rare with an active operator. If you
 want a hard guarantee anyway, also add this cPanel cron:
 
 ```
-*/5 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-photo-classify.php >> /home2/advertonnet/logs/cron-photo-classify.log 2>&1
+*/5 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-photo-classify.php >> /home/advertonnet/logs/cron-photo-classify.log 2>&1
 ```
 
 ## F. Per-client setup (deploy time)

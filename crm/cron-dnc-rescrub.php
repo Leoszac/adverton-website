@@ -8,7 +8,7 @@
 // already been called. We fire a Discord alert so a human can decide.
 //
 // Schedule: daily at 3 AM ET (per CRON_TZ in the crontab):
-//   0 3 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-dnc-rescrub.php
+//   0 3 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-dnc-rescrub.php
 //
 // PHP 7.4 compatible (cron runs via /usr/local/bin/php → 7.4).
 

@@ -1,6 +1,6 @@
 <?php
 // Auth-gated download endpoint for files attached to leads.
-// Streams from /home2/advertonnet/crm-files/{lead_id}/...
+// Streams from /home/advertonnet/crm-files/{lead_id}/...
 
 declare(strict_types=1);
 define('CRM_ENTRY', 1);

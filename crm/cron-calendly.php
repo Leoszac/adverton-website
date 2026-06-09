@@ -1,7 +1,7 @@
 <?php
 // Pull Calendly scheduled events via API v2, find new bookings, log activity
 // on matching leads. Designed to be invoked by cron every 15 min:
-//   php /home2/advertonnet/public_html/crm/cron-calendly.php
+//   php /home/advertonnet/public_html/crm/cron-calendly.php
 //
 // Requires CALENDLY_API_TOKEN (Personal Access Token). Generate at:
 // Calendly → Integrations & apps → API and webhooks → Personal Access Tokens.

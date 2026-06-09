@@ -1,12 +1,12 @@
 <?php
 // Template for CRM secrets. The REAL file lives OUTSIDE public_html on the
-// server (recommended path: /home2/advertonnet/crm-config.php with chmod 600).
+// server (recommended path: /home/advertonnet/crm-config.php with chmod 600).
 //
 // Do NOT commit the real values. Do NOT place the real file inside
 // public_html — anything in public_html is web-accessible.
 //
 // crm/lib/db.php looks for the real file at:
-//   1. /home2/advertonnet/crm-config.php   (recommended)
+//   1. /home/advertonnet/crm-config.php   (recommended)
 //   2. dirname(public_html)/crm-config.php (one level up)
 //   3. public_html/crm-config.php          (LAST resort, must chmod 600)
 
@@ -34,7 +34,7 @@ return [
 
     // Resend API key — required if you want to send emails from the CRM
     // (template "Send" buttons + open/click tracking). Reuse the same key
-    // configured in /home2/advertonnet/audit-config.php.
+    // configured in /home/advertonnet/audit-config.php.
     'RESEND_API_KEY'   => '',
 
     // From + Reply-To used for tracked sends. Domain must be verified in Resend.

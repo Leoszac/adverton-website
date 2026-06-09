@@ -116,7 +116,17 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
     $heroImage = '';
     foreach ($assets as $a) {
         if (!empty($a['approved']) && in_array(($a['category'] ?? ''), ['exterior', 'job', 'team'], true)) {
-            $heroImage = '/clients/' . (int)$client['id'] . '/photos/' . $h($a['category']) . '/' . $h($a['stored_name']);
+            $heroImage = '/crm/asset.php?id=' . (int)$a['id'];
+            break;
+        }
+    }
+
+    // Logo from approved assets (category 'logo'). Shown in the header instead
+    // of the text business name when present.
+    $logoImage = '';
+    foreach ($assets as $a) {
+        if (!empty($a['approved']) && ($a['category'] ?? '') === 'logo') {
+            $logoImage = '/crm/asset.php?id=' . (int)$a['id'];
             break;
         }
     }
@@ -189,6 +199,8 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
   header.site{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:12px 0;box-shadow:0 1px 3px rgba(16,24,40,.04)}
   header.site .row{display:flex;justify-content:space-between;align-items:center;gap:14px}
   header.site .brand{font-weight:800;font-size:19px;letter-spacing:-0.01em;color:var(--primary)}
+  header.site .brand-logo{height:58px;width:auto;max-width:300px;display:block;object-fit:contain}
+  @media(max-width:600px){ header.site .brand-logo{height:46px;max-width:200px} }
   header.site nav{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
   header.site nav a{padding:9px 14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-2)}
   header.site nav a:hover,header.site nav a.active{background:var(--navy-soft);color:var(--primary)}
@@ -324,7 +336,7 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
 <body>
 
 <header class="site"><div class="wrap row">
-  <a href="/" class="brand"><?= $h($name) ?></a>
+  <a href="/" class="brand"><?php if ($logoImage): ?><img class="brand-logo" src="<?= $h($logoImage) ?>" alt="<?= $h($name) ?>"><?php else: ?><?= $h($name) ?><?php endif; ?></a>
   <input type="checkbox" id="nav-burger" class="nav-burger-input" aria-hidden="true">
   <label for="nav-burger" class="nav-burger" aria-label="Toggle menu"><span></span><span></span><span></span></label>
   <nav>
@@ -531,13 +543,14 @@ case 'contact':
   <section class="block"><div class="wrap"><div class="contact-grid">
     <div>
       <?php if ($phone): ?><div style="margin-bottom:22px"><a class="phone-big" href="tel:<?= $h($phoneTel) ?>">&#9742; <?= $h($phone) ?></a></div><?php endif; ?>
+      <?php
+        $dayLabels = ['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'];
+        $hasHours = false;
+        foreach ($dayLabels as $k=>$lbl) { if (!empty($hours[$k]['open']) || !empty($hours[$k]['close'])) { $hasHours = true; break; } }
+      ?>
+      <?php if ($schemaAddr || $hasHours): ?>
       <dl class="info-card">
         <?php if ($schemaAddr): ?><dt>Address</dt><dd><?= $h($schemaAddr) ?></dd><?php endif; ?>
-        <?php
-          $dayLabels = ['mon'=>'Mon','tue'=>'Tue','wed'=>'Wed','thu'=>'Thu','fri'=>'Fri','sat'=>'Sat','sun'=>'Sun'];
-          $hasHours = false;
-          foreach ($dayLabels as $k=>$lbl) { if (!empty($hours[$k]['open']) || !empty($hours[$k]['close'])) { $hasHours = true; break; } }
-        ?>
         <?php if ($hasHours): ?>
         <dt>Hours</dt>
         <dd><?php foreach ($dayLabels as $k=>$lbl):
@@ -546,11 +559,13 @@ case 'contact':
           <?php endforeach; ?></dd>
         <?php endif; ?>
       </dl>
+      <?php endif; ?>
     </div>
-    <form class="form" onsubmit="return false">
-      <div class="row2"><input type="text" placeholder="Your name" required><input type="tel" placeholder="Phone" required></div>
-      <input type="text" placeholder="City / town">
-      <textarea rows="5" placeholder="How can we help?"></textarea>
+    <form class="form" method="post" action="https://adverton.net/crm/site-lead.php?c=<?= (int)$client['id'] ?>">
+      <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <div class="row2"><input type="text" name="name" placeholder="Your name" required><input type="tel" name="phone" placeholder="Phone" required></div>
+      <input type="text" name="city" placeholder="City / town">
+      <textarea name="message" rows="5" placeholder="How can we help?"></textarea>
       <button class="btn btn-primary" type="submit">Request a free quote</button>
     </form>
   </div></div></section>
@@ -571,8 +586,8 @@ default:
       <h1><?= $h((string)($hero['headline'] ?? $name)) ?></h1>
       <p class="sub"><?= $h((string)($hero['subheadline'] ?? '')) ?></p>
       <div class="ctas">
-        <?php if ($phone): ?><a class="btn btn-call" href="tel:<?= $h($phoneTel) ?>">&#9742; <?= $h((string)($hero['cta_primary'] ?? 'Call for a free quote')) ?></a><?php endif; ?>
-        <a class="btn btn-ghost" href="/services.html"><?= $h((string)($hero['cta_secondary'] ?? 'See our services')) ?></a>
+        <a class="btn btn-call" href="/contact.html"><?= $h((string)($hero['cta_primary'] ?? 'Get a free quote')) ?></a>
+        <?php if ($phone): ?><a class="btn btn-ghost" href="tel:<?= $h($phoneTel) ?>">&#9742; <?= $h((string)($hero['cta_secondary'] ?? 'Call us now')) ?></a><?php endif; ?>
       </div>
   <?php if ($heroImage): ?>
     </div></div></div>

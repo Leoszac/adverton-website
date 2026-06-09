@@ -44,7 +44,7 @@ jobs:
           SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
           SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
           SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
-          REMOTE_PATH: /home2/advertonnet/public_html
+          REMOTE_PATH: /home/advertonnet/public_html
         run: |
           echo "→ Mirroring to ${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}"
 

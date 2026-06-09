@@ -146,6 +146,7 @@ crm_renderHeader($user, '');
 
           <?php if (!empty($intake['ai_drafts_json'])): ?>
             <a class="btn-secondary" href="<?= crm_h($internalPreviewUrl) ?>" target="_blank">↗ Open preview in new tab</a>
+            <a class="btn-secondary" href="/crm/preview-link.php?id=<?= (int)$client['id'] ?>" target="_blank">🔗 Copy preview link (for you)</a>
             <a class="btn-secondary" href="/crm/draft-editor.php?id=<?= (int)$client['id'] ?>">✏️ Edit draft text</a>
           <?php endif; ?>
 

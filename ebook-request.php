@@ -17,7 +17,7 @@ if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 // ------- Config loader (mirrors audit.php) -------
 function loadAuditConfig(): array {
     $candidates = [
-        '/home2/advertonnet/audit-config.php',
+        '/home/advertonnet/audit-config.php',
         dirname(__DIR__) . '/audit-config.php',
         __DIR__ . '/audit-config.php',
     ];
@@ -192,7 +192,7 @@ function buildDownloadUrl(string $email): string {
 
 function logEbookRequest(array $row): void {
     $line = gmdate('Y-m-d\TH:i:s\Z') . ' ' . json_encode($row) . "\n";
-    $logPath = '/home2/advertonnet/logs/ebook.log';
+    $logPath = '/home/advertonnet/logs/ebook.log';
     $dir = dirname($logPath);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     @file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);
@@ -200,7 +200,7 @@ function logEbookRequest(array $row): void {
 
 function ebookRateLimit(string $ip, int $maxRequests, int $windowSec): bool {
     if ($ip === '') return true;
-    $stateDir = '/home2/advertonnet/ratelimit';
+    $stateDir = '/home/advertonnet/ratelimit';
     if (!is_dir($stateDir)) @mkdir($stateDir, 0750, true);
     $path = $stateDir . '/ebook-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
 

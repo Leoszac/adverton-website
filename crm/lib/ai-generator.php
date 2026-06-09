@@ -17,7 +17,7 @@ require_once __DIR__ . '/intake.php';
 
 const CRM_AI_MODEL    = 'claude-sonnet-4-6';
 const CRM_AI_MAXTOK   = 4096;
-const CRM_AI_TIMEOUT  = 60;     // generation can take 30–45s with reasoning
+const CRM_AI_TIMEOUT  = 90;     // base budget; scaled up to 300s for large (seo_local) generations
 
 // Run the generation. Returns ['ok'=>bool, 'copy'=>array|null, 'error'=>?string].
 // Persists `copy` into client_intake.ai_drafts_json + sets ai_generated_at and
@@ -42,6 +42,12 @@ function crm_aiGenerateClientCopy(int $clientId): array {
         $maxTok  = min(16000, 4096 + $nCities * 230 + $nSvcs * 160);
     }
 
+    // Scale the HTTP + PHP time budget with output size. A 16k-token seo_local
+    // page-set legitimately takes 2–3 min; the flat 60s cap was cutting it off
+    // ("Operation timed out after 60002 ms"). ~45 tok/s → 16k ≈ 300s ceiling.
+    $timeout = max(CRM_AI_TIMEOUT, min(300, (int)($maxTok / 45)));
+    @set_time_limit($timeout + 30);
+
     $payload = [
         'model'      => CRM_AI_MODEL,
         'max_tokens' => $maxTok,
@@ -61,7 +67,7 @@ function crm_aiGenerateClientCopy(int $clientId): array {
             'x-api-key: ' . $apiKey,
             'anthropic-version: 2023-06-01',
         ],
-        CURLOPT_TIMEOUT        => CRM_AI_TIMEOUT,
+        CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 6,
     ]);
     $resp = curl_exec($ch);

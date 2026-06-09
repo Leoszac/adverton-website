@@ -15,14 +15,14 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 // `CRON_TZ=America/New_York` header at the top of the crontab tells
 // Vixie/Cronie to interpret these in ET regardless of server TZ.
 const CRM_CANONICAL_CRONTAB = [
-    '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-sequences.php >> /home2/advertonnet/logs/cron-sequences.log 2>&1',
-    '17 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-calendly.php >> /home2/advertonnet/logs/cron-calendly.log 2>&1',
-    '5 7 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php >> /home2/advertonnet/logs/cron-client-triggers.log 2>&1',
-    '20 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home2/advertonnet/logs/cron-lost-reengagement.log 2>&1',
-    '0 6 * * 1 /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/cron-health-score.log 2>&1',
-    '0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php >> /home2/advertonnet/logs/cron-instantly-health.log 2>&1',
-    '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php >> /home2/advertonnet/logs/cron-watchdog.log 2>&1',
-    '0 3 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-dnc-rescrub.php >> /home2/advertonnet/logs/cron-dnc-rescrub.log 2>&1',
+    '*/15 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-sequences.php >> /home/advertonnet/logs/cron-sequences.log 2>&1',
+    '17 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-calendly.php >> /home/advertonnet/logs/cron-calendly.log 2>&1',
+    '5 7 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-client-triggers.php >> /home/advertonnet/logs/cron-client-triggers.log 2>&1',
+    '20 8 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home/advertonnet/logs/cron-lost-reengagement.log 2>&1',
+    '0 6 * * 1 /usr/local/bin/php /home/advertonnet/public_html/crm/cron-health-score.php >> /home/advertonnet/logs/cron-health-score.log 2>&1',
+    '0 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-instantly-health.php >> /home/advertonnet/logs/cron-instantly-health.log 2>&1',
+    '*/15 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-watchdog.php >> /home/advertonnet/logs/cron-watchdog.log 2>&1',
+    '0 3 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-dnc-rescrub.php >> /home/advertonnet/logs/cron-dnc-rescrub.log 2>&1',
 ];
 
 const CRM_MANAGED_CRON_SCRIPTS = [
@@ -44,7 +44,7 @@ function crm_syncManagedCrontab(): array {
     if (!function_exists('shell_exec')) {
         return ['ok' => false, 'error' => 'shell_exec is disabled', 'preserved' => 0, 'dropped' => [], 'added' => [], 'verify' => ''];
     }
-    $logDir = '/home2/advertonnet/logs';
+    $logDir = '/home/advertonnet/logs';
     if (!is_dir($logDir)) { @mkdir($logDir, 0755, true); }
 
     $current = (string) shell_exec('crontab -l 2>/dev/null');

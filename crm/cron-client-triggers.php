@@ -1,6 +1,6 @@
 <?php
 // Daily cron — generates renewal alerts, upsell triggers, at-risk flags.
-// Run via cPanel cron:  0 8 * * *  /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php
+// Run via cPanel cron:  0 8 * * *  /usr/local/bin/php /home/advertonnet/public_html/crm/cron-client-triggers.php
 
 declare(strict_types=1);
 if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);

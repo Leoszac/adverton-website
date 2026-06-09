@@ -11,7 +11,7 @@ require_once __DIR__ . '/lib/audit-email.php';
 // Inline config loader (mirror of audit.php) — needed for UNSUBSCRIBE_SALT.
 function loadAuditConfig(): array {
     $candidates = [
-        '/home2/advertonnet/audit-config.php',
+        '/home/advertonnet/audit-config.php',
         dirname(__DIR__) . '/audit-config.php',
         __DIR__ . '/audit-config.php',
     ];
@@ -36,7 +36,7 @@ $email = ($e64 && $sig) ? verifyUnsubscribeToken($e64, $sig) : null;
 $status = 'invalid';
 
 if ($email) {
-    $optOutPath = '/home2/advertonnet/opt-outs.txt';
+    $optOutPath = '/home/advertonnet/opt-outs.txt';
     $dir = dirname($optOutPath);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     $line = strtolower(trim($email)) . "\t" . gmdate('Y-m-d\TH:i:s\Z') . "\n";

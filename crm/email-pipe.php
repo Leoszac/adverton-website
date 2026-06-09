@@ -2,7 +2,7 @@
 <?php
 // Reads a raw email from stdin (cPanel "Pipe to Program" forwarder), parses
 // it, matches sender against clients.primary_email/billing_email, saves
-// every image attachment to /home2/advertonnet/crm-files/clients/{id}/photos/inbox/.
+// every image attachment to /home/advertonnet/crm-files/clients/{id}/photos/inbox/.
 //
 // CPANEL SETUP (one-time, run by founder):
 //   1. cPanel → Email Accounts → Create assets@adverton.net

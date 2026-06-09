@@ -1,17 +1,17 @@
 <?php
 // Signed download endpoint for the Growth Engine ebook.
 // URL: /ebook-download.php?e=<base64-email>&s=<hmac-sig>
-// The PDF lives outside public_html at /home2/advertonnet/private/Master_Growth_Engine.pdf
+// The PDF lives outside public_html at /home/advertonnet/private/Master_Growth_Engine.pdf
 // so it can't be hot-linked or scraped.
 
 declare(strict_types=1);
 
-const PDF_PATH = '/home2/advertonnet/private/Master_Growth_Engine.pdf';
+const PDF_PATH = '/home/advertonnet/private/Master_Growth_Engine.pdf';
 const PDF_FILENAME = 'Adverton_Growth_Engine.pdf';
 
 function loadAuditConfig(): array {
     $candidates = [
-        '/home2/advertonnet/audit-config.php',
+        '/home/advertonnet/audit-config.php',
         dirname(__DIR__) . '/audit-config.php',
         __DIR__ . '/audit-config.php',
     ];
@@ -45,7 +45,7 @@ function denyDownload(string $reason): void {
 
 function logDownload(array $row): void {
     $line = gmdate('Y-m-d\TH:i:s\Z') . ' ' . json_encode($row) . "\n";
-    $logPath = '/home2/advertonnet/logs/ebook-download.log';
+    $logPath = '/home/advertonnet/logs/ebook-download.log';
     $dir = dirname($logPath);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     @file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);

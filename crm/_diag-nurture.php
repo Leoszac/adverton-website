@@ -139,7 +139,7 @@ foreach ($leadIds as $lid) {
 
 // 7) Cron log tail
 echo "=== 7) cron-sequences.log (last 30 lines) ===\n";
-$logFile = '/home2/advertonnet/logs/cron-sequences.log';
+$logFile = '/home/advertonnet/logs/cron-sequences.log';
 if (function_exists('shell_exec') && is_readable($logFile)) {
     echo (string) shell_exec("tail -30 " . escapeshellarg($logFile) . " 2>&1");
 } else {

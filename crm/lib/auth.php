@@ -135,7 +135,7 @@ function crm_csrfCheck(?string $token): bool {
 // Rate-limit logins by IP: 10 attempts / 10 minutes
 function crm_loginRateOk(string $ip): bool {
     if ($ip === '') return true;
-    $dir = '/home2/advertonnet/ratelimit';
+    $dir = '/home/advertonnet/ratelimit';
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     $path = $dir . '/crm-login-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
 

@@ -31,7 +31,7 @@ require_once __DIR__ . '/db.php';
 
 const CRM_DNC_BATCH_SIZE       = 500;   // numbers per HTTP call
 const CRM_DNC_HTTP_TIMEOUT_SEC = 30;
-const CRM_DNC_LOG_PATH         = '/home2/advertonnet/logs/dnc-scrub.log';
+const CRM_DNC_LOG_PATH         = '/home/advertonnet/logs/dnc-scrub.log';
 
 // Main entry point. Always returns one entry per input phone, even on error
 // (status='scrub_error' for any phone we couldn't reach the vendor for).

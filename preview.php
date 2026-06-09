@@ -86,6 +86,9 @@ $html = preg_replace_callback(
     $html
 );
 $html = str_replace('href="/"', 'href="/preview/' . $clientId . $qs . '"', $html);
+// Image assets embed /crm/asset.php?id=N — append the token so the logged-out
+// client can load them through the auth-gated streamer.
+$html = str_replace('/crm/asset.php?id=', '/crm/asset.php?t=' . urlencode($token) . '&id=', $html);
 
 header('Content-Type: text/html; charset=utf-8');
 header('X-Robots-Tag: noindex, nofollow');   // never index previews

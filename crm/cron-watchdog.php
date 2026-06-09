@@ -2,7 +2,7 @@
 // cron-watchdog.php — runs every 15 min, pings Discord/Slack webhook if
 // any other managed cron is stale (log mtime beyond expected interval × buffer).
 //
-// Schedule: */15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php
+// Schedule: */15 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-watchdog.php
 //
 // Notification: NEW_LEAD_WEBHOOK_URL (Discord/Slack-compatible
 // JSON {content: msg}) if configured; falls back to Resend email →
@@ -33,7 +33,7 @@ $crons = [
     'cron-instantly-health'  => 3 * 3600,          // hourly :00 · alert >3h
 ];
 
-$logsDir   = '/home2/advertonnet/logs';
+$logsDir   = '/home/advertonnet/logs';
 $stateFile = $logsDir . '/cron-watchdog.state';
 $state     = file_exists($stateFile) ? (json_decode((string)file_get_contents($stateFile), true) ?: []) : [];
 

@@ -148,7 +148,57 @@ function crm_renderAllPages(int $clientId): array {
         }
         $pages[$filename] = $r['html'];
     }
+
+    // ── Localize image assets for the client's OWN host ──────────────────
+    // Templates emit /crm/asset.php?id=N (served by adverton.net — fine for the
+    // preview). A deployed client site must be SELF-CONTAINED, so copy each
+    // referenced asset into /assets/img/ on the client host and rewrite the URL
+    // to a root-relative path. Scalable: every client serves its own images,
+    // no runtime dependency on adverton.net. Image bytes ride along in $pages
+    // (the FTP adapters upload any filename→bytes; the WP adapter skips them).
+    require_once __DIR__ . '/photos.php';
+    $ids = [];
+    foreach ($pages as $html) {
+        if (preg_match_all('#/crm/asset\.php\?id=(\d+)#', (string)$html, $m)) {
+            foreach ($m[1] as $id) { $ids[(int)$id] = true; }
+        }
+    }
+    $idToUrl = [];
+    $imgFiles = [];
+    foreach (array_keys($ids) as $id) {
+        $asset = crm_getAsset($id);
+        if (!$asset || empty($asset['disk_path']) || !is_readable($asset['disk_path'])) continue;
+        $ext   = crm_assetExt((string)($asset['mime'] ?? ''), (string)($asset['stored_name'] ?? ''));
+        $local = 'assets/img/' . $id . '.' . $ext;
+        $idToUrl[$id]    = '/' . $local;                       // root-relative
+        $imgFiles[$local] = (string) file_get_contents($asset['disk_path']);
+    }
+    if ($idToUrl) {
+        foreach ($pages as $fn => $html) {
+            $pages[$fn] = preg_replace_callback(
+                '#/crm/asset\.php\?id=(\d+)#',
+                static fn($mm) => $idToUrl[(int)$mm[1]] ?? $mm[0],
+                (string)$html
+            );
+        }
+        foreach ($imgFiles as $local => $bytes) { $pages[$local] = $bytes; }
+    }
+
     return ['ok' => true, 'pages' => $pages, 'error' => null];
+}
+
+// Pick a file extension for a deployed asset from its MIME (fallback: the
+// stored filename's extension, else jpg).
+function crm_assetExt(string $mime, string $storedName): string {
+    static $map = [
+        'image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/png' => 'png',
+        'image/gif'  => 'gif', 'image/webp' => 'webp', 'image/svg+xml' => 'svg',
+    ];
+    $mime = strtolower(trim($mime));
+    if (isset($map[$mime])) return $map[$mime];
+    $e = strtolower((string) pathinfo($storedName, PATHINFO_EXTENSION));
+    $e = preg_replace('/[^a-z0-9]/', '', $e);
+    return ($e !== '' && strlen($e) <= 5) ? $e : 'jpg';
 }
 
 // Build the [pageKey => filename] map for a client, branching on the chosen

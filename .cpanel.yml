@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home2/advertonnet/public_html
+    - export DEPLOYPATH=/home/advertonnet/public_html
     - /bin/rm -f $DEPLOYPATH/index.php $DEPLOYPATH/index.htm
     - /bin/rm -rf $DEPLOYPATH/sp-content $DEPLOYPATH/sp-data $DEPLOYPATH/sp-includes $DEPLOYPATH/sp-admin
     - /bin/rm -f $DEPLOYPATH/audit-config.example.php

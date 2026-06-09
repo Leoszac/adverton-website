@@ -8,7 +8,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 require_once __DIR__ . '/db.php';
 
-const CRM_FILE_ROOT          = '/home2/advertonnet/crm-files';
+const CRM_FILE_ROOT          = '/home/advertonnet/crm-files';
 const CRM_FILE_MAX_BYTES     = 25 * 1024 * 1024; // 25 MB per file
 const CRM_FILE_ALLOWED_MIMES = [
     'application/pdf',

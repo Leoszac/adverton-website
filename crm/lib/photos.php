@@ -2,8 +2,8 @@
 // Client photo storage + AI-Vision classification.
 //
 // Storage layout (outside public_html — never directly servable):
-//   /home2/advertonnet/crm-files/clients/{client_id}/photos/inbox/      ← unclassified
-//   /home2/advertonnet/crm-files/clients/{client_id}/photos/job/        ← classified
+//   /home/advertonnet/crm-files/clients/{client_id}/photos/inbox/      ← unclassified
+//   /home/advertonnet/crm-files/clients/{client_id}/photos/job/        ← classified
 //   …team / vehicle / equipment / before_after / logo / interior / exterior / other
 //
 // Photos arrive via:
@@ -19,7 +19,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 require_once __DIR__ . '/db.php';
 
-const CRM_PHOTO_ROOT      = '/home2/advertonnet/crm-files/clients';
+const CRM_PHOTO_ROOT      = '/home/advertonnet/crm-files/clients';
 const CRM_PHOTO_MAX_BYTES = 10 * 1024 * 1024;     // 10 MB per image
 const CRM_PHOTO_MIMES     = ['image/jpeg','image/png','image/webp','image/heic','image/gif'];
 const CRM_PHOTO_EXT_OF    = [

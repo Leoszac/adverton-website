@@ -30,13 +30,13 @@ if (!function_exists('shell_exec')) {
 // applying it to every following entry. Anything written *before* a
 // CRON_TZ line still runs in server TZ.
 $canonical = [
-    '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-sequences.php >> /home2/advertonnet/logs/cron-sequences.log 2>&1',
-    '17 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-calendly.php >> /home2/advertonnet/logs/cron-calendly.log 2>&1',
-    '5 7 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-client-triggers.php >> /home2/advertonnet/logs/cron-client-triggers.log 2>&1',
-    '20 8 * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home2/advertonnet/logs/cron-lost-reengagement.log 2>&1',
-    '0 6 * * 1 /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-health-score.php >> /home2/advertonnet/logs/cron-health-score.log 2>&1',
-    '0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php >> /home2/advertonnet/logs/cron-instantly-health.log 2>&1',
-    '*/15 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-watchdog.php >> /home2/advertonnet/logs/cron-watchdog.log 2>&1',
+    '*/15 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-sequences.php >> /home/advertonnet/logs/cron-sequences.log 2>&1',
+    '17 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-calendly.php >> /home/advertonnet/logs/cron-calendly.log 2>&1',
+    '5 7 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-client-triggers.php >> /home/advertonnet/logs/cron-client-triggers.log 2>&1',
+    '20 8 * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-lost-reengagement.php >> /home/advertonnet/logs/cron-lost-reengagement.log 2>&1',
+    '0 6 * * 1 /usr/local/bin/php /home/advertonnet/public_html/crm/cron-health-score.php >> /home/advertonnet/logs/cron-health-score.log 2>&1',
+    '0 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-instantly-health.php >> /home/advertonnet/logs/cron-instantly-health.log 2>&1',
+    '*/15 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-watchdog.php >> /home/advertonnet/logs/cron-watchdog.log 2>&1',
 ];
 
 $managedScripts = [
@@ -75,7 +75,7 @@ foreach ($lines as $line) {
     else            $preserved[] = $line;
 }
 
-$logDir = '/home2/advertonnet/logs';
+$logDir = '/home/advertonnet/logs';
 if (!is_dir($logDir)) {
     @mkdir($logDir, 0755, true);
     echo "[log dir] created {$logDir}\n";

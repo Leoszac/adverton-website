@@ -22,7 +22,7 @@ if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 
 function loadAuditConfig(): array {
     $candidates = [
-        '/home2/advertonnet/audit-config.php',
+        '/home/advertonnet/audit-config.php',
         dirname(__DIR__) . '/audit-config.php',
         __DIR__ . '/audit-config.php',
     ];
@@ -178,6 +178,11 @@ try {
     error_log('[adverton-audit] resolver: ' . $e->getMessage());
     header('Location: ' . REDIRECT_FAIL . urlencode($e->kind));
     exit;
+} catch (Throwable $e) {
+    // Any other failure (e.g. Places API down / key or IP restriction) — never
+    // 500 the page; redirect to the audit form with a friendly error instead.
+    error_log('[adverton-audit] resolver fatal: ' . $e->getMessage());
+    bail(502, 'resolver api error: ' . $e->getMessage(), 'api_error');
 }
 
 try {
@@ -225,7 +230,7 @@ exit;
 
 function logAudit(array $row): void {
     $line = gmdate('Y-m-d\TH:i:s\Z') . ' ' . json_encode($row) . "\n";
-    $logPath = '/home2/advertonnet/logs/audit.log';
+    $logPath = '/home/advertonnet/logs/audit.log';
     $dir = dirname($logPath);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     @file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);
@@ -233,7 +238,7 @@ function logAudit(array $row): void {
 
 function checkRateLimit(string $ip, int $maxRequests, int $windowSec): bool {
     if ($ip === '') return true;
-    $stateDir = '/home2/advertonnet/ratelimit';
+    $stateDir = '/home/advertonnet/ratelimit';
     if (!is_dir($stateDir)) @mkdir($stateDir, 0750, true);
     $path = $stateDir . '/audit-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
 

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS client_intake (
   competitors_admired_json JSON NULL,
   primary_goal             ENUM('more_calls','more_bookings','more_reviews','brand_awareness') NULL,
   -- Step 7: Template choice
-  template_choice          ENUM('trust_first','speed_first','story_first') NULL,
+  template_choice          ENUM('trust_first','speed_first','story_first','seo_local') NULL,
   -- Step 9: Hosting & domain (Sprint 4)
   hosting_status           ENUM('client_has','adverton_provisions','unknown') NULL,
   domain_status            ENUM('client_has','adverton_buys','unknown') NULL,

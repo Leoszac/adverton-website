@@ -1,6 +1,6 @@
 <?php
 // Daily mysqldump-style backup. Native PHP (no shell_exec dependency).
-// Writes a gzipped SQL dump to /home2/advertonnet/backups/crm-YYYY-MM-DD.sql.gz
+// Writes a gzipped SQL dump to /home/advertonnet/backups/crm-YYYY-MM-DD.sql.gz
 // and prunes files older than 30 days.
 
 declare(strict_types=1);
@@ -15,7 +15,7 @@ if (!$cli) {
     }
 }
 
-const CRM_BACKUP_DIR = '/home2/advertonnet/backups';
+const CRM_BACKUP_DIR = '/home/advertonnet/backups';
 const CRM_BACKUP_RETAIN_DAYS = 30;
 
 if (!is_dir(CRM_BACKUP_DIR)) {

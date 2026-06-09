@@ -16,8 +16,8 @@ if (!hash_equals((string)crm_config('SEED_TOKEN'), (string)($_GET['go'] ?? '')))
 
 if (!function_exists('shell_exec')) exit("shell_exec disabled\n");
 
-$logFile = '/home2/advertonnet/logs/cron-instantly-health.log';
-$cronScript = '/home2/advertonnet/public_html/crm/cron-instantly-health.php';
+$logFile = '/home/advertonnet/logs/cron-instantly-health.log';
+$cronScript = '/home/advertonnet/public_html/crm/cron-instantly-health.php';
 $phpBin = '/usr/local/bin/php';
 
 echo "=== Crontab line for cron-instantly-health ===\n";
@@ -72,12 +72,12 @@ echo $out;
 echo "\n";
 
 echo "=== Try requiring lib/instantly.php in isolation ===\n";
-$probeCmd = "$phpBin -d display_errors=1 -d error_reporting=E_ALL -r \"define('CRM_ENTRY',1); require '/home2/advertonnet/public_html/crm/lib/db.php'; require '/home2/advertonnet/public_html/crm/lib/instantly.php'; echo 'loaded OK\\n';\" 2>&1; echo \"---EXIT---\$?\"";
+$probeCmd = "$phpBin -d display_errors=1 -d error_reporting=E_ALL -r \"define('CRM_ENTRY',1); require '/home/advertonnet/public_html/crm/lib/db.php'; require '/home/advertonnet/public_html/crm/lib/instantly.php'; echo 'loaded OK\\n';\" 2>&1; echo \"---EXIT---\$?\"";
 echo (string) shell_exec($probeCmd);
 echo "\n";
 
 echo "=== Tail of PHP error_log (if any) ===\n";
-echo (string) shell_exec("find /home2/advertonnet -maxdepth 3 -name 'error_log' -mmin -1440 2>/dev/null | xargs -I {} sh -c 'echo \"== {} ==\"; tail -20 {}' 2>&1 | head -60");
+echo (string) shell_exec("find /home/advertonnet -maxdepth 3 -name 'error_log' -mmin -1440 2>/dev/null | xargs -I {} sh -c 'echo \"== {} ==\"; tail -20 {}' 2>&1 | head -60");
 echo "\n";
 
 echo "=== Log mtime after manual run ===\n";

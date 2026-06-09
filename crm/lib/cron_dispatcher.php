@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
-const CRM_CRON_STATE = '/home2/advertonnet/cron-state.json';
+const CRM_CRON_STATE = '/home/advertonnet/cron-state.json';
 
 const CRM_CRON_JOBS = [
     'client_triggers'   => ['interval' => 86400, 'script' => 'cron-client-triggers.php'],

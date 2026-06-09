@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS leads (
   -- audit-specific
   gbp_url         TEXT         NULL,
   audit_score     TINYINT      NULL,        -- 0..100, NULL for non-audit
-  audit_id        VARCHAR(32)  NULL,        -- ties back to /home2/advertonnet/logs/audit.log
+  audit_id        VARCHAR(32)  NULL,        -- ties back to /home/advertonnet/logs/audit.log
 
   -- contact-form-specific
   revenue         VARCHAR(40)  NULL,

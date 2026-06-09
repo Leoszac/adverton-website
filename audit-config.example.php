@@ -1,12 +1,12 @@
 <?php
 // Template for audit secrets. The REAL file lives OUTSIDE public_html on the
-// server (recommended path: /home2/advertonnet/audit-config.php with chmod 600).
+// server (recommended path: /home/advertonnet/audit-config.php with chmod 600).
 //
 // Do NOT commit the real values. Do NOT place the real file inside
 // public_html — anything in public_html is web-accessible.
 //
 // audit.php looks for the real file at:
-//   1. /home2/advertonnet/audit-config.php   (recommended)
+//   1. /home/advertonnet/audit-config.php   (recommended)
 //   2. dirname(__DIR__) . '/audit-config.php' (one level up from public_html)
 //   3. __DIR__ . '/audit-config.php'          (LAST resort, must chmod 600)
 

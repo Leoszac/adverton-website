@@ -1,6 +1,6 @@
 <?php
 // CRM DB layer — PDO MySQL connection + config loader.
-// Real config lives at /home2/advertonnet/crm-config.php (chmod 600), OUTSIDE
+// Real config lives at /home/advertonnet/crm-config.php (chmod 600), OUTSIDE
 // public_html. Never commit real credentials.
 
 declare(strict_types=1);
@@ -9,7 +9,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 function crm_loadConfig(): array {
     $candidates = [
-        '/home2/advertonnet/crm-config.php',
+        '/home/advertonnet/crm-config.php',
         dirname(__DIR__, 3) . '/crm-config.php',
         __DIR__ . '/../crm-config.php',
     ];
@@ -89,7 +89,7 @@ function crm_currentNyOffset(): string {
 }
 
 function crm_log(string $line): void {
-    $logPath = '/home2/advertonnet/logs/crm.log';
+    $logPath = '/home/advertonnet/logs/crm.log';
     $dir = dirname($logPath);
     if (!is_dir($dir)) @mkdir($dir, 0750, true);
     @file_put_contents(

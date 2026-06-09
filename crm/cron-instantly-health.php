@@ -6,7 +6,7 @@
 // Schedule: hourly via cPanel cron, PHP CLI direct (NEVER via curl HTTPS —
 // Imunify360 blocks server-local HTTPS calls with ?token=XXX, see CRM
 // architecture memory):
-//   0 * * * * /usr/local/bin/php /home2/advertonnet/public_html/crm/cron-instantly-health.php
+//   0 * * * * /usr/local/bin/php /home/advertonnet/public_html/crm/cron-instantly-health.php
 
 declare(strict_types=1);
 if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
