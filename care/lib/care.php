@@ -39,3 +39,47 @@ function care_isOptedOut(string $phoneE164): bool {
         return (bool)$st->fetchColumn();
     } catch (Throwable $e) { return false; }
 }
+
+// Public base for Twilio webhook URLs + the client dashboard. Change to
+// https://care.adverton.net once that subdomain points at public_html/care.
+const CARE_BASE_URL = 'https://adverton.net/care';
+
+// ── Passwordless access tokens (one stable token per client) ─────────────
+function care_issueToken(int $clientId): string {
+    try {
+        $st = care_db()->prepare('SELECT token FROM care_access WHERE client_id = ? LIMIT 1');
+        $st->execute([$clientId]);
+        $existing = $st->fetchColumn();
+        if ($existing) return (string)$existing;
+        $token = bin2hex(random_bytes(24));   // 48 hex chars
+        care_db()->prepare('INSERT INTO care_access (client_id, token) VALUES (?, ?)')->execute([$clientId, $token]);
+        return $token;
+    } catch (Throwable $e) { care_log('issueToken err: ' . $e->getMessage()); return ''; }
+}
+
+function care_clientFromToken(?string $token): ?int {
+    if (!$token || !preg_match('/^[a-f0-9]{48}$/', $token)) return null;
+    try {
+        $st = care_db()->prepare('SELECT client_id FROM care_access WHERE token = ? LIMIT 1');
+        $st->execute([$token]);
+        $cid = $st->fetchColumn();
+        if ($cid) { @care_db()->prepare('UPDATE care_access SET last_seen_at = NOW() WHERE token = ?')->execute([$token]); }
+        return $cid ? (int)$cid : null;
+    } catch (Throwable $e) { return null; }
+}
+
+// Resolve the dashboard client from ?t= or the care_sess cookie; sets the
+// cookie (90d, HttpOnly, Secure, SameSite=Lax) so the magic link is
+// bookmarkable without the token staying in the URL.
+function care_currentClientId(): ?int {
+    $qt = (string)($_GET['t'] ?? '');
+    $token = $qt !== '' ? $qt : (string)($_COOKIE['care_sess'] ?? '');
+    $cid = care_clientFromToken($token);
+    if ($cid && $qt !== '' && !headers_sent()) {
+        setcookie('care_sess', $token, [
+            'expires' => time() + 86400 * 90, 'path' => '/care',
+            'secure' => true, 'httponly' => true, 'samesite' => 'Lax',
+        ]);
+    }
+    return $cid;
+}

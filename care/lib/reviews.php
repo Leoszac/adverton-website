@@ -1,0 +1,146 @@
+<?php
+// Adverton Care — review engine. Decoupled from the trigger: any source
+// (one-tap from recent calls, CSV import, text-to-trigger, integration) just
+// calls care_queueReview(); this engine sends the SMS + one reminder, using the
+// Google review link already stored in client_intake.reviews_links_json.
+
+declare(strict_types=1);
+
+if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
+
+require_once __DIR__ . '/flows.php';   // pulls twilio + care helpers (care_sendSms, care_e164, ...)
+
+// The client's active Care number (used as the SMS sender).
+function care_clientNumber(int $clientId): ?string {
+    try {
+        $st = care_db()->prepare('SELECT twilio_number FROM care_numbers WHERE client_id = ? AND active = 1 ORDER BY id DESC LIMIT 1');
+        $st->execute([$clientId]);
+        $n = $st->fetchColumn();
+        return $n ?: null;
+    } catch (Throwable $e) { return null; }
+}
+
+// Google review link from the kickoff intake. Handles a few JSON shapes.
+function care_reviewLink(int $clientId): ?string {
+    try {
+        $st = care_db()->prepare('SELECT reviews_links_json FROM client_intake WHERE client_id = ? LIMIT 1');
+        $st->execute([$clientId]);
+        $raw = (string)($st->fetchColumn() ?: '');
+        if ($raw === '') return null;
+        $j = json_decode($raw, true);
+        if (!is_array($j)) return null;
+        $firstUrl = null;
+        foreach ($j as $k => $v) {
+            // shapes: ["https://..."], [{"platform":"google","url":"..."}], {"google":"https://..."}
+            if (is_string($v)) {
+                if ($firstUrl === null && strpos($v, 'http') === 0) $firstUrl = $v;
+                if (stripos((string)$k, 'google') !== false && strpos($v, 'http') === 0) return $v;
+                if (stripos($v, 'google') !== false || stripos($v, 'g.page') !== false) return $v;
+            } elseif (is_array($v)) {
+                $url = (string)($v['url'] ?? '');
+                $plat = strtolower((string)($v['platform'] ?? ''));
+                if ($url !== '' && $firstUrl === null) $firstUrl = $url;
+                if ($url !== '' && ($plat === 'google' || stripos($url, 'google') !== false || stripos($url, 'g.page') !== false)) return $url;
+            }
+        }
+        return $firstUrl;
+    } catch (Throwable $e) { return null; }
+}
+
+// Enqueue a review request. Dedupes (same client+phone within 30 days) and
+// respects opt-out. $delayHours lets a job-done trigger wait a bit.
+function care_queueReview(int $clientId, string $phone, ?string $name, string $source, int $delayHours = 0): array {
+    $e164 = care_e164($phone);
+    if (!$e164) return ['ok'=>false, 'error'=>'bad phone'];
+    if (care_isOptedOut($e164)) return ['ok'=>false, 'error'=>'opted_out'];
+    try {
+        $dup = care_db()->prepare(
+            "SELECT id FROM care_review_requests
+             WHERE client_id = ? AND customer_phone = ?
+               AND created_at > (NOW() - INTERVAL 30 DAY)
+             LIMIT 1"
+        );
+        $dup->execute([$clientId, $e164]);
+        if ($dup->fetchColumn()) return ['ok'=>false, 'error'=>'duplicate'];
+
+        $sendAfter = $delayHours > 0 ? date('Y-m-d H:i:s', time() + $delayHours * 3600) : null;
+        care_db()->prepare(
+            'INSERT INTO care_review_requests (client_id, customer_phone, customer_name, source, status, send_after)
+             VALUES (?, ?, ?, ?, "queued", ?)'
+        )->execute([$clientId, $e164, ($name ?: null), $source, $sendAfter]);
+        return ['ok'=>true, 'id'=>(int)care_db()->lastInsertId()];
+    } catch (Throwable $e) {
+        care_log('queueReview err: ' . $e->getMessage());
+        return ['ok'=>false, 'error'=>$e->getMessage()];
+    }
+}
+
+function care_reviewMessage(string $biz, ?string $name, string $link, bool $reminder): string {
+    $hi = $name ? ('Hi ' . $name . '!') : 'Hi!';
+    if ($reminder) {
+        return "{$hi} Just a quick reminder — if you have a sec, a short review for {$biz} would mean a lot. {$link}";
+    }
+    return "{$hi} Thanks for choosing {$biz}! Would you mind leaving us a quick review? It really helps us out. {$link} (Reply STOP to opt out.)";
+}
+
+// The engine: send queued requests, then send one reminder to those sent 3+
+// days ago. Returns counts. Called by cron-reviews.php.
+function care_sendDueReviews(int $limit = 50, int $reminderDays = 3): array {
+    $sent = 0; $reminded = 0; $failed = 0;
+    $db = care_db();
+
+    // 1) Send queued
+    $rows = $db->prepare(
+        'SELECT * FROM care_review_requests
+         WHERE status = "queued" AND (send_after IS NULL OR send_after <= NOW())
+         ORDER BY id ASC LIMIT ?'
+    );
+    $rows->bindValue(1, $limit, PDO::PARAM_INT);
+    $rows->execute();
+    foreach ($rows->fetchAll() as $r) {
+        $clientId = (int)$r['client_id'];
+        $careNum  = care_clientNumber($clientId);
+        $link     = care_reviewLink($clientId);
+        if (!$careNum || !$link) {
+            $db->prepare('UPDATE care_review_requests SET status = "failed" WHERE id = ?')->execute([$r['id']]);
+            $failed++; care_log("review #{$r['id']} failed: " . (!$careNum ? 'no Care number' : 'no review link'));
+            continue;
+        }
+        $biz = care_clientName($clientId);
+        $msg = care_reviewMessage($biz, $r['customer_name'] ?? null, $link, false);
+        $res = care_sendSms($clientId, $careNum, (string)$r['customer_phone'], $msg, 'review');
+        if ($res['ok']) {
+            $db->prepare('UPDATE care_review_requests SET status = "sent", sent_at = NOW() WHERE id = ?')->execute([$r['id']]);
+            $sent++;
+        } else {
+            $db->prepare('UPDATE care_review_requests SET status = "failed" WHERE id = ?')->execute([$r['id']]);
+            $failed++;
+        }
+    }
+
+    // 2) One reminder for those sent >= N days ago
+    $rem = $db->prepare(
+        'SELECT * FROM care_review_requests
+         WHERE status = "sent" AND reminded_at IS NULL
+           AND sent_at < (NOW() - INTERVAL ? DAY)
+         ORDER BY id ASC LIMIT ?'
+    );
+    $rem->bindValue(1, $reminderDays, PDO::PARAM_INT);
+    $rem->bindValue(2, $limit, PDO::PARAM_INT);
+    $rem->execute();
+    foreach ($rem->fetchAll() as $r) {
+        $clientId = (int)$r['client_id'];
+        $careNum  = care_clientNumber($clientId);
+        $link     = care_reviewLink($clientId);
+        if (!$careNum || !$link) continue;
+        $biz = care_clientName($clientId);
+        $msg = care_reviewMessage($biz, $r['customer_name'] ?? null, $link, true);
+        $res = care_sendSms($clientId, $careNum, (string)$r['customer_phone'], $msg, 'review_reminder');
+        if ($res['ok']) {
+            $db->prepare('UPDATE care_review_requests SET status = "reminded", reminded_at = NOW() WHERE id = ?')->execute([$r['id']]);
+            $reminded++;
+        }
+    }
+
+    return ['sent'=>$sent, 'reminded'=>$reminded, 'failed'=>$failed];
+}

@@ -5,7 +5,7 @@
 
 declare(strict_types=1);
 define('CRM_ENTRY', 1);
-require_once __DIR__ . '/lib/flows.php';
+require_once __DIR__ . '/lib/reviews.php';   // flows + review engine (for text-to-trigger)
 
 $sig = (string)($_SERVER['HTTP_X_TWILIO_SIGNATURE'] ?? '');
 $url = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');

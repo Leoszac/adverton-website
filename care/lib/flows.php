@@ -164,7 +164,16 @@ function care_handleIncomingSms(array $p): string {
     care_logSms($clientId, 'in', $careNumber, $fromE, $body, $sid, 'relay');
 
     if ($fromE === $fwd) {
-        // Contractor replying → route to the most-recent customer for this client.
+        // Text-to-trigger a review: contractor texts "review <customer number>".
+        if (preg_match('/^\s*review\b\s*(.*)$/i', $body, $m) && function_exists('care_queueReview')) {
+            $target = care_e164(trim($m[1]));
+            if ($target) {
+                care_queueReview($clientId, $target, null, 'sms');
+                care_sendSms($clientId, $careNumber, $fwd, "Got it — we'll text {$target} for a review.", 'other');
+                return care_xml('<Response/>');
+            }
+        }
+        // Otherwise: relay the reply to the most-recent customer for this client.
         $cust = care_lastCustomer($clientId, $fwd);
         if ($cust) care_sendSms($clientId, $careNumber, $cust, $body, 'relay');
         return care_xml('<Response/>');
