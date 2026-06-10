@@ -57,6 +57,13 @@ if ($raw === false || $raw === '') {
     exit(0);  // exit 0 so cPanel doesn't bounce
 }
 
+// Normalize line endings to CRLF. Exim's pipe transport delivers the message
+// LF-terminated, but the MIME splitters below assume CRLF (they search for
+// \r\n\r\n and skip a fixed 4 bytes). On LF input that skip eats the first 2
+// base64 chars of each part, so image attachments decode misaligned and get
+// rejected as application/octet-stream.
+$raw = preg_replace('/\r\n|\r|\n/', "\r\n", $raw);
+
 // Parse with mailparse if available (cPanel ships it on PHP-FPM most plans);
 // fall back to a tiny built-in MIME splitter otherwise.
 $parsed = pipeParseEmail($raw);
