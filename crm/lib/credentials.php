@@ -1,16 +1,21 @@
 <?php
 // Encrypted credentials vault. Stores hosting / domain / GBP / LSA / Yelp /
-// Meta logins per client, encrypted at rest with AES-256-CBC + a master
-// key from crm_config('CREDENTIALS_KEY').
+// Meta logins per client, encrypted at rest with AES-256-GCM (authenticated)
+// + a master key from crm_config('CREDENTIALS_KEY').
 //
 // Threat model:
 //   - DB dump leak → values still encrypted (key lives in php config, not DB)
+//   - Tampered ciphertext → GCM auth tag fails → decrypt refuses (no oracle)
 //   - Curious low-privilege user → role-gated reads, audit-logged
 //   - Lost server access → key rotation procedure documented in CRM-SETUP.md
 //
-// Wire format of `value_enc` BLOB:
-//   16 bytes  IV  (random per row, regenerated on every write)
-//   N bytes   ciphertext (AES-256-CBC of UTF-8 plaintext)
+// Wire format of `value_enc` BLOB (current, authenticated):
+//   4 bytes   magic "AGCM"
+//   12 bytes  nonce/IV  (random per write)
+//   16 bytes  GCM auth tag
+//   N bytes   ciphertext (AES-256-GCM of UTF-8 plaintext)
+// Legacy format still readable (no magic prefix): 16-byte IV + AES-256-CBC
+// ciphertext. Legacy rows are upgraded to GCM the next time they're written.
 
 declare(strict_types=1);
 
@@ -18,8 +23,12 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 require_once __DIR__ . '/db.php';
 
-const CRM_CRED_CIPHER  = 'AES-256-CBC';
-const CRM_CRED_IV_LEN  = 16;
+const CRM_CRED_CIPHER      = 'AES-256-CBC';   // legacy read path only
+const CRM_CRED_IV_LEN      = 16;              // legacy CBC IV length
+const CRM_CRED_CIPHER_GCM  = 'aes-256-gcm';   // current authenticated cipher
+const CRM_CRED_GCM_MAGIC   = 'AGCM';          // 4-byte prefix marking GCM blobs
+const CRM_CRED_GCM_IV_LEN  = 12;              // 96-bit nonce (GCM standard)
+const CRM_CRED_GCM_TAG_LEN = 16;              // 128-bit auth tag
 const CRM_CRED_KIND_LIST = [
     'cpanel','sftp','wordpress','domain_registrar',
     'google_business_profile','google_local_services','google_ads',
@@ -47,19 +56,39 @@ function crm_credMasterKey(): string {
 
 function crm_credEncrypt(string $plaintext): string {
     $key = crm_credMasterKey();
-    $iv  = random_bytes(CRM_CRED_IV_LEN);
-    $ct  = openssl_encrypt($plaintext, CRM_CRED_CIPHER, $key, OPENSSL_RAW_DATA, $iv);
-    if ($ct === false) throw new RuntimeException('openssl_encrypt failed');
-    return $iv . $ct;
+    $iv  = random_bytes(CRM_CRED_GCM_IV_LEN);
+    $tag = '';
+    $ct  = openssl_encrypt($plaintext, CRM_CRED_CIPHER_GCM, $key, OPENSSL_RAW_DATA,
+                           $iv, $tag, '', CRM_CRED_GCM_TAG_LEN);
+    if ($ct === false || strlen($tag) !== CRM_CRED_GCM_TAG_LEN) {
+        throw new RuntimeException('openssl_encrypt (gcm) failed');
+    }
+    return CRM_CRED_GCM_MAGIC . $iv . $tag . $ct;
 }
 
 function crm_credDecrypt(string $blob): string {
-    if (strlen($blob) < CRM_CRED_IV_LEN + 1) throw new RuntimeException('credential blob too short');
     $key = crm_credMasterKey();
-    $iv  = substr($blob, 0, CRM_CRED_IV_LEN);
-    $ct  = substr($blob, CRM_CRED_IV_LEN);
-    $pt  = openssl_decrypt($ct, CRM_CRED_CIPHER, $key, OPENSSL_RAW_DATA, $iv);
-    if ($pt === false) throw new RuntimeException('openssl_decrypt failed');
+
+    // Current authenticated format: "AGCM" + 12B nonce + 16B tag + ciphertext.
+    if (strncmp($blob, CRM_CRED_GCM_MAGIC, 4) === 0) {
+        $iv  = substr($blob, 4, CRM_CRED_GCM_IV_LEN);
+        $tag = substr($blob, 4 + CRM_CRED_GCM_IV_LEN, CRM_CRED_GCM_TAG_LEN);
+        $ct  = substr($blob, 4 + CRM_CRED_GCM_IV_LEN + CRM_CRED_GCM_TAG_LEN);
+        if (strlen($iv) !== CRM_CRED_GCM_IV_LEN || strlen($tag) !== CRM_CRED_GCM_TAG_LEN) {
+            throw new RuntimeException('credential blob malformed (gcm)');
+        }
+        $pt = openssl_decrypt($ct, CRM_CRED_CIPHER_GCM, $key, OPENSSL_RAW_DATA, $iv, $tag);
+        if ($pt === false) throw new RuntimeException('gcm auth/decrypt failed');  // tampered or wrong key
+        return $pt;
+    }
+
+    // Legacy AES-256-CBC (no magic prefix): 16B IV + ciphertext. Read-only;
+    // upgraded to GCM the next time the row is written.
+    if (strlen($blob) < CRM_CRED_IV_LEN + 1) throw new RuntimeException('credential blob too short');
+    $iv = substr($blob, 0, CRM_CRED_IV_LEN);
+    $ct = substr($blob, CRM_CRED_IV_LEN);
+    $pt = openssl_decrypt($ct, CRM_CRED_CIPHER, $key, OPENSSL_RAW_DATA, $iv);
+    if ($pt === false) throw new RuntimeException('openssl_decrypt failed (legacy cbc)');
     return $pt;
 }
 
