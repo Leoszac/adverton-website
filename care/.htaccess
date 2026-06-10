@@ -1,0 +1,21 @@
+# Adverton Care — public webhooks (voice/sms) + client dashboard stay reachable.
+# Everything internal (lib, sql, cron, diagnostics) is blocked from the web.
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+
+Options -Indexes
+
+# Internal-only file types
+<FilesMatch "\.(sql|md|log)$">
+  Require all denied
+</FilesMatch>
+
+# CLI cron + one-shot/diagnostic scripts: never web-served.
+<FilesMatch "^(cron-|_)">
+  Require all denied
+</FilesMatch>

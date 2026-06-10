@@ -43,6 +43,12 @@ const CRM_DB_BACKED_KEYS = [
     // Outscraper — prospect sourcing (search + email enrichment + validator).
     // Stored here so sourcing scripts read it via crm_config() — no re-pasting.
     'OUTSCRAPER_API_KEY',
+    // Adverton Care — Twilio (SMS text-back + call forwarding + reviews).
+    // The Auth Token doubles as the webhook-signature key. Paste from
+    // console.twilio.com. Empty → Care runs in STUB MODE (logic works, no
+    // live sends). See care/lib/twilio.php.
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN',
     // OpenSign keys are intentionally NOT whitelisted right now — the lib
     // (crm/lib/opensign.php) is dormant pending a paid OpenSign plan. The
     // pre-contract flow uses Stripe Checkout + click-wrap T&C instead.

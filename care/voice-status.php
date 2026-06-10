@@ -1,0 +1,20 @@
+<?php
+// Adverton Care — <Dial> status callback. Twilio hits this when the forwarded
+// call finishes; DialCallStatus tells us if the contractor answered. On a
+// missed call we text the caller back automatically.
+
+declare(strict_types=1);
+define('CRM_ENTRY', 1);
+require_once __DIR__ . '/lib/flows.php';
+
+$sig = (string)($_SERVER['HTTP_X_TWILIO_SIGNATURE'] ?? '');
+$url = 'https://' . ($_SERVER['HTTP_HOST'] ?? '') . ($_SERVER['REQUEST_URI'] ?? '');
+if (!care_twilioVerifySignature($url, $_POST, $sig)) {
+    http_response_code(403);
+    header('Content-Type: text/plain');
+    echo 'forbidden';
+    exit;
+}
+
+header('Content-Type: text/xml; charset=utf-8');
+echo care_handleDialStatus($_POST);
