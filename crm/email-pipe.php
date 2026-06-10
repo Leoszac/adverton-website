@@ -30,6 +30,18 @@ if (php_sapi_name() !== 'cli') {
     exit;
 }
 
+// A mail pipe must NEVER exit non-zero or Exim bounces the message back to the
+// sender. Force exit(0) on ANY outcome — including a fatal in the requires or
+// processing below — so our internal errors never produce a bounce. We log and
+// swallow; photos that fail to store just don't get saved (no bounce).
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        error_log('[email-pipe] fatal suppressed (no bounce): ' . $e['message']);
+    }
+    exit(0);
+});
+
 if (!defined('CRM_ENTRY')) define('CRM_ENTRY', 1);
 
 require_once __DIR__ . '/lib/db.php';
