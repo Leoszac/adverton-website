@@ -60,9 +60,18 @@ if (!$fromEmail) {
 }
 
 // Match against clients.primary_email or billing_email
+$matchMethod = 'sender';
 $client = pipeFindClientForEmail($fromEmail);
 if (!$client) {
-    error_log("[email-pipe] unknown sender {$fromEmail}; dropped " . count($parsed['attachments']) . ' attachment(s)');
+    // Sender isn't a known client email (a third party — staff, the customer,
+    // Leo forwarding). Try to infer the right client with AI from the subject,
+    // attachment filenames and sender, against the client list. Photos still
+    // land as unapproved, so a wrong guess is caught at the approval step.
+    $client = pipeAiMatchClient($raw, $parsed, $fromEmail);
+    if ($client) $matchMethod = 'ai';
+}
+if (!$client) {
+    error_log("[email-pipe] unknown sender {$fromEmail}; no client match (incl. AI); dropped " . count($parsed['attachments']) . ' attachment(s)');
     exit(0);
 }
 $clientId = (int)$client['id'];
@@ -90,8 +99,9 @@ foreach (array_slice($parsed['attachments'], 0, PIPE_MAX_ATTACHMENTS) as $att) {
 }
 
 try {
+    $how = ($matchMethod === 'ai') ? 'AI-matched (verify these are the right client!)' : 'sender-matched';
     crm_logClientEvent($clientId, null, 'note',
-        "Email-inbound: saved {$saved} photo(s), skipped {$skipped} from {$fromEmail}");
+        "Email-inbound ({$how}): saved {$saved} photo(s), skipped {$skipped} from {$fromEmail}");
 } catch (Throwable $e) { error_log('[email-pipe logEvent] ' . $e->getMessage()); }
 
 exit(0);
@@ -112,6 +122,89 @@ function pipeFindClientForEmail(string $email): ?array {
         error_log('[email-pipe lookup] ' . $e->getMessage());
         return null;
     }
+}
+
+// AI fallback: when the sender doesn't match a client, ask Claude which client
+// these photos belong to, using the subject + attachment names + sender against
+// the client list. Returns the client row only on a confident match (>=0.75).
+function pipeAiMatchClient(string $raw, array $parsed, string $fromEmail): ?array {
+    try {
+        $apiKey = crm_config('ANTHROPIC_API_KEY');
+        if (!$apiKey) return null;
+
+        $clients = crm_db()->query(
+            "SELECT id, business_name, trade FROM clients
+             WHERE status IS NULL OR status NOT IN ('cancelled')
+             ORDER BY business_name LIMIT 80"
+        )->fetchAll();
+        if (!$clients) return null;
+
+        $subject  = pipeExtractHeader($raw, 'Subject');
+        $fromName = '';
+        if (preg_match('/^From:\s*"?([^"<\r\n]+?)"?\s*</mi', $raw, $m)) $fromName = trim($m[1]);
+        $files = [];
+        foreach (($parsed['attachments'] ?? []) as $a) {
+            $fn = trim((string)($a['filename'] ?? ''));
+            if ($fn !== '') $files[] = $fn;
+        }
+        $list = [];
+        foreach ($clients as $c) $list[] = "id={$c['id']} | {$c['business_name']} | {$c['trade']}";
+
+        $prompt = "Photos were emailed to a contractor-marketing intake address. Decide which of OUR clients they belong to.\n\n"
+            . "EMAIL\n  From: " . ($fromName !== '' ? $fromName . ' ' : '') . "<{$fromEmail}>\n"
+            . "  Subject: {$subject}\n"
+            . "  Attachment filenames: " . (count($files) ? implode(', ', $files) : '(none)') . "\n\n"
+            . "OUR CLIENTS\n  " . implode("\n  ", $list) . "\n\n"
+            . "Match ONLY if the email clearly points to ONE client (its business name, an obvious nickname, "
+            . "or a filename that names it). If it is unclear or could be several, return null.\n"
+            . "Reply with ONLY JSON, nothing else: {\"client_id\": <id or null>, \"confidence\": <0 to 1>}";
+
+        $payload = json_encode([
+            'model'      => 'claude-haiku-4-5-20251001',
+            'max_tokens' => 120,
+            'messages'   => [['role' => 'user', 'content' => $prompt]],
+        ]);
+        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'x-api-key: ' . $apiKey, 'anthropic-version: 2023-06-01'],
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_CONNECTTIMEOUT => 6,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($resp === false || $code >= 400) { error_log('[email-pipe AI] HTTP ' . $code); return null; }
+
+        $data = json_decode((string)$resp, true) ?: [];
+        $text = '';
+        foreach ((array)($data['content'] ?? []) as $b) {
+            if (($b['type'] ?? '') === 'text') $text .= (string)($b['text'] ?? '');
+        }
+        if (!preg_match('/\{.*\}/s', $text, $mm)) return null;
+        $out  = json_decode($mm[0], true) ?: [];
+        $cid  = (int)($out['client_id'] ?? 0);
+        $conf = (float)($out['confidence'] ?? 0);
+        error_log("[email-pipe AI] from={$fromEmail} subject=\"{$subject}\" -> client_id={$cid} confidence={$conf}");
+        if ($cid <= 0 || $conf < 0.75) return null;
+
+        $st = crm_db()->prepare('SELECT * FROM clients WHERE id = ?');
+        $st->execute([$cid]);
+        $row = $st->fetch();
+        return $row ?: null;
+    } catch (Throwable $e) {
+        error_log('[email-pipe AI] ' . $e->getMessage());
+        return null;
+    }
+}
+
+function pipeExtractHeader(string $raw, string $name): string {
+    if (preg_match('/^' . preg_quote($name, '/') . ':\s*(.+)$/mi', $raw, $m)) {
+        return trim($m[1]);
+    }
+    return '';
 }
 
 // Extracts From: header value cheaply for log lines, even if full parse fails.
