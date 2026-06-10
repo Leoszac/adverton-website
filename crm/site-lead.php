@@ -15,6 +15,24 @@ require_once __DIR__ . '/lib/clients.php';
 
 $h = static fn($s) => htmlspecialchars((string)$s, ENT_QUOTES);
 
+// Per-IP file rate limiter (mirrors audit.php/ebook-request.php pattern).
+function siteLeadRateLimit(string $ip, int $max, int $window): bool {
+    if ($ip === '') return true;
+    $dir = '/home/advertonnet/ratelimit';
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    $path = $dir . '/sitelead-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
+    $now = time();
+    $hits = [];
+    if (is_readable($path)) {
+        $raw  = (array) json_decode((string) @file_get_contents($path), true);
+        $hits = array_values(array_filter($raw, static fn($t) => is_int($t) && $t >= $now - $window));
+    }
+    if (count($hits) >= $max) return false;
+    $hits[] = $now;
+    @file_put_contents($path, json_encode($hits), LOCK_EX);
+    return true;
+}
+
 function siteLeadDone(string $msg, bool $ok = true): void {
     http_response_code($ok ? 200 : 400);
     header('Content-Type: text/html; charset=utf-8');
@@ -32,6 +50,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 // Honeypot — bots fill the hidden 'company' field; accept silently and drop.
 if (trim((string)($_POST['company'] ?? '')) !== '') {
     siteLeadDone('Thanks! We got your request.');
+}
+
+// Per-IP rate limit: 8 submits / 10 min (anti-spam / Resend cost abuse).
+if (!siteLeadRateLimit((string)($_SERVER['REMOTE_ADDR'] ?? ''), 8, 600)) {
+    siteLeadDone('Too many requests — please wait a few minutes and try again.', false);
 }
 
 $clientId = (int)($_GET['c'] ?? $_POST['c'] ?? 0);

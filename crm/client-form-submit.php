@@ -43,6 +43,24 @@ function client_form_send_email(string $to, string $subject, string $bodyHtml, ?
     curl_close($ch);
 }
 
+// Per-IP file rate limiter (mirrors audit.php/ebook-request.php pattern).
+function client_form_rate_limit(string $ip, int $max, int $window): bool {
+    if ($ip === '') return true;
+    $dir = '/home/advertonnet/ratelimit';
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    $path = $dir . '/clientform-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
+    $now = time();
+    $hits = [];
+    if (is_readable($path)) {
+        $raw  = (array) json_decode((string) @file_get_contents($path), true);
+        $hits = array_values(array_filter($raw, static fn($t) => is_int($t) && $t >= $now - $window));
+    }
+    if (count($hits) >= $max) return false;
+    $hits[] = $now;
+    @file_put_contents($path, json_encode($hits), LOCK_EX);
+    return true;
+}
+
 // ─── CORS ─────────────────────────────────────────────────────────────
 $origin = (string)($_SERVER['HTTP_ORIGIN'] ?? '');
 if ($origin !== '') {
@@ -79,6 +97,13 @@ if (!$client || ($client['status'] ?? '') !== 'active') {
 if (!empty($_POST['hp'] ?? '')) {
     http_response_code(204);
     exit;
+}
+
+// Per-IP rate limit: 8 submits / 10 min (anti-spam / Resend cost abuse).
+if (!client_form_rate_limit((string)($_SERVER['REMOTE_ADDR'] ?? ''), 8, 600)) {
+    http_response_code(429);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Too many requests — please try again in a few minutes.');
 }
 
 $name    = mb_substr(trim((string)($_POST['name']    ?? '')), 0, 160);

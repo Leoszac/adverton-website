@@ -59,7 +59,7 @@ jobs:
           set net:reconnect-interval-base 5
           set xfer:clobber yes
           set sftp:connect-program "ssh -a -x -i /home/runner/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15"
-          mirror --reverse --only-newer --verbose --parallel=2 --exclude-glob .git --exclude-glob .git/ --exclude-glob .github --exclude-glob .github/ --exclude-glob .gitignore --exclude-glob .cpanel.yml --exclude-glob audit-config.example.php --exclude-glob crm-config.example.php --exclude-glob DEPLOY_GUIDE.md --exclude-glob configure_forms.sh --exclude-glob .DS_Store ./ ${REMOTE_PATH}/
+          mirror --reverse --only-newer --verbose --parallel=2 --exclude-glob .git --exclude-glob .git/ --exclude-glob .github --exclude-glob .github/ --exclude-glob .gitignore --exclude-glob .cpanel.yml --exclude-glob audit-config.example.php --exclude-glob crm-config.example.php --exclude-glob DEPLOY_GUIDE.md --exclude-glob configure_forms.sh --exclude-glob .DS_Store --exclude-glob _*.php ./ ${REMOTE_PATH}/
           bye
           LFTP
 

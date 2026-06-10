@@ -22,3 +22,10 @@
 <FilesMatch "^(seed-users|import-audit-log|cron-calendly|cron-client-triggers|cron-sequences|cron-health-score|cron-lost-reengagement|cron-backup|crm-config\.example)\.php$">
   Require all denied
 </FilesMatch>
+
+# Underscore-prefixed files are one-shot diagnostics, migrations, data fixers
+# and the internal health dump — never meant to be reached over the web.
+# Block them all (defense-in-depth, even after removal from the repo).
+<FilesMatch "^_">
+  Require all denied
+</FilesMatch>

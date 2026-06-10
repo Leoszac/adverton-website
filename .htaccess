@@ -63,6 +63,18 @@ RedirectMatch 404 ^/crm/email-pipe\.php$
 # Real 404 page (returns proper 404 status, no soft-404 redirect to /)
 ErrorDocument 404 /404.html
 
+# Security headers. HSTS is apex-only (no includeSubDomains) so an HTTP-only
+# subdomain can't get locked out. The site already 301s all HTTP→HTTPS above.
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# No directory listings if an index file is ever missing.
+Options -Indexes
+
 # Set canonical via header for query-stringed homepage requests (helps GSC)
 <IfModule mod_headers.c>
   <FilesMatch "\.(html)$">
