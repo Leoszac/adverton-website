@@ -104,7 +104,7 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title><?= $h($name) ?> — <?= $h($pageTitle) ?></title>
 <meta name="description" content="<?= $h($pageDesc) ?>">
-<script type="application/ld+json"><?= json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<script type="application/ld+json"><?= json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <style>
   :root{--primary:<?= $h($primary) ?>;--accent:<?= $h($accent) ?>;--ink:#0e0d12;--ink-2:#383640;--ink-3:#6b6877;--bg:#fff;--card:#fff;--line:#e7e4ee;--soft:#faf9ff}
   *{box-sizing:border-box}

@@ -94,6 +94,31 @@ function crm_listClientAssets(int $clientId, bool $approvedOnly = true): array {
 // Render one page of the preview HTML for a client.
 // Returns ['ok'=>bool, 'html'=>?string, 'error'=>?string].
 // $page = home | about | services | service-area | contact (default: home).
+// Defense-in-depth XSS guard for the DEPLOYED client site. The templates echo
+// AI- and operator-authored "*_html" copy semi-raw, and strip_tags keeps tag
+// ATTRIBUTES — so "<p onmouseover=alert(1)>" in a copy field (or AI output that
+// never passed the editor) would become stored XSS on the contractor's live
+// domain. Recursively re-strip every *_html field to a tiny formatting
+// allowlist and remove ALL attributes, before any template sees the draft.
+function crm_safeRichHtml(string $s): string {
+    $s = strip_tags($s, '<p><strong><em><ul><li><br>');
+    // strip_tags keeps attributes on the allowed tags; these formatting tags
+    // never need any, so drop them all (kills on*=, style=, etc.).
+    return trim((string)preg_replace('#<\s*(p|strong|em|ul|li|br)\b[^>]*>#i', '<$1>', $s));
+}
+function crm_sanitizeDraftHtml($node) {
+    if (!is_array($node)) return $node;
+    $out = [];
+    foreach ($node as $k => $v) {
+        if (is_string($v) && is_string($k) && substr($k, -5) === '_html') {
+            $out[$k] = crm_safeRichHtml($v);
+        } else {
+            $out[$k] = crm_sanitizeDraftHtml($v);
+        }
+    }
+    return $out;
+}
+
 function crm_renderPreviewHtml(int $clientId, string $page = 'home'): array {
     $client = crm_getClient($clientId);
     if (!$client) return ['ok' => false, 'html' => null, 'error' => 'Client not found'];
@@ -101,6 +126,8 @@ function crm_renderPreviewHtml(int $clientId, string $page = 'home'): array {
     if (!$intake) return ['ok' => false, 'html' => null, 'error' => 'No intake — run kickoff first'];
     $copy = is_array($intake['ai_drafts_decoded'] ?? null) ? $intake['ai_drafts_decoded'] : null;
     if (!$copy) return ['ok' => false, 'html' => null, 'error' => 'No AI copy yet — run "Generate" first'];
+    // XSS guard before any template (AI/operator copy → client's live domain).
+    $copy = crm_sanitizeDraftHtml($copy);
 
     $registry = crm_templateRegistry();
     $choice = (string)($intake['template_choice'] ?? '') ?: CRM_TEMPLATE_DEFAULT;

@@ -183,7 +183,7 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
-<script type="application/ld+json"><?= json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+<script type="application/ld+json"><?= json_encode($_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <style>
   :root{
     --primary:<?= $h($primary) ?>;--accent:<?= $h($accent) ?>;
@@ -366,7 +366,7 @@ $renderServiceCards = static function (array $list, $limit = 0) use ($serviceSlu
         $icon = (string)($svc['icon_emoji'] ?? '&#128295;');
         $desc = (string)($svc['description_html'] ?? '');
         echo '<a class="svc-card" href="' . $h($svcHref($sg)) . '">';
-        echo '<div class="ic">' . $icon . '</div>';
+        echo '<div class="ic">' . $h($icon) . '</div>';
         echo '<h3>' . $h((string)$sName) . '</h3>';
         if ($desc !== '') echo '<p>' . strip_tags($desc, '<strong><em>') . '</p>';
         echo '<span class="more">Learn more &rarr;</span></a>';

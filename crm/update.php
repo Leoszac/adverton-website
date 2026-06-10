@@ -760,7 +760,13 @@ case 'intake_draft_save': {
     // Allowed HTML in *_html fields. Anything else gets stripped.
     $allowedHtml = '<p><strong><em><ul><li><br>';
     $clean      = fn(string $s) => trim($s);
-    $cleanHtml  = fn(string $s) => trim(strip_tags($s, $allowedHtml));
+    // strip_tags keeps attributes on allowed tags, so also drop every attribute
+    // from the formatting tags (none need them) — blocks <p onmouseover=…> XSS.
+    $cleanHtml  = function (string $s) use ($allowedHtml) {
+        $s = strip_tags($s, $allowedHtml);
+        $s = (string) preg_replace('#<\s*(p|strong|em|ul|li|br)\b[^>]*>#i', '<$1>', $s);
+        return trim($s);
+    };
 
     // Reconstruct the schema from POST fields. Mirror ai-generator's schema
     // exactly — the templates expect this shape.

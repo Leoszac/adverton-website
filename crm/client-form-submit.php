@@ -117,6 +117,11 @@ if ($name === '' && $email === '' && $phone === '') {
 }
 
 $sourceUrl = mb_substr((string)($_SERVER['HTTP_REFERER'] ?? ''), 0, 500);
+// Only trust http(s) URLs for the redirect + back-link below — blocks
+// javascript:/data: schemes and malformed Referer values (open-redirect / XSS).
+if ($sourceUrl !== '' && (!filter_var($sourceUrl, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $sourceUrl))) {
+    $sourceUrl = '';
+}
 $ip        = (string)($_SERVER['REMOTE_ADDR'] ?? '');
 $ua        = mb_substr((string)($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
 
