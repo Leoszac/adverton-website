@@ -33,6 +33,16 @@ function config(string $key): ?string {
 const REDIRECT_OK   = '/gbp-guide-thank-you.html';
 const REDIRECT_FAIL = '/gbp-guide.html?error=';
 
+// Never show a raw 500: on any uncaught fatal, redirect to the form with a
+// friendly error instead.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true) && !headers_sent()) {
+        error_log('[adverton-gbp] fatal: ' . $e['message']);
+        header('Location: ' . REDIRECT_FAIL . 'generic');
+    }
+});
+
 function bail(int $code, string $devMsg, string $userKey = 'generic'): void {
     http_response_code($code);
     error_log("[adverton-gbp] HTTP $code: $devMsg");
