@@ -9,7 +9,7 @@ if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/activities.php';
 
-const CRM_LEAD_SOURCES  = ['audit_auto', 'audit_manual', 'contact_form', 'inbound_call', 'manual', 'ebook_growth_engine', 'referral', 'affiliate', 'csv_import', 'cold_email_instantly', 'cold_call', 'leos_contacts'];
+const CRM_LEAD_SOURCES  = ['audit_auto', 'audit_manual', 'contact_form', 'inbound_call', 'manual', 'ebook_growth_engine', 'ebook_gbp', 'referral', 'affiliate', 'csv_import', 'cold_email_instantly', 'cold_call', 'leos_contacts'];
 const CRM_LEAD_STATUSES = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'];
 
 // Auto-classify temperature for audit_auto leads. Mirrors the heuristic in
@@ -45,6 +45,7 @@ function crm_computeLeadScore(array $row): int {
         'audit_auto'           => 35,  // ran the audit, gave us their profile — highest intent
         'audit_manual'         => 30,
         'ebook_growth_engine'  => 18,  // longer top-of-funnel
+        'ebook_gbp'            => 18,  // GBP guide — top-of-funnel
         'contact_form'         => 22,
         'inbound_call'         => 35,
         'manual'               => 15,
