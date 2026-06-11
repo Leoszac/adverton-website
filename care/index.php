@@ -26,7 +26,7 @@ if (isset($_GET['logout'])) {
 
 if (!$clientId) {
     // Self-serve sign-in: enter your phone, we text you a fresh login link.
-    $sent = false; $tooMany = false;
+    $sent = false; $tooMany = false; $inactive = false;
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
         if (!care_loginRateOk((string)($_SERVER['REMOTE_ADDR'] ?? ''))) { $tooMany = true; }
         else {
@@ -35,8 +35,9 @@ if (!$clientId) {
             if ($u) {
                 $cn = care_clientNumber((int)$u['client_id']); $ph = care_e164($phone);
                 if ($cn && $ph) care_sendSms((int)$u['client_id'], $cn, $ph, 'Your ' . care_clientName((int)$u['client_id']) . ' Care login: ' . CARE_BASE_URL . '/?t=' . $u['token'], 'other');
+                elseif (!$cn) $inactive = true;   // user exists but their business has no active line
             }
-            $sent = true;   // always show success — don't reveal whether the number exists
+            if (!$inactive) $sent = true;   // generic success — don't reveal whether the number exists
         }
     }
     http_response_code($sent ? 200 : 403);
@@ -60,7 +61,9 @@ if (!$clientId) {
 </style></head><body><div class="box">
   <img class="logo" src="/assets/adverton-logo-white.png" alt="Adverton">
   <div class="brand">Care</div>
-  <?php if ($sent): ?>
+  <?php if ($inactive): ?>
+    <div class="ok">This account isn’t active right now.<br>Please contact <b>Adverton</b> to get back online.</div>
+  <?php elseif ($sent): ?>
     <div class="ok">📲 If that number’s on the account, we just <b>texted you a login link</b>.<br>Check your phone and tap it.</div>
   <?php else: ?>
     <p class="sub">Sign in to your dashboard — enter your cell and we’ll text you your private login link.</p>
