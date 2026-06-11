@@ -74,6 +74,27 @@ function care_updateJob(int $clientId, int $jobId, ?string $status, ?string $nam
     } catch (Throwable $ex) { care_log('updateJob err: ' . $ex->getMessage()); }
 }
 
+// Edit a job's details (name / phone / address). Phone only changes if a valid
+// new one is given. Scoped to the client.
+function care_editJob(int $clientId, int $jobId, ?string $name, ?string $phone, ?string $address): bool {
+    try {
+        $sets = ['name = ?', 'address = ?']; $args = [($name ?: null), ($address ?: null)];
+        $e = ($phone !== null && $phone !== '') ? care_e164($phone) : null;
+        if ($e) { $sets[] = 'phone = ?'; $args[] = $e; }
+        $args[] = $jobId; $args[] = $clientId;
+        care_db()->prepare('UPDATE care_jobs SET ' . implode(', ', $sets) . ' WHERE id = ? AND client_id = ?')->execute($args);
+        return true;
+    } catch (Throwable $ex) { care_log('editJob err: ' . $ex->getMessage()); return false; }
+}
+
+function care_deleteJob(int $clientId, int $jobId): bool {
+    try {
+        $st = care_db()->prepare('DELETE FROM care_jobs WHERE id = ? AND client_id = ?');
+        $st->execute([$jobId, $clientId]);
+        return $st->rowCount() > 0;
+    } catch (Throwable $ex) { return false; }
+}
+
 // Build the WHERE for a filtered/searched list (scales to thousands of jobs).
 function care_jobsWhere(int $clientId, string $filter, string $q): array {
     $where = 'client_id = ?'; $args = [$clientId];

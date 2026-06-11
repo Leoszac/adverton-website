@@ -49,8 +49,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif ($ok && $action === 'update_job') {
         care_updateJob($clientId, (int)($_POST['job_id'] ?? 0), isset($_POST['status']) ? (string)$_POST['status'] : null, isset($_POST['name']) ? trim((string)$_POST['name']) : null);
         $flash = (($_POST['status'] ?? '') === 'done') ? 'Marked done — we’ll text them for a review ⭐' : 'Updated ✓';
+    } elseif ($ok && $action === 'edit_job') {
+        care_editJob($clientId, (int)($_POST['job_id'] ?? 0), trim((string)($_POST['name'] ?? '')) ?: null, (string)($_POST['phone'] ?? ''), trim((string)($_POST['address'] ?? '')) ?: null);
+        $flash = 'Job updated ✓';
+    } elseif ($ok && $action === 'delete_job') {
+        $flash = care_deleteJob($clientId, (int)($_POST['job_id'] ?? 0)) ? 'Job deleted ✓' : 'Could not delete.';
     }
-    $rv  = in_array($action, ['add_job','update_job'], true) ? 'jobs' : 'reviews';
+    $rv  = in_array($action, ['add_job','update_job','edit_job','delete_job'], true) ? 'jobs' : 'reviews';
     $ret = (isset($_POST['ret']) && in_array($_POST['ret'], CARE_JOB_STATUSES, true)) ? '&tab=' . rawurlencode((string)$_POST['ret']) : '';
     header('Location: ' . CARE_BASE_URL . '/?view=' . $rv . '&ok=' . rawurlencode($flash ?? '') . $ret);
     exit;
@@ -166,8 +171,12 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   .tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1}.tag.queued{background:#fef9c3;color:#854d0e}.tag.reminded{background:#ede9fe;color:#5b21b6}
   .howto>summary{font-weight:800;font-size:15.5px;color:var(--ink);list-style:none;cursor:pointer}.howto>summary::-webkit-details-marker{display:none}
   .steps{margin-top:15px;display:grid;gap:14px}.step{display:flex;gap:12px;font-size:14px;line-height:1.45;color:#3a5853}.step span{font-size:21px;flex:none}.step b{color:var(--ink)}
-  .job{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
-  .jinfo{min-width:0}.jname{font-weight:750;font-size:16px}.jmeta{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .job{padding:13px 0;border-top:1px solid var(--line)}
+  .jtop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .jinfo{min-width:0;flex:1}.jname{font-weight:750;font-size:16px}.jmeta{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .jaddr{font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .jedit{margin-top:9px}.jedit>summary{list-style:none;cursor:pointer;color:var(--teal-d);font-weight:700;font-size:12.5px}.jedit>summary::-webkit-details-marker{display:none}
+  .delform{margin-top:6px}.delform button{background:none;border:none;color:#b91c1c;font-weight:700;font-size:13px;cursor:pointer;padding:7px 0}
   .jstatus{margin:0;flex:none}.jstatus select{border:1.5px solid var(--line);border-radius:11px;padding:9px 12px;font:inherit;font-size:14px;font-weight:750;background:#fbfdfc;color:var(--ink);min-height:42px;-webkit-appearance:none;appearance:none}
   .tabs{display:flex;gap:7px;margin:14px 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
   .tabs a{flex:none;padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:750;color:var(--muted);background:#eef2f1;text-decoration:none;white-space:nowrap}
@@ -233,12 +242,29 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
     <?php if (!$jobs): ?><div class="empty"><?= $jq!=='' ? 'No matches for “'.care_h2($jq).'”.' : 'Nothing in '.$jtab.' yet.' ?></div><?php endif; ?>
     <?php foreach ($jobs as $j): ?>
     <div class="job">
-      <div class="jinfo"><div class="jname"><?= care_h2($j['name'] ?: $pretty($j['phone'])) ?></div><div class="jmeta"><?= care_h2($pretty($j['phone'])) ?><?= $j['address'] ? ' · ' . care_h2($j['address']) : '' ?></div></div>
-      <form method="post" class="jstatus"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>">
-        <select name="status" onchange="this.form.submit()">
-          <?php foreach (['lead'=>'Lead','scheduled'=>'Scheduled','done'=>'Done ✓','lost'=>'Lost'] as $k=>$v): ?><option value="<?= $k ?>" <?= $j['status']===$k?'selected':'' ?>><?= $v ?></option><?php endforeach; ?>
-        </select>
-      </form>
+      <div class="jtop">
+        <div class="jinfo">
+          <div class="jname"><?= care_h2($j['name'] ?: $pretty($j['phone'])) ?></div>
+          <div class="jmeta"><?= care_h2($pretty($j['phone'])) ?></div>
+          <?php if ($j['address']): ?><div class="jaddr"><?= care_h2($j['address']) ?></div><?php endif; ?>
+        </div>
+        <form method="post" class="jstatus"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>">
+          <select name="status" onchange="this.form.submit()">
+            <?php foreach (['lead'=>'Lead','scheduled'=>'Scheduled','done'=>'Done ✓','lost'=>'Lost'] as $k=>$v): ?><option value="<?= $k ?>" <?= $j['status']===$k?'selected':'' ?>><?= $v ?></option><?php endforeach; ?>
+          </select>
+        </form>
+      </div>
+      <details class="jedit">
+        <summary>Edit / delete</summary>
+        <form class="addform" method="post">
+          <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="edit_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>">
+          <input name="name" value="<?= care_h2((string)$j['name']) ?>" placeholder="Name">
+          <input name="phone" inputmode="tel" value="<?= care_h2($pretty($j['phone'])) ?>" placeholder="Phone">
+          <input name="address" value="<?= care_h2((string)$j['address']) ?>" placeholder="Address">
+          <button class="go" type="submit">Save changes</button>
+        </form>
+        <form method="post" class="delform" onsubmit="return confirm('Delete this job? This can’t be undone.')"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="delete_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>"><button type="submit">🗑 Delete this job</button></form>
+      </details>
     </div>
     <?php endforeach; ?>
     <?php if ($jtotal > $jper): $jpages=(int)ceil($jtotal/$jper); $qs=$jq!==''?'&q='.rawurlencode($jq):''; ?>
