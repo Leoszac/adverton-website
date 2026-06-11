@@ -1,14 +1,15 @@
 <?php
-// Adverton Care — agency provisioning console (CRM-login gated). One click to
-// set up a client: buy/assign a Care number, wire its webhooks, store the
-// forward-to, and mint the contractor's passwordless dashboard link.
+// Adverton Care — agency provisioning console. Lives in /crm/ so the CRM login
+// session (cookie scoped to /crm/) authenticates it. One click to set up a
+// client: assign a Care number, wire webhooks, set forward-to, mint the
+// contractor's passwordless dashboard link.
 
 declare(strict_types=1);
 define('CRM_ENTRY', 1);
-require_once __DIR__ . '/../crm/lib/auth.php';
-require_once __DIR__ . '/lib/provision.php';
+require_once __DIR__ . '/lib/auth.php';
+require_once __DIR__ . '/../care/lib/provision.php';
 
-$user = crm_requireRole(['founder', 'sales']);   // redirects to /crm/login if not authed
+$user = crm_requireRole(['founder', 'sales']);
 
 function care_ah(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 
@@ -55,7 +56,7 @@ $csrfField = function_exists('crm_csrfField') ? crm_csrfField() : (function_exis
 </style></head>
 <body><div class="wrap">
   <h1>Care — Provisioning</h1>
-  <div class="sub">Set up a contractor: assign a number, forward to their cell, and get their dashboard link. <?php if (care_twilioStub()): ?><span class="pill">STUB MODE — Twilio not connected (fake numbers)</span><?php endif; ?></div>
+  <div class="sub">Set up a contractor: assign a number, forward to their cell, get their dashboard link. <?php if (care_twilioStub()): ?><span class="pill">STUB MODE — Twilio not connected (fake numbers)</span><?php endif; ?></div>
 
   <?php if ($err): ?><div class="err"><?= care_ah($err) ?></div><?php endif; ?>
   <?php if ($result && $result['ok']): ?>
