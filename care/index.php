@@ -68,8 +68,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     } elseif ($ok && $action === 'delete_job') {
         $code = care_deleteJob($clientId, (int)($_POST['job_id'] ?? 0)) ? 'jb_del' : 'jb_delfail';
     } elseif ($ok && $role === 'owner' && $action === 'add_user') {
-        $a = care_addUser($clientId, trim((string)($_POST['name'] ?? '')) ?: null, trim((string)($_POST['contact'] ?? '')) ?: null, 'staff');
+        $uname = trim((string)($_POST['name'] ?? '')) ?: null;
+        $ucontact = trim((string)($_POST['contact'] ?? '')) ?: null;
+        $a = care_addUser($clientId, $uname, $ucontact, 'staff');
         $code = $a['ok'] ? 'usr_add' : 'usr_bad';
+        // Text the private login link straight to the new member's phone — they
+        // validate by receiving it on their own device (stub: logs; live: sends).
+        if ($a['ok'] && $ucontact && strpos($ucontact, '@') === false) {
+            $ph = care_e164($ucontact);
+            $cn = care_clientNumber($clientId);
+            if ($ph && $cn) {
+                care_sendSms($clientId, $cn, $ph, 'You were added to ' . care_clientName($clientId) . ' on Care. Your private login: ' . $a['link'] . ' (don’t share it).', 'other');
+                $code = 'usr_sms';
+            }
+        }
     } elseif ($ok && $role === 'owner' && $action === 'revoke_user') {
         $code = care_revokeUser($clientId, (int)($_POST['user_id'] ?? 0)) ? 'usr_rm' : 'usr_rmfail';
     }
@@ -84,7 +96,7 @@ $codeMap = [
     'rq_ok'=>'Done — we’ll text them your review link. ⭐', 'rq_dup'=>'Already asked them recently ✓', 'rq_opt'=>'They opted out of texts.', 'rq_bad'=>'That number didn’t look right.',
     'rq_many'=>'Review requests sent. ⭐', 'lk_ok'=>'Saved your Google review link ✓', 'lk_bad'=>'That didn’t look like a valid link.',
     'jb_add'=>'Job added to your list ✓', 'jb_bad'=>'That number didn’t look right.', 'jb_done'=>'Marked done — we’ll text them for a review ⭐', 'jb_upd'=>'Updated ✓', 'jb_edit'=>'Job updated ✓', 'jb_del'=>'Job deleted ✓', 'jb_delfail'=>'Could not delete.',
-    'usr_add'=>'Team member added — send them their link ✓', 'usr_bad'=>'Couldn’t add — check the details.', 'usr_rm'=>'Access removed ✓', 'usr_rmfail'=>'Couldn’t remove that one.',
+    'usr_add'=>'Team member added — copy their link below to send it ✓', 'usr_sms'=>'We texted them their private login link ✓', 'usr_bad'=>'Couldn’t add — check the details.', 'usr_rm'=>'Access removed ✓', 'usr_rmfail'=>'Couldn’t remove that one.',
 ];
 $flash = $codeMap[(string)($_GET['ok'] ?? '')] ?? '';
 
@@ -358,7 +370,7 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   <?php if ($role === 'owner'): ?>
   <div class="card">
     <div class="ttl"><span>Your team</span></div>
-    <p class="lead2">Add anyone on your team — each gets their <b>own private link</b>. Remove access anytime; nothing is shared.</p>
+    <p class="lead2">Add a team member with their cell — we <b>text them their own private login link</b> directly. Nothing shared. Remove access anytime.</p>
     <?php foreach (care_listUsers($clientId) as $u): ?>
     <div class="job">
       <div class="jtop">
@@ -370,8 +382,8 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
     <?php endforeach; ?>
     <details class="add"><summary>➕ Add a team member</summary>
       <form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_user">
-        <input name="name" placeholder="Their name"><input name="contact" placeholder="Their cell or email (optional)">
-        <button class="go" type="submit">Add &amp; create their link</button>
+        <input name="name" placeholder="Their name"><input name="contact" inputmode="tel" placeholder="Their cell number" required>
+        <button class="go" type="submit">Add &amp; text them their link</button>
       </form>
     </details>
   </div>
