@@ -85,6 +85,7 @@ $reviews = $db->prepare('SELECT customer_phone, customer_name, status, created_a
 $reviews->execute([$clientId]); $reviews = $reviews->fetchAll();
 $reviewLink = care_reviewLink($clientId);
 $reviewMsgPreview = care_reviewMessage($biz, null, $reviewLink ?: 'https://g.page/your-business', false);
+$missedMsg = care_missedCallMessage($biz);
 
 $pretty = function ($e164) { $d = preg_replace('/\D/', '', (string)$e164); if (strlen($d) === 11 && $d[0] === '1') $d = substr($d, 1); return strlen($d) === 10 ? '(' . substr($d,0,3) . ') ' . substr($d,3,3) . '-' . substr($d,6) : (string)$e164; };
 $ago = function ($ts) { $s = time() - strtotime($ts); if ($s < 3600) return max(1,(int)($s/60)) . 'm ago'; if ($s < 86400) return (int)($s/3600) . 'h ago'; if ($s < 172800) return 'yesterday'; return date('M j', strtotime($ts)); };
@@ -168,6 +169,9 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   .tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1}.tag.queued{background:#fef9c3;color:#854d0e}.tag.reminded{background:#ede9fe;color:#5b21b6}
   .howto>summary{font-weight:800;font-size:15.5px;color:var(--ink);list-style:none;cursor:pointer}.howto>summary::-webkit-details-marker{display:none}
   .steps{margin-top:15px;display:grid;gap:14px}.step{display:flex;gap:12px;font-size:14px;line-height:1.45;color:#3a5853}.step span{font-size:21px;flex:none}.step b{color:var(--ink)}
+  .lead2{color:var(--muted);font-size:14px;line-height:1.5;margin:8px 0 0}.lead2 b{color:var(--ink);font-weight:750}
+  .badge-auto{font-size:10.5px;font-weight:800;background:#fef3c7;color:#92400e;padding:4px 11px;border-radius:999px;text-transform:none;letter-spacing:.01em;white-space:nowrap}
+  .badge-you{font-size:10.5px;font-weight:800;background:#e6f5f2;color:#0f766e;padding:4px 11px;border-radius:999px;text-transform:none;letter-spacing:.01em;white-space:nowrap}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
 </style>
 </head>
@@ -194,9 +198,17 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
     <div class="total">Since you started, we’ve handled <b><?= $allCalls ?></b> calls and saved you <b><?= $allSaved ?></b> missed leads.</div>
   </div>
 
+  <div class="card">
+    <div class="ttl"><span>When you can’t pick up</span><span class="badge-auto">⚡ Automatic</span></div>
+    <p class="lead2">The second a call rings out, we text the caller back for you — so the job doesn’t walk to a competitor. <b>You do nothing.</b></p>
+    <div class="pvlabel" style="margin-top:12px">What we send them, instantly:</div>
+    <div class="bubble"><?= care_h2($missedMsg) ?></div>
+    <p class="lead2" style="margin-top:11px">If they reply, it lands on your phone and you answer like normal — they only ever see your business number.</p>
+  </div>
+
   <div class="card action">
-    <div class="h"><span class="s"><?= $icStar ?></span> Ask for a 5-star review</div>
-    <div class="lead">Tap a recent customer — we’ll text them your Google review link. More reviews = higher on Google.</div>
+    <div class="ttl"><span>Get 5-star reviews</span><span class="badge-you">👆 You choose · we send</span></div>
+    <p class="lead2">Tap a customer you did a job for — we text them your Google link and follow up automatically. <b>We never ask a customer for a review unless you pick them.</b></p>
 
     <div class="rlink <?= $reviewLink ? '' : 'warn' ?>">
       <?php if ($reviewLink): ?>

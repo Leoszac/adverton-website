@@ -15,6 +15,13 @@ function care_xml(string $inner): string {
     return '<?xml version="1.0" encoding="UTF-8"?>' . $inner;
 }
 
+// The automatic text sent to a caller when the contractor doesn't pick up.
+// Single source of truth — also shown in the contractor dashboard so they see
+// exactly what their customers receive.
+function care_missedCallMessage(string $biz): string {
+    return "Sorry we missed your call to {$biz}. How can we help? Reply here and we'll text you right back. (Reply STOP to opt out.)";
+}
+
 // Active Care number row by the dialed/texted number (E.164).
 function care_numberRow(string $careNumber): ?array {
     try {
@@ -130,7 +137,7 @@ function care_handleDialStatus(array $p): string {
         $callerE = care_e164($caller);
         if ($callerE && !care_isOptedOut($callerE)) {
             $biz = care_clientName($clientId);
-            $msg = "Sorry we missed your call to {$biz}. How can we help? Reply here and we'll text you right back. (Reply STOP to opt out.)";
+            $msg = care_missedCallMessage($biz);
             care_sendSms($clientId, $careNumber, $callerE, $msg, 'textback');
             care_markTextback($callSid);
         }
