@@ -41,6 +41,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             care_queueReview($clientId, $phone, $name, 'csv')['ok'] ? $n++ : $skip++;
         }
         $flash = "Sent {$n} review request" . ($n === 1 ? '' : 's') . ($skip ? " ({$skip} skipped)" : '') . '. ⭐';
+    } elseif ($ok && $action === 'set_link') {
+        $flash = care_setReviewLink($clientId, (string)($_POST['review_link'] ?? '')) ? 'Saved your Google review link ✓' : 'That didn’t look like a valid link.';
     }
     header('Location: ' . CARE_BASE_URL . '/?ok=' . rawurlencode($flash ?? ''));
     exit;
@@ -57,6 +59,8 @@ $calls = $db->prepare('SELECT caller, disposition, created_at FROM care_calls WH
 $calls->execute([$clientId]); $calls = $calls->fetchAll();
 $reviews = $db->prepare('SELECT customer_phone, customer_name, status, created_at FROM care_review_requests WHERE client_id=? ORDER BY id DESC LIMIT 6');
 $reviews->execute([$clientId]); $reviews = $reviews->fetchAll();
+$reviewLink = care_reviewLink($clientId);
+$reviewMsgPreview = care_reviewMessage($biz, null, $reviewLink ?: 'https://g.page/your-business', false);
 
 $pretty = function ($e164) { $d = preg_replace('/\D/', '', (string)$e164); if (strlen($d) === 11 && $d[0] === '1') $d = substr($d, 1); return strlen($d) === 10 ? '(' . substr($d,0,3) . ') ' . substr($d,3,3) . '-' . substr($d,6) : (string)$e164; };
 $ago = function ($ts) { $s = time() - strtotime($ts); if ($s < 3600) return max(1,(int)($s/60)) . 'm ago'; if ($s < 86400) return (int)($s/3600) . 'h ago'; if ($s < 172800) return 'yesterday'; return date('M j', strtotime($ts)); };
@@ -141,6 +145,21 @@ $icStar = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M
   .sent .r:first-child{border-top:none}
   .tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:999px;background:#e0f2fe;color:#0369a1}
   .tag.queued{background:#fef9c3;color:#854d0e}.tag.reminded{background:#ede9fe;color:#5b21b6}
+  .rlink{background:#f2faf8;border:1px solid #d3ede7;border-radius:14px;padding:13px 15px;margin:16px 0 0}
+  .rlink.warn{background:#fffbeb;border-color:#fde68a}
+  .rlrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .rllabel{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .rlurl{display:block;margin-top:3px;font-size:13.5px;color:var(--teal-d);font-weight:600;text-decoration:none;word-break:break-all;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rltest{flex:none;background:#fff;border:1.5px solid var(--teal);color:var(--teal-d);font-weight:800;font-size:13px;padding:9px 14px;border-radius:10px;text-decoration:none;min-height:40px;display:flex;align-items:center}
+  .rledit{margin-top:11px;border:none;padding:0}.rledit summary{font-size:13px}
+  .preview{margin-top:14px}
+  .pvlabel{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:8px}
+  .bubble{background:#eaf2ff;color:#23446e;border-radius:16px 16px 16px 5px;padding:13px 15px;font-size:13.5px;line-height:1.5;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .howto{background:#fff;border-radius:18px;box-shadow:var(--shadow-sm);padding:17px 18px;margin-top:18px}
+  .howto>summary{font-weight:800;font-size:15.5px;color:var(--ink);list-style:none}.howto>summary::-webkit-details-marker{display:none}
+  .steps{margin-top:15px;display:grid;gap:14px}
+  .step{display:flex;gap:12px;font-size:14px;line-height:1.45;color:#3a5853}
+  .step span{font-size:21px;flex:none;line-height:1.2}.step b{color:var(--ink)}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
 </style>
 </head>
@@ -167,6 +186,38 @@ $icStar = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M
   <section class="action">
     <div class="h"><span class="s"><?= $icStar ?></span> Ask for a 5-star review</div>
     <div class="lead">Tap a recent customer — we’ll text them your Google review link. More reviews = higher on Google.</div>
+
+    <div class="rlink <?= $reviewLink ? '' : 'warn' ?>">
+      <?php if ($reviewLink): ?>
+        <div class="rlrow">
+          <div style="min-width:0">
+            <div class="rllabel">Your Google review link</div>
+            <a class="rlurl" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener"><?= care_h2($reviewLink) ?></a>
+          </div>
+          <a class="rltest" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener">Test ↗</a>
+        </div>
+        <details class="rledit"><summary>Not the right link? Fix it</summary>
+          <form class="addform" method="post">
+            <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="set_link">
+            <input name="review_link" value="<?= care_h2($reviewLink) ?>" placeholder="https://g.page/...">
+            <button class="go" type="submit">Save link</button>
+          </form>
+        </details>
+      <?php else: ?>
+        <div class="rllabel">⚠️ Add your Google review link</div>
+        <div class="lead" style="margin:5px 0 11px">We need your Google review link before we can ask for reviews. Find it in your Google Business Profile → “Ask for reviews”, and paste it here.</div>
+        <form class="addform" method="post">
+          <input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="set_link">
+          <input name="review_link" placeholder="https://g.page/r/..." required>
+          <button class="go" type="submit">Save my review link</button>
+        </form>
+      <?php endif; ?>
+    </div>
+
+    <div class="preview">
+      <div class="pvlabel">This is exactly what your customers get:</div>
+      <div class="bubble"><?= care_h2($reviewMsgPreview) ?></div>
+    </div>
 
     <?php if (!$calls): ?>
       <div class="empty">No recent calls yet. Use “Add a customer” below to ask anyone.</div>
@@ -208,6 +259,16 @@ $icStar = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M
       </form>
     </details>
   </section>
+
+  <details class="howto">
+    <summary>How does Care work? 👇</summary>
+    <div class="steps">
+      <div class="step"><span>📵</span><div><b>Never miss a lead.</b> When someone calls and you can’t pick up, we instantly text them back so the job doesn’t go to a competitor.</div></div>
+      <div class="step"><span>💬</span><div><b>You reply like normal.</b> If they text back, it lands on your phone — you answer, and they only ever see your business number, never your personal cell.</div></div>
+      <div class="step"><span>⭐</span><div><b>Get more reviews.</b> Tap a customer above (or add one) and we text them your Google review link. More reviews push you higher on Google.</div></div>
+      <div class="step"><span>🤖</span><div><b>It runs itself.</b> The missed-call texts are fully automatic. You just tap when you finish a job — that’s it.</div></div>
+    </div>
+  </details>
 
   <?php if ($reviews): ?>
   <div class="sent">

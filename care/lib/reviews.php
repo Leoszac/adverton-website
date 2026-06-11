@@ -75,6 +75,28 @@ function care_queueReview(int $clientId, string $phone, ?string $name, string $s
     }
 }
 
+// Let the contractor confirm/fix their own Google review link from the
+// dashboard. Writes the "google" key into client_intake.reviews_links_json.
+function care_setReviewLink(int $clientId, string $url): bool {
+    $url = trim($url);
+    if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'https://' . $url;
+    if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) return false;
+    try {
+        $st = care_db()->prepare('SELECT reviews_links_json FROM client_intake WHERE client_id = ? LIMIT 1');
+        $st->execute([$clientId]);
+        $raw = $st->fetchColumn();
+        $j = ($raw !== false && $raw !== null) ? json_decode((string)$raw, true) : [];
+        if (!is_array($j)) $j = [];
+        $j['google'] = $url;
+        if ($raw === false) {
+            care_db()->prepare('INSERT INTO client_intake (client_id, reviews_links_json) VALUES (?, ?)')->execute([$clientId, json_encode($j)]);
+        } else {
+            care_db()->prepare('UPDATE client_intake SET reviews_links_json = ? WHERE client_id = ?')->execute([json_encode($j), $clientId]);
+        }
+        return true;
+    } catch (Throwable $e) { care_log('setReviewLink err: ' . $e->getMessage()); return false; }
+}
+
 function care_reviewMessage(string $biz, ?string $name, string $link, bool $reminder): string {
     $hi = $name ? ('Hi ' . $name . '!') : 'Hi!';
     if ($reminder) {
