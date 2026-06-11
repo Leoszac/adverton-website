@@ -92,6 +92,29 @@ crm_renderHeader($user, '');
       <?php endforeach; ?>
     </div>
 
+    <!-- ============== Twilio (Adverton Care) ============== -->
+    <div class="section">
+      <h2>Twilio — Adverton Care (missed-call text-back + reviews)</h2>
+      <div class="desc">Powers <strong>Care</strong>: missed-call text-back, 2-way relay and automated review requests. While these are empty, Care runs in <strong>stub mode</strong> (logs what it would send, no live SMS) — paste the keys to go live. Get them in your <a href="https://console.twilio.com" target="_blank" rel="noopener" style="color:#6d28d9">Twilio Console</a> home screen.</div>
+
+      <div class="row">
+        <div class="meta">
+          <div class="name">Account SID</div>
+          <div class="help">Twilio Console → Account Info. Starts with <code>AC</code>.</div>
+          <span class="badge <?= $cur['TWILIO_ACCOUNT_SID']['set']?'set':'unset' ?>"><?= $cur['TWILIO_ACCOUNT_SID']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="text" name="TWILIO_ACCOUNT_SID" value="<?= crm_h($cur['TWILIO_ACCOUNT_SID']['value']) ?>" placeholder="AC..." autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="meta">
+          <div class="name">Auth Token</div>
+          <div class="help">Twilio Console → Account Info → Auth Token (click to reveal). Kept secret; signs every webhook.</div>
+          <span class="badge <?= $cur['TWILIO_AUTH_TOKEN']['set']?'set':'unset' ?>"><?= $cur['TWILIO_AUTH_TOKEN']['set']?'configured':'not set' ?></span>
+        </div>
+        <div><input type="password" name="TWILIO_AUTH_TOKEN" value="<?= crm_h($cur['TWILIO_AUTH_TOKEN']['value']) ?>" placeholder="••••••••" autocomplete="off"></div>
+      </div>
+    </div>
+
     <!-- ============== Stripe ============== -->
     <div class="section">
       <h2>Stripe — payment links + status webhook</h2>

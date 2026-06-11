@@ -1579,6 +1579,9 @@ case 'integration_save': {
             if ($k === 'NAMECHEAP_CLIENT_IP' && !filter_var($v, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 $errors[] = "{$k}: must be a valid IPv4 address"; continue;
             }
+            if ($k === 'TWILIO_ACCOUNT_SID' && !preg_match('/^AC[0-9a-fA-F]{32}$/', $v)) {
+                $errors[] = "{$k}: must be a Twilio Account SID (AC + 32 hex chars)"; continue;
+            }
         }
         if (crm_saveSetting($k, $v, (int)$user['id'])) $saved++;
     }

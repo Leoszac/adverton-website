@@ -22,7 +22,7 @@ require_once __DIR__ . '/lib/clients.php';
 function client_form_send_email(string $to, string $subject, string $bodyHtml, ?string $replyTo = null): void {
     $apiKey = crm_config('RESEND_API_KEY');
     if (!$apiKey || !$to) return;
-    $from = crm_config('CRM_FROM_ADDRESS') ?: 'Adverton <hello@adverton.net>';
+    $from = 'Adverton <no-reply@adverton.net>';   // lead notifications go from no-reply, never the founder's inbox
     $payload = [
         'from'    => $from,
         'to'      => [$to],

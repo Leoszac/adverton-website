@@ -85,7 +85,7 @@ $bodyHtml = '<h2 style="font-family:sans-serif">New lead from your website</h2>'
 
 if ($to !== '') {
     $apiKey = crm_config('RESEND_API_KEY');
-    $from   = (string)(crm_config('CRM_FROM_ADDRESS') ?: 'Adverton <no-reply@adverton.net>');
+    $from   = 'Adverton <no-reply@adverton.net>';   // lead notifications go from no-reply, never the founder's inbox
     if ($apiKey) {
         $payload = [
             'from'    => $from,
