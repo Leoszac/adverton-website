@@ -51,7 +51,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         care_updateJob($clientId, (int)($_POST['job_id'] ?? 0), isset($_POST['status']) ? (string)$_POST['status'] : null, isset($_POST['name']) ? trim((string)$_POST['name']) : null);
         $flash = (($_POST['status'] ?? '') === 'done') ? 'Marked done — we’ll text them for a review ⭐' : 'Updated ✓';
     }
-    header('Location: ' . CARE_BASE_URL . '/?ok=' . rawurlencode($flash ?? ''));
+    $ret = (isset($_POST['ret']) && in_array($_POST['ret'], CARE_JOB_STATUSES, true)) ? '&tab=' . rawurlencode((string)$_POST['ret']) : '';
+    header('Location: ' . CARE_BASE_URL . '/?ok=' . rawurlencode($flash ?? '') . $ret);
     exit;
 }
 $flash = isset($_GET['ok']) ? (string)$_GET['ok'] : '';
@@ -92,8 +93,13 @@ $reviews->execute([$clientId]); $reviews = $reviews->fetchAll();
 $reviewLink = care_reviewLink($clientId);
 $reviewMsgPreview = care_reviewMessage($biz, null, $reviewLink ?: 'https://g.page/your-business', false);
 $missedMsg = care_missedCallMessage($biz);
-$jobs = care_listJobs($clientId);
-$jc   = care_jobCounts($clientId);
+$jtab   = (string)($_GET['tab'] ?? 'lead'); if (!in_array($jtab, CARE_JOB_STATUSES, true)) $jtab = 'lead';
+$jq     = trim((string)($_GET['q'] ?? ''));
+$jpage  = max(0, (int)($_GET['page'] ?? 0));
+$jper   = 20;
+$jc     = care_jobCounts($clientId);
+$jobs   = care_listJobs($clientId, $jtab, $jq, $jper, $jpage * $jper);
+$jtotal = care_countJobs($clientId, $jtab, $jq);
 
 $pretty = function ($e164) { $d = preg_replace('/\D/', '', (string)$e164); if (strlen($d) === 11 && $d[0] === '1') $d = substr($d, 1); return strlen($d) === 10 ? '(' . substr($d,0,3) . ') ' . substr($d,3,3) . '-' . substr($d,6) : (string)$e164; };
 $ago = function ($ts) { $s = time() - strtotime($ts); if ($s < 3600) return max(1,(int)($s/60)) . 'm ago'; if ($s < 86400) return (int)($s/3600) . 'h ago'; if ($s < 172800) return 'yesterday'; return date('M j', strtotime($ts)); };
@@ -184,6 +190,14 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   .job{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
   .jinfo{min-width:0}.jname{font-weight:750;font-size:16px}.jmeta{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .jstatus{margin:0;flex:none}.jstatus select{border:1.5px solid var(--line);border-radius:11px;padding:9px 12px;font:inherit;font-size:14px;font-weight:750;background:#fbfdfc;color:var(--ink);min-height:42px;-webkit-appearance:none;appearance:none}
+  .tabs{display:flex;gap:7px;margin:14px 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+  .tabs a{flex:none;padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:750;color:var(--muted);background:#eef2f1;text-decoration:none;white-space:nowrap}
+  .tabs a.on{background:var(--teal);color:#fff}.tabs a b{font-weight:850;opacity:.85}.tabs a.on b{opacity:1}
+  .jsearch{display:flex;align-items:center;gap:8px;margin-bottom:4px;position:relative}
+  .jsearch input{flex:1;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;font:inherit;font-size:16px;background:#fbfdfc}.jsearch input:focus{outline:none;border-color:var(--teal);background:#fff}
+  .jsearch .clr{position:absolute;right:13px;color:var(--muted);text-decoration:none;font-weight:700;font-size:15px}
+  .pager{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px;color:var(--muted)}.pager a{color:var(--teal-d);font-weight:800;text-decoration:none}.pager span{min-width:40px}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
 </style>
 </head>
@@ -221,20 +235,40 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   <div class="card jobs">
     <div class="ttl"><span>Your jobs</span><span class="badge-auto">⚡ Done → auto review</span></div>
     <p class="lead2">Move a job to <b>Done</b> when you finish it — we automatically text that customer for a review. Missed-call leads show up here on their own; no CRM needed.</p>
-    <div class="pipe"><span><b><?= $jc['lead'] ?></b> leads</span><span><b><?= $jc['scheduled'] ?></b> scheduled</span><span><b><?= $jc['done'] ?></b> done</span></div>
-    <?php if (!$jobs): ?><div class="empty">No open jobs. Add one below — or they’ll appear here when customers call you.</div><?php endif; ?>
+    <div class="tabs">
+      <?php foreach (['lead'=>'Leads','scheduled'=>'Scheduled','done'=>'Done','lost'=>'Lost'] as $k=>$lbl): ?>
+      <a href="?tab=<?= $k ?><?= $jq!==''?'&q='.rawurlencode($jq):'' ?>" class="<?= $jtab===$k?'on':'' ?>"><?= $lbl ?> <b><?= $jc[$k] ?></b></a>
+      <?php endforeach; ?>
+    </div>
+
+    <form method="get" class="jsearch" action="">
+      <input type="hidden" name="tab" value="<?= care_h2($jtab) ?>">
+      <input name="q" value="<?= care_h2($jq) ?>" placeholder="Search name or number…">
+      <?php if ($jq!==''): ?><a class="clr" href="?tab=<?= $jtab ?>">✕</a><?php endif; ?>
+    </form>
+
+    <?php if (!$jobs): ?><div class="empty"><?= $jq!=='' ? 'No matches for “'.care_h2($jq).'”.' : 'Nothing in '.$jtab.' yet.' ?></div><?php endif; ?>
     <?php foreach ($jobs as $j): ?>
     <div class="job">
       <div class="jinfo"><div class="jname"><?= care_h2($j['name'] ?: $pretty($j['phone'])) ?></div><div class="jmeta"><?= care_h2($pretty($j['phone'])) ?><?= $j['address'] ? ' · ' . care_h2($j['address']) : '' ?></div></div>
-      <form method="post" class="jstatus"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>">
+      <form method="post" class="jstatus"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>">
         <select name="status" onchange="this.form.submit()">
           <?php foreach (['lead'=>'Lead','scheduled'=>'Scheduled','done'=>'Done ✓','lost'=>'Lost'] as $k=>$v): ?><option value="<?= $k ?>" <?= $j['status']===$k?'selected':'' ?>><?= $v ?></option><?php endforeach; ?>
         </select>
       </form>
     </div>
     <?php endforeach; ?>
+
+    <?php if ($jtotal > $jper): $jpages = (int)ceil($jtotal / $jper); $qs = $jq!==''?'&q='.rawurlencode($jq):''; ?>
+    <div class="pager">
+      <?php if ($jpage>0): ?><a href="?tab=<?= $jtab.$qs ?>&page=<?= $jpage-1 ?>">← Newer</a><?php else: ?><span></span><?php endif; ?>
+      <span><?= $jpage*$jper+1 ?>–<?= min(($jpage+1)*$jper, $jtotal) ?> of <?= $jtotal ?></span>
+      <?php if ($jpage+1 < $jpages): ?><a href="?tab=<?= $jtab.$qs ?>&page=<?= $jpage+1 ?>">Older →</a><?php else: ?><span></span><?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <details class="add"><summary>➕ Add a job</summary>
-      <form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_job">
+      <form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_job"><input type="hidden" name="ret" value="<?= care_h2($jtab) ?>">
         <input name="name" placeholder="Customer name (optional)"><input name="phone" inputmode="tel" placeholder="Their phone number" required><input name="address" placeholder="Address (optional)">
         <button class="go" type="submit">Add to my jobs</button>
       </form>

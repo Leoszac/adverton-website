@@ -74,13 +74,39 @@ function care_updateJob(int $clientId, int $jobId, ?string $status, ?string $nam
     } catch (Throwable $ex) { care_log('updateJob err: ' . $ex->getMessage()); }
 }
 
-// Open pipeline (leads + scheduled), newest first, scheduled on top.
-function care_listJobs(int $clientId, int $limit = 40): array {
+// Build the WHERE for a filtered/searched list (scales to thousands of jobs).
+function care_jobsWhere(int $clientId, string $filter, string $q): array {
+    $where = 'client_id = ?'; $args = [$clientId];
+    if (in_array($filter, CARE_JOB_STATUSES, true)) { $where .= ' AND status = ?'; $args[] = $filter; }
+    $q = trim($q);
+    if ($q !== '') {
+        $digits = preg_replace('/\D/', '', $q);
+        if ($digits !== '' && strlen($digits) >= 3) { $where .= ' AND (name LIKE ? OR phone LIKE ?)'; $args[] = "%$q%"; $args[] = "%$digits%"; }
+        else { $where .= ' AND name LIKE ?'; $args[] = "%$q%"; }
+    }
+    return [$where, $args];
+}
+
+// One status bucket at a time, newest first, paginated + searchable.
+function care_listJobs(int $clientId, string $filter = 'lead', string $q = '', int $limit = 20, int $offset = 0): array {
     try {
-        $st = care_db()->prepare("SELECT * FROM care_jobs WHERE client_id=? AND status IN ('lead','scheduled') ORDER BY FIELD(status,'scheduled','lead'), id DESC LIMIT ?");
-        $st->bindValue(1, $clientId, PDO::PARAM_INT); $st->bindValue(2, $limit, PDO::PARAM_INT); $st->execute();
+        [$where, $args] = care_jobsWhere($clientId, $filter, $q);
+        $st = care_db()->prepare("SELECT * FROM care_jobs WHERE $where ORDER BY id DESC LIMIT ? OFFSET ?");
+        $i = 1; foreach ($args as $v) { $st->bindValue($i++, $v); }
+        $st->bindValue($i++, $limit, PDO::PARAM_INT);
+        $st->bindValue($i, $offset, PDO::PARAM_INT);
+        $st->execute();
         return $st->fetchAll();
     } catch (Throwable $ex) { return []; }
+}
+
+function care_countJobs(int $clientId, string $filter = 'lead', string $q = ''): int {
+    try {
+        [$where, $args] = care_jobsWhere($clientId, $filter, $q);
+        $st = care_db()->prepare("SELECT COUNT(*) FROM care_jobs WHERE $where");
+        $st->execute($args);
+        return (int)$st->fetchColumn();
+    } catch (Throwable $ex) { return 0; }
 }
 
 function care_jobCounts(int $clientId): array {
