@@ -6,11 +6,23 @@
 declare(strict_types=1);
 define('CRM_ENTRY', 1);
 require_once __DIR__ . '/lib/jobs.php';   // pulls reviews + flows + the job tracker
+require_once __DIR__ . '/lib/users.php';  // multi-user access
 
-$clientId = care_currentClientId();
+$me       = care_currentUser();
+$clientId = $me['client_id'] ?? null;
+$role     = $me['role'] ?? 'staff';
 $token    = (string)($_GET['t'] ?? $_COOKIE['care_sess'] ?? '');
 function care_h2(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 $csrf = $token ? substr(hash_hmac('sha256', 'care-csrf', $token), 0, 24) : '';
+
+if (isset($_GET['logout'])) {
+    setcookie('care_sess', '', ['expires'=>time()-3600, 'path'=>'/care', 'secure'=>true, 'httponly'=>true, 'samesite'=>'Lax']);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Care</title>'
+       . '<style>body{font-family:-apple-system,Segoe UI,sans-serif;background:#0f766e;display:grid;place-items:center;min-height:100vh;margin:0;color:#fff;text-align:center;padding:24px}h1{font-size:30px;margin:0 0 8px}p{opacity:.85}</style>'
+       . '<div><h1>Care</h1><p>You’re signed out. Use your link to sign back in.</p></div>';
+    exit;
+}
 
 if (!$clientId) {
     http_response_code(403);
@@ -55,8 +67,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $code = 'jb_edit';
     } elseif ($ok && $action === 'delete_job') {
         $code = care_deleteJob($clientId, (int)($_POST['job_id'] ?? 0)) ? 'jb_del' : 'jb_delfail';
+    } elseif ($ok && $role === 'owner' && $action === 'add_user') {
+        $a = care_addUser($clientId, trim((string)($_POST['name'] ?? '')) ?: null, trim((string)($_POST['contact'] ?? '')) ?: null, 'staff');
+        $code = $a['ok'] ? 'usr_add' : 'usr_bad';
+    } elseif ($ok && $role === 'owner' && $action === 'revoke_user') {
+        $code = care_revokeUser($clientId, (int)($_POST['user_id'] ?? 0)) ? 'usr_rm' : 'usr_rmfail';
     }
-    $rv  = in_array($action, ['add_job','update_job','edit_job','delete_job'], true) ? 'jobs' : 'reviews';
+    $rv  = in_array($action, ['add_job','update_job','edit_job','delete_job'], true) ? 'jobs'
+         : (in_array($action, ['add_user','revoke_user'], true) ? 'help' : 'reviews');
     $ret = (isset($_POST['ret']) && in_array($_POST['ret'], CARE_JOB_STATUSES, true)) ? '&tab=' . rawurlencode((string)$_POST['ret']) : '';
     header('Location: ' . CARE_BASE_URL . '/?view=' . $rv . '&ok=' . $code . $ret);
     exit;
@@ -66,6 +84,7 @@ $codeMap = [
     'rq_ok'=>'Done — we’ll text them your review link. ⭐', 'rq_dup'=>'Already asked them recently ✓', 'rq_opt'=>'They opted out of texts.', 'rq_bad'=>'That number didn’t look right.',
     'rq_many'=>'Review requests sent. ⭐', 'lk_ok'=>'Saved your Google review link ✓', 'lk_bad'=>'That didn’t look like a valid link.',
     'jb_add'=>'Job added to your list ✓', 'jb_bad'=>'That number didn’t look right.', 'jb_done'=>'Marked done — we’ll text them for a review ⭐', 'jb_upd'=>'Updated ✓', 'jb_edit'=>'Job updated ✓', 'jb_del'=>'Job deleted ✓', 'jb_delfail'=>'Could not delete.',
+    'usr_add'=>'Team member added — send them their link ✓', 'usr_bad'=>'Couldn’t add — check the details.', 'usr_rm'=>'Access removed ✓', 'usr_rmfail'=>'Couldn’t remove that one.',
 ];
 $flash = $codeMap[(string)($_GET['ok'] ?? '')] ?? '';
 
@@ -184,6 +203,8 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   .jaddr{font-size:12.5px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .jedit{margin-top:9px}.jedit>summary{list-style:none;cursor:pointer;color:var(--teal-d);font-weight:700;font-size:12.5px}.jedit>summary::-webkit-details-marker{display:none}
   .delform{margin-top:6px}.delform button{background:none;border:none;color:#b91c1c;font-weight:700;font-size:13px;cursor:pointer;padding:7px 0}
+  .rolepill{font-size:10px;font-weight:800;text-transform:uppercase;background:#eef2f1;color:#6e8a85;padding:2px 7px;border-radius:6px;vertical-align:middle}
+  .delbtn{flex:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-weight:700;font-size:13px;padding:9px 14px;border-radius:10px;cursor:pointer;min-height:40px}
   .jstatus{margin:0;flex:none}.jstatus select{border:1.5px solid var(--line);border-radius:11px;padding:9px 12px;font:inherit;font-size:14px;font-weight:750;background:#fbfdfc;color:var(--ink);min-height:42px;-webkit-appearance:none;appearance:none}
   .tabs{display:flex;gap:7px;margin:14px 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
   .tabs a{flex:none;padding:8px 14px;border-radius:999px;font-size:13.5px;font-weight:750;color:var(--muted);background:#eef2f1;text-decoration:none;white-space:nowrap}
@@ -333,6 +354,32 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
       <div class="step"><span>📋</span><div><b>Track jobs simply.</b> In <b>Jobs</b>, drag a customer to Done when you finish — no CRM needed.</div></div>
       <div class="step"><span>⭐</span><div><b>Get more reviews.</b> Finishing a job auto-texts that customer your Google review link. More reviews = higher on Google.</div></div>
     </div>
+  </div>
+  <?php if ($role === 'owner'): ?>
+  <div class="card">
+    <div class="ttl"><span>Your team</span></div>
+    <p class="lead2">Add anyone on your team — each gets their <b>own private link</b>. Remove access anytime; nothing is shared.</p>
+    <?php foreach (care_listUsers($clientId) as $u): ?>
+    <div class="job">
+      <div class="jtop">
+        <div class="jinfo"><div class="jname"><?= care_h2($u['name'] ?: ($u['role']==='owner'?'Owner':'Team member')) ?> <span class="rolepill"><?= care_h2($u['role']) ?></span></div><?php if ($u['contact']): ?><div class="jmeta"><?= care_h2((string)$u['contact']) ?></div><?php endif; ?></div>
+        <?php if ($u['role']!=='owner'): ?><form method="post" style="margin:0" onsubmit="return confirm('Remove this person’s access?')"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="revoke_user"><input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>"><button class="delbtn" type="submit">Remove</button></form><?php endif; ?>
+      </div>
+      <details class="jedit"><summary>Copy their link</summary><div class="bubble" style="word-break:break-all;font-size:12px"><?= care_h2(CARE_BASE_URL.'/?t='.$u['token']) ?></div></details>
+    </div>
+    <?php endforeach; ?>
+    <details class="add"><summary>➕ Add a team member</summary>
+      <form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_user">
+        <input name="name" placeholder="Their name"><input name="contact" placeholder="Their cell or email (optional)">
+        <button class="go" type="submit">Add &amp; create their link</button>
+      </form>
+    </details>
+  </div>
+  <?php endif; ?>
+  <div class="card">
+    <div class="ttl"><span>Account</span></div>
+    <p class="lead2" style="margin-bottom:12px">Signed in<?= $me['name'] ? ' as ' . care_h2($me['name']) : '' ?> · <?= care_h2($role) ?></p>
+    <a class="rltest" href="?logout=1">Sign out</a>
   </div>
   <?php endif; ?>
 

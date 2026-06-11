@@ -8,6 +8,7 @@ declare(strict_types=1);
 if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 require_once __DIR__ . '/reviews.php';   // pulls twilio + care + flows helpers
+require_once __DIR__ . '/users.php';     // multi-user access (owner token)
 
 function care_provisionClient(int $clientId, string $forwardTo, ?string $areaCode = null): array {
     $fwd = care_e164($forwardTo);
@@ -18,7 +19,7 @@ function care_provisionClient(int $clientId, string $forwardTo, ?string $areaCod
     if ($existing) {
         try { care_db()->prepare('UPDATE care_numbers SET forward_to = ? WHERE client_id = ? AND twilio_number = ?')->execute([$fwd, $clientId, $existing]); }
         catch (Throwable $e) { care_log('provision update err: ' . $e->getMessage()); }
-        $token = care_issueToken($clientId);
+        $token = care_ownerToken($clientId);
         return ['ok'=>true, 'number'=>$existing, 'forward_to'=>$fwd, 'token'=>$token,
                 'dashboard'=>CARE_BASE_URL . '/?t=' . $token, 'reused'=>true];
     }
