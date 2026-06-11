@@ -133,6 +133,9 @@ function care_handleDialStatus(array $p): string {
     $disposition = $answered ? 'answered' : 'missed';
     care_logCall($clientId, $careNumber, $caller, $callSid, $disposition, $duration);
 
+    // Drop the caller into the job tracker as a lead (deduped, name via CNAM).
+    if (function_exists('care_upsertJobFromCall')) care_upsertJobFromCall($clientId, $caller);
+
     if (!$answered) {
         $callerE = care_e164($caller);
         if ($callerE && !care_isOptedOut($callerE)) {

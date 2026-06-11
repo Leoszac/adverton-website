@@ -6,7 +6,7 @@
 
 declare(strict_types=1);
 define('CRM_ENTRY', 1);
-require_once __DIR__ . '/lib/reviews.php';
+require_once __DIR__ . '/lib/jobs.php';   // pulls reviews + flows + the job tracker
 
 $clientId = care_currentClientId();
 $token    = (string)($_GET['t'] ?? $_COOKIE['care_sess'] ?? '');
@@ -44,6 +44,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $flash = "Sent {$n} review request" . ($n === 1 ? '' : 's') . ($skip ? " ({$skip} skipped)" : '') . '. ⭐';
     } elseif ($ok && $action === 'set_link') {
         $flash = care_setReviewLink($clientId, (string)($_POST['review_link'] ?? '')) ? 'Saved your Google review link ✓' : 'That didn’t look like a valid link.';
+    } elseif ($ok && $action === 'add_job') {
+        $r = care_addJob($clientId, trim((string)($_POST['name'] ?? '')) ?: null, (string)($_POST['phone'] ?? ''), trim((string)($_POST['address'] ?? '')) ?: null);
+        $flash = $r['ok'] ? 'Job added to your list ✓' : 'That number didn’t look right.';
+    } elseif ($ok && $action === 'update_job') {
+        care_updateJob($clientId, (int)($_POST['job_id'] ?? 0), isset($_POST['status']) ? (string)$_POST['status'] : null, isset($_POST['name']) ? trim((string)$_POST['name']) : null);
+        $flash = (($_POST['status'] ?? '') === 'done') ? 'Marked done — we’ll text them for a review ⭐' : 'Updated ✓';
     }
     header('Location: ' . CARE_BASE_URL . '/?ok=' . rawurlencode($flash ?? ''));
     exit;
@@ -86,6 +92,8 @@ $reviews->execute([$clientId]); $reviews = $reviews->fetchAll();
 $reviewLink = care_reviewLink($clientId);
 $reviewMsgPreview = care_reviewMessage($biz, null, $reviewLink ?: 'https://g.page/your-business', false);
 $missedMsg = care_missedCallMessage($biz);
+$jobs = care_listJobs($clientId);
+$jc   = care_jobCounts($clientId);
 
 $pretty = function ($e164) { $d = preg_replace('/\D/', '', (string)$e164); if (strlen($d) === 11 && $d[0] === '1') $d = substr($d, 1); return strlen($d) === 10 ? '(' . substr($d,0,3) . ') ' . substr($d,3,3) . '-' . substr($d,6) : (string)$e164; };
 $ago = function ($ts) { $s = time() - strtotime($ts); if ($s < 3600) return max(1,(int)($s/60)) . 'm ago'; if ($s < 86400) return (int)($s/3600) . 'h ago'; if ($s < 172800) return 'yesterday'; return date('M j', strtotime($ts)); };
@@ -172,6 +180,10 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
   .lead2{color:var(--muted);font-size:14px;line-height:1.5;margin:8px 0 0}.lead2 b{color:var(--ink);font-weight:750}
   .badge-auto{font-size:10.5px;font-weight:800;background:#fef3c7;color:#92400e;padding:4px 11px;border-radius:999px;text-transform:none;letter-spacing:.01em;white-space:nowrap}
   .badge-you{font-size:10.5px;font-weight:800;background:#e6f5f2;color:#0f766e;padding:4px 11px;border-radius:999px;text-transform:none;letter-spacing:.01em;white-space:nowrap}
+  .pipe{display:flex;gap:18px;margin:12px 0 2px;font-size:13px;color:var(--muted)}.pipe b{color:var(--ink);font-weight:800;font-size:15px}
+  .job{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+  .jinfo{min-width:0}.jname{font-weight:750;font-size:16px}.jmeta{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .jstatus{margin:0;flex:none}.jstatus select{border:1.5px solid var(--line);border-radius:11px;padding:9px 12px;font:inherit;font-size:14px;font-weight:750;background:#fbfdfc;color:var(--ink);min-height:42px;-webkit-appearance:none;appearance:none}
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
 </style>
 </head>
@@ -206,9 +218,32 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
     <p class="lead2" style="margin-top:11px">If they reply, it lands on your phone and you answer like normal — they only ever see your business number.</p>
   </div>
 
+  <div class="card jobs">
+    <div class="ttl"><span>Your jobs</span><span class="badge-auto">⚡ Done → auto review</span></div>
+    <p class="lead2">Move a job to <b>Done</b> when you finish it — we automatically text that customer for a review. Missed-call leads show up here on their own; no CRM needed.</p>
+    <div class="pipe"><span><b><?= $jc['lead'] ?></b> leads</span><span><b><?= $jc['scheduled'] ?></b> scheduled</span><span><b><?= $jc['done'] ?></b> done</span></div>
+    <?php if (!$jobs): ?><div class="empty">No open jobs. Add one below — or they’ll appear here when customers call you.</div><?php endif; ?>
+    <?php foreach ($jobs as $j): ?>
+    <div class="job">
+      <div class="jinfo"><div class="jname"><?= care_h2($j['name'] ?: $pretty($j['phone'])) ?></div><div class="jmeta"><?= care_h2($pretty($j['phone'])) ?><?= $j['address'] ? ' · ' . care_h2($j['address']) : '' ?></div></div>
+      <form method="post" class="jstatus"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="update_job"><input type="hidden" name="job_id" value="<?= (int)$j['id'] ?>">
+        <select name="status" onchange="this.form.submit()">
+          <?php foreach (['lead'=>'Lead','scheduled'=>'Scheduled','done'=>'Done ✓','lost'=>'Lost'] as $k=>$v): ?><option value="<?= $k ?>" <?= $j['status']===$k?'selected':'' ?>><?= $v ?></option><?php endforeach; ?>
+        </select>
+      </form>
+    </div>
+    <?php endforeach; ?>
+    <details class="add"><summary>➕ Add a job</summary>
+      <form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_job">
+        <input name="name" placeholder="Customer name (optional)"><input name="phone" inputmode="tel" placeholder="Their phone number" required><input name="address" placeholder="Address (optional)">
+        <button class="go" type="submit">Add to my jobs</button>
+      </form>
+    </details>
+  </div>
+
   <div class="card action">
-    <div class="ttl"><span>Get 5-star reviews</span><span class="badge-you">👆 You choose · we send</span></div>
-    <p class="lead2">Tap a customer you did a job for — we text them your Google link and follow up automatically. <b>We never ask a customer for a review unless you pick them.</b></p>
+    <div class="ttl"><span>Reviews</span><span class="badge-you">👆 You pick · we send</span></div>
+    <p class="lead2">Finishing a job above asks that customer automatically. You can also ask anyone directly — <b>we never text a customer unless you choose them.</b></p>
 
     <div class="rlink <?= $reviewLink ? '' : 'warn' ?>">
       <?php if ($reviewLink): ?>
@@ -222,17 +257,8 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 
     <div class="preview"><div class="pvlabel">This is exactly what your customers get:</div><div class="bubble"><?= care_h2($reviewMsgPreview) ?></div></div>
 
-    <?php if (!$calls): ?><div class="empty">No recent calls yet. Use “Add a customer” below.</div><?php endif; ?>
-    <?php foreach ($calls as $c): $m=$c['disposition']==='missed'; ?>
-    <div class="person">
-      <div class="av"><?= $icPhone ?></div>
-      <div class="info"><div class="ph"><?= care_h2($pretty($c['caller'])) ?></div><div class="meta"><span class="badge <?= $m?'b-m':'b-a' ?>"><?= $m?'missed':'answered' ?></span> <?= care_h2($ago($c['created_at'])) ?></div></div>
-      <form method="post" style="margin:0"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="request_review"><input type="hidden" name="phone" value="<?= care_h2($c['caller']) ?>"><button class="ask" type="submit">Ask <?= $icStar ?></button></form>
-    </div>
-    <?php endforeach; ?>
-
-    <details class="add"><summary>➕ Add a customer who’s not here</summary><form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_one"><input name="name" placeholder="Customer name (optional)"><input name="phone" inputmode="tel" placeholder="Their phone number" required><button class="go" type="submit">Text them a review request ⭐</button></form></details>
-    <details class="add"><summary>📋 Add several at once</summary><form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_jobs"><textarea name="jobs" placeholder="One per line:&#10;John Smith, 555-123-4567&#10;555-987-6543"></textarea><button class="go" type="submit">Send all review requests ⭐</button></form></details>
+    <details class="add"><summary>➕ Ask a specific customer</summary><form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_one"><input name="name" placeholder="Customer name (optional)"><input name="phone" inputmode="tel" placeholder="Their phone number" required><button class="go" type="submit">Text them a review request ⭐</button></form></details>
+    <details class="add"><summary>📋 Ask several at once</summary><form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="add_jobs"><textarea name="jobs" placeholder="One per line:&#10;John Smith, 555-123-4567&#10;555-987-6543"></textarea><button class="go" type="submit">Send all review requests ⭐</button></form></details>
   </div>
 
   <div class="card hist">
