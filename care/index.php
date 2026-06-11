@@ -43,24 +43,32 @@ if (!$clientId) {
     header('Content-Type: text/html; charset=utf-8');
     ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Care</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:radial-gradient(120% 120% at 0% 0%,#16c0ad 0%,#0d9488 42%,#0f766e 100%);display:grid;place-items:center;min-height:100vh;margin:0;color:#fff;padding:24px}
-  .box{max-width:360px;width:100%;text-align:center}
-  h1{font-size:34px;margin:0 0 6px;font-weight:850}.sub{opacity:.92;line-height:1.5;margin:0 0 22px;font-size:15px}
-  form{display:grid;gap:12px}
-  input{width:100%;padding:15px;border:none;border-radius:14px;font:inherit;font-size:16px;text-align:center}
-  button{background:#fff;color:#0f766e;border:none;font-weight:800;padding:15px;border-radius:14px;font-size:16px;cursor:pointer}
-  .ok{background:rgba(255,255,255,.15);border-radius:14px;padding:18px;line-height:1.55;font-size:15px}
-  .err{color:#fde68a;font-size:13.5px;margin-top:4px}
+  *{box-sizing:border-box;margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;background:radial-gradient(130% 130% at 0% 0%,#16c0ad 0%,#0d9488 44%,#0f766e 100%);min-height:100vh;display:grid;place-items:center;color:#fff;padding:28px;-webkit-font-smoothing:antialiased}
+  .box{max-width:332px;width:100%;text-align:center}
+  .logo{width:146px;height:auto;display:block;margin:0 auto 28px;opacity:.97}
+  .brand{font-size:31px;font-weight:850;letter-spacing:-.02em;line-height:1}
+  .sub{opacity:.9;line-height:1.5;margin:10px 0 24px;font-size:14.5px}
+  form{display:grid;gap:11px}
+  input{width:100%;padding:16px;border:none;border-radius:14px;font:inherit;font-size:16px;text-align:center;color:#102a26;box-shadow:0 6px 18px rgba(0,0,0,.10)}
+  input::placeholder{color:#8aa39e}
+  button{background:#fff;color:#0f766e;border:none;font-weight:800;padding:16px;border-radius:14px;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  button:active{transform:translateY(1px)}
+  .hint{font-size:12px;opacity:.78;margin-top:6px;line-height:1.45}
+  .ok{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:22px 20px;line-height:1.55;font-size:15px}
+  .err{color:#fde68a;font-size:12.5px;margin-top:2px}
 </style></head><body><div class="box">
-  <h1>Care</h1>
+  <img class="logo" src="/assets/adverton-logo-white.png" alt="Adverton">
+  <div class="brand">Care</div>
   <?php if ($sent): ?>
-    <div class="ok">If that number’s on the account, we just <b>texted you a login link</b> 📲<br>Check your phone and tap it.</div>
+    <div class="ok">📲 If that number’s on the account, we just <b>texted you a login link</b>.<br>Check your phone and tap it.</div>
   <?php else: ?>
-    <p class="sub">Enter your cell and we’ll text you your private login link.</p>
+    <p class="sub">Sign in to your dashboard — enter your cell and we’ll text you your private login link.</p>
     <form method="post"><input type="hidden" name="action" value="login">
       <input name="phone" inputmode="tel" placeholder="Your cell number" required autofocus>
       <button type="submit">Text me my login link</button>
-      <?php if ($tooMany): ?><div class="err">Too many tries — wait a minute and try again.</div><?php endif; ?>
+      <div class="hint">Only the phone you enter gets the link. Nothing shared.</div>
+      <?php if ($tooMany): ?><div class="err">Too many tries — wait a minute.</div><?php endif; ?>
     </form>
   <?php endif; ?>
 </div></body></html><?php
