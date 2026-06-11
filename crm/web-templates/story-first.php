@@ -23,7 +23,7 @@ function crm_renderTemplate_story_first(array $client, array $intake, array $cop
     $colors  = (array)($intake['brand_colors_decoded'] ?? []);
     // ?? only handles null/unset; wizard saves "" for blank inputs, so check empty.
     $primary = !empty($colors['primary']) ? $colors['primary'] : '#0f766e';
-    $accent  = !empty($colors['accent'])  ? $colors['accent']  : '#a78bfa';
+    $accent  = !empty($colors['accent'])  ? $colors['accent']  : '#f59e0b';
 
     $reviews    = (array)($intake['reviews_links_decoded'] ?? []);
     $googleUrl  = (string)($reviews['google'] ?? '');

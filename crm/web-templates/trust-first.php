@@ -31,7 +31,7 @@ function crm_renderTemplate_trust_first(array $client, array $intake, array $cop
     // ?? only handles null/unset; the wizard saves "" for blank inputs, so
     // fall back when empty too — otherwise `--primary:;` renders invalid CSS
     // and the whole color system unravels.
-    $primary = !empty($colors['primary']) ? $colors['primary'] : '#6d28d9';
+    $primary = !empty($colors['primary']) ? $colors['primary'] : '#1e3a5f';
     $accent  = !empty($colors['accent'])  ? $colors['accent']  : '#f59e0b';
 
     $reviews    = (array)($intake['reviews_links_decoded'] ?? []);

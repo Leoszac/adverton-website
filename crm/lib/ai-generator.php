@@ -102,6 +102,17 @@ function crm_aiGenerateClientCopy(int $clientId): array {
              WHERE client_id = ?"
         );
         $stmt->execute([json_encode($copy), $clientId]);
+
+        // Adopt the AI-picked palette when the client hasn't set brand colors,
+        // so every template renders a professional, trade-appropriate theme
+        // instead of a generic default. Client-supplied colors always win.
+        $existing = (array)($intake['brand_colors_decoded'] ?? []);
+        $tp = trim((string)($copy['theme']['primary'] ?? ''));
+        $ta = trim((string)($copy['theme']['accent']  ?? ''));
+        if (empty($existing['primary']) && preg_match('/^#[0-9a-fA-F]{6}$/', $tp)) {
+            crm_db()->prepare('UPDATE client_intake SET brand_colors_json = ? WHERE client_id = ?')
+                ->execute([json_encode(['primary' => $tp, 'accent' => (preg_match('/^#[0-9a-fA-F]{6}$/', $ta) ? $ta : '')]), $clientId]);
+        }
     } catch (Throwable $e) {
         error_log('[crm_aiGenerateClientCopy persist] ' . $e->getMessage());
         return ['ok' => false, 'copy' => $copy, 'error' => 'DB persist failed: ' . $e->getMessage()];
@@ -151,11 +162,22 @@ JSON schema:
       "answer_html":"string  // <p>…</p>, 1 short paragraph"
     }
   ],
-  "footer_blurb": "string  // 1 sentence describing the business + service area"
+  "footer_blurb": "string  // 1 sentence describing the business + service area",
+  "theme": {
+    "primary": "string  // hex (e.g. #1e3a5f). A professional, trustworthy
+                primary color that fits THIS trade — deep, confident tones:
+                navy, slate, forest green, deep teal, charcoal, oxblood.
+                NEVER purple / violet / lilac / lavender / pastels.",
+    "accent":  "string  // hex. A complementary CTA/button color with strong
+                contrast on white — usually a warm amber/orange or a clean
+                green. Must look professional next to the primary."
+  }
 }
 
 services[] must contain ONE entry per service from the input (same order,
-exact `name`). faq[] should contain 5 items.
+exact `name`). faq[] should contain 5 items. Pick `theme` colors that suit a
+licensed home-service contractor — sober and trustworthy, never trendy or
+pastel.
 SYS;
 
     if ($templateChoice !== 'seo_local') {
@@ -177,17 +199,27 @@ ADDITIONAL FIELDS — this site has a dedicated page per service and per city:
    "locations": [
      {
        "city":       "string  // exactly one of the input cities, verbatim",
-       "blurb_html": "string  // ONE <p>, 50–70 words, UNIQUE to this city.
-                      Reference something real and specific about the city
-                      (terrain, weather exposure, housing, community) and tie
-                      it to why the service matters there. Each city's blurb
-                      must read differently — no templated boilerplate."
+       "blurb_html": "string  // 2–4 <p> paragraphs, 130–200 words, written
+                      ONLY for this city and genuinely different from every
+                      other city's. Open with something real about THIS place
+                      (regional climate, terrain, the age/style of local
+                      housing, seasonal conditions) and tie it to the specific
+                      kinds of jobs that matter there. Vary the angle, opening,
+                      length and structure city to city. Plain, concrete
+                      contractor English — no buzzwords."
      }
    ]
 
 locations[] must contain ONE entry per city in the input list (verbatim names),
-in the same order. Do not invent cities. Vary sentence structure across
-blurbs so they are not detectably duplicated content.
+in the same order. Do not invent cities.
+
+CRITICAL — these pages must NOT look mass-produced. Each blurb has to differ
+substantially in content, structure AND length, so Google never flags them as
+thin or duplicate content. Do NOT write the same paragraph with the city name
+swapped. At the same time, use ONLY generally-true local context (regional
+climate, typical housing stock, seasonal patterns, the work that's common in
+that area) — never invent specific neighborhood names, street names, building
+codes, or statistics.
 SEO;
 
     return $base . $extra;
