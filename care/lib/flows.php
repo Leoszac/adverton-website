@@ -125,8 +125,12 @@ function care_handleIncomingCall(string $careNumber, string $actionUrl): string 
     $ring   = (int)($row['ring_seconds'] ?: 20);
     $fwd    = crm_h((string)$row['forward_to']);
     $action = crm_h($actionUrl);
+    // callerId = the Care number (a number we own): required so the forwarded
+    // leg isn't rejected (trial: unverified caller ID 21264; production:
+    // carriers block presenting a third-party number). The contractor sees the
+    // call arrive from their own business line.
     return care_xml(
-        '<Response><Dial timeout="' . $ring . '" answerOnBridge="true" action="' . $action . '" method="POST">'
+        '<Response><Dial timeout="' . $ring . '" answerOnBridge="true" callerId="' . crm_h($careNumber) . '" action="' . $action . '" method="POST">'
         . '<Number>' . $fwd . '</Number></Dial></Response>'
     );
 }
