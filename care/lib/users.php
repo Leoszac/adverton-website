@@ -79,10 +79,42 @@ function care_revokeUser(int $clientId, int $userId): bool {
     } catch (Throwable $e) { return false; }
 }
 
-// The owner's login token for a client — creating one if none exists. Used by
-// provisioning + the agency admin.
-function care_ownerToken(int $clientId): string {
-    foreach (care_listUsers($clientId) as $u) { if ($u['role'] === 'owner') return (string)$u['token']; }
-    $a = care_addUser($clientId, null, null, 'owner');
+// The owner's login token for a client — creating one if none exists, and
+// backfilling their contact phone so they can self-serve re-login.
+function care_ensureOwner(int $clientId, ?string $contact = null): string {
+    foreach (care_listUsers($clientId) as $u) {
+        if ($u['role'] === 'owner') {
+            if ($contact && !$u['contact']) {
+                try { care_db()->prepare('UPDATE care_users SET contact = ? WHERE id = ?')->execute([(care_e164($contact) ?: $contact), $u['id']]); } catch (Throwable $e) {}
+            }
+            return (string)$u['token'];
+        }
+    }
+    $a = care_addUser($clientId, null, $contact, 'owner');
     return $a['ok'] ? (string)$a['token'] : '';
+}
+
+// Find a user by their phone/email (for self-serve "text me my link").
+function care_findUserByContact(string $contact): ?array {
+    $c = (strpos($contact, '@') !== false) ? trim($contact) : care_e164($contact);
+    if (!$c) return null;
+    try {
+        $st = care_db()->prepare('SELECT id, client_id, name, role, token FROM care_users WHERE contact = ? ORDER BY id ASC LIMIT 1');
+        $st->execute([$c]);
+        $u = $st->fetch();
+        return $u ?: null;
+    } catch (Throwable $e) { return null; }
+}
+
+// Light per-IP rate limit for the sign-in (anti-abuse on the "text me a link").
+function care_loginRateOk(string $ip): bool {
+    if ($ip === '') return true;
+    $dir = '/home/advertonnet/ratelimit';
+    if (!is_dir($dir)) @mkdir($dir, 0750, true);
+    $path = $dir . '/carelogin-' . preg_replace('/[^a-zA-Z0-9]/', '_', $ip) . '.json';
+    $now = time(); $hits = [];
+    if (is_readable($path)) { $raw = (array) json_decode((string) @file_get_contents($path), true); $hits = array_values(array_filter($raw, static fn($t) => is_int($t) && $t >= $now - 600)); }
+    if (count($hits) >= 5) return false;
+    $hits[] = $now; @file_put_contents($path, json_encode($hits), LOCK_EX);
+    return true;
 }

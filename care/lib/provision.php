@@ -19,7 +19,7 @@ function care_provisionClient(int $clientId, string $forwardTo, ?string $areaCod
     if ($existing) {
         try { care_db()->prepare('UPDATE care_numbers SET forward_to = ? WHERE client_id = ? AND twilio_number = ?')->execute([$fwd, $clientId, $existing]); }
         catch (Throwable $e) { care_log('provision update err: ' . $e->getMessage()); }
-        $token = care_ownerToken($clientId);
+        $token = care_ensureOwner($clientId, $fwd);
         return ['ok'=>true, 'number'=>$existing, 'forward_to'=>$fwd, 'token'=>$token,
                 'dashboard'=>CARE_BASE_URL . '/?t=' . $token, 'reused'=>true];
     }

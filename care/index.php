@@ -25,11 +25,45 @@ if (isset($_GET['logout'])) {
 }
 
 if (!$clientId) {
-    http_response_code(403);
+    // Self-serve sign-in: enter your phone, we text you a fresh login link.
+    $sent = false; $tooMany = false;
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'login') {
+        if (!care_loginRateOk((string)($_SERVER['REMOTE_ADDR'] ?? ''))) { $tooMany = true; }
+        else {
+            $phone = trim((string)($_POST['phone'] ?? ''));
+            $u = $phone !== '' ? care_findUserByContact($phone) : null;
+            if ($u) {
+                $cn = care_clientNumber((int)$u['client_id']); $ph = care_e164($phone);
+                if ($cn && $ph) care_sendSms((int)$u['client_id'], $cn, $ph, 'Your ' . care_clientName((int)$u['client_id']) . ' Care login: ' . CARE_BASE_URL . '/?t=' . $u['token'], 'other');
+            }
+            $sent = true;   // always show success — don't reveal whether the number exists
+        }
+    }
+    http_response_code($sent ? 200 : 403);
     header('Content-Type: text/html; charset=utf-8');
-    echo '<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">'
-       . '<title>Care</title><style>body{font-family:-apple-system,Segoe UI,sans-serif;background:#0f766e;display:grid;place-items:center;min-height:100vh;margin:0;color:#fff;text-align:center;padding:24px}div{max-width:340px}h1{font-size:32px;margin:0 0 8px}p{opacity:.85;line-height:1.5}</style>'
-       . '<div><h1>Care</h1><p>This link isn’t valid anymore. Tap the link your Adverton team sent you, or text us and we’ll send a fresh one.</p></div>';
+    ?><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Care</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:radial-gradient(120% 120% at 0% 0%,#16c0ad 0%,#0d9488 42%,#0f766e 100%);display:grid;place-items:center;min-height:100vh;margin:0;color:#fff;padding:24px}
+  .box{max-width:360px;width:100%;text-align:center}
+  h1{font-size:34px;margin:0 0 6px;font-weight:850}.sub{opacity:.92;line-height:1.5;margin:0 0 22px;font-size:15px}
+  form{display:grid;gap:12px}
+  input{width:100%;padding:15px;border:none;border-radius:14px;font:inherit;font-size:16px;text-align:center}
+  button{background:#fff;color:#0f766e;border:none;font-weight:800;padding:15px;border-radius:14px;font-size:16px;cursor:pointer}
+  .ok{background:rgba(255,255,255,.15);border-radius:14px;padding:18px;line-height:1.55;font-size:15px}
+  .err{color:#fde68a;font-size:13.5px;margin-top:4px}
+</style></head><body><div class="box">
+  <h1>Care</h1>
+  <?php if ($sent): ?>
+    <div class="ok">If that number’s on the account, we just <b>texted you a login link</b> 📲<br>Check your phone and tap it.</div>
+  <?php else: ?>
+    <p class="sub">Enter your cell and we’ll text you your private login link.</p>
+    <form method="post"><input type="hidden" name="action" value="login">
+      <input name="phone" inputmode="tel" placeholder="Your cell number" required autofocus>
+      <button type="submit">Text me my login link</button>
+      <?php if ($tooMany): ?><div class="err">Too many tries — wait a minute and try again.</div><?php endif; ?>
+    </form>
+  <?php endif; ?>
+</div></body></html><?php
     exit;
 }
 
