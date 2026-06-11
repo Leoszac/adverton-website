@@ -44,6 +44,11 @@ function care_isOptedOut(string $phoneE164): bool {
 // https://care.adverton.net once that subdomain points at public_html/care.
 const CARE_BASE_URL = 'https://adverton.net/care';
 
+// Per-client daily outbound-SMS ceiling (fair-use / runaway-cost guard). A normal
+// small contractor never approaches this; it only trips on a bug or abuse, so a
+// stray loop can never run up a surprise Twilio bill. Bump if a client needs more.
+const CARE_DAILY_SMS_CAP = 200;
+
 // ── Passwordless access tokens (one stable token per client) ─────────────
 function care_issueToken(int $clientId): string {
     try {

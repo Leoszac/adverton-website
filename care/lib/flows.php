@@ -69,12 +69,23 @@ function care_logSms(int $clientId, string $direction, string $careNumber, strin
     } catch (Throwable $e) { care_log('logSms err: ' . $e->getMessage()); }
 }
 
-// Send FROM the Care number + log it. Honors opt-out.
+// Send FROM the Care number + log it. Honors opt-out and the daily safety cap.
 function care_sendSms(int $clientId, string $careNumber, string $to, string $body, string $kind): array {
     if (care_isOptedOut($to)) { care_log("suppressed (opt-out) to={$to}"); return ['ok'=>false, 'error'=>'opted_out']; }
+    if (care_dailySmsCapReached($clientId)) { care_log("suppressed (daily cap) client={$clientId} to={$to}"); return ['ok'=>false, 'error'=>'daily_cap']; }
     $r = care_twilioSendSms($to, $careNumber, $body);
     care_logSms($clientId, 'out', $careNumber, $to, $body, ($r['data']['sid'] ?? null), $kind);
     return $r;
+}
+
+// True once a client has sent CARE_DAILY_SMS_CAP outbound texts today (safety
+// valve against a runaway loop / abuse spiking the Twilio bill).
+function care_dailySmsCapReached(int $clientId): bool {
+    try {
+        $st = care_db()->prepare("SELECT COUNT(*) FROM care_sms WHERE client_id=? AND direction='out' AND created_at >= CURDATE()");
+        $st->execute([$clientId]);
+        return (int)$st->fetchColumn() >= CARE_DAILY_SMS_CAP;
+    } catch (Throwable $e) { return false; }   // never block a legit send on a counter error
 }
 
 function care_optOut(?string $phone): void {
@@ -155,6 +166,44 @@ function care_handleDialStatus(array $p): string {
         return care_xml('<Response><Say voice="alice">Sorry we missed you. We just sent you a text message.</Say><Hangup/></Response>');
     }
     return care_xml('<Response><Hangup/></Response>');
+}
+
+// Website-form lead → drop it into the tracker as a lead + text the contractor
+// on their own Care number. Returns ['care'=>true] when Care handled it (client
+// has an active number); ['care'=>false] tells the caller to fall back to email.
+function care_handleWebLead(int $clientId, ?string $name, ?string $phone, ?string $message): array {
+    try {
+        $st = care_db()->prepare('SELECT twilio_number, forward_to FROM care_numbers WHERE client_id=? AND active=1 ORDER BY id DESC LIMIT 1');
+        $st->execute([$clientId]);
+        $row = $st->fetch();
+    } catch (Throwable $e) { $row = null; }
+    if (!$row) return ['care'=>false];   // not provisioned → caller emails instead
+
+    $careNumber = (string)$row['twilio_number'];
+    $fwd = care_e164((string)$row['forward_to']) ?: (string)$row['forward_to'];
+    $e   = care_e164((string)$phone);
+
+    // Store as a lead, deduped against an open job for the same number. 'web'
+    // source needs schema-v20; if not yet applied the insert is caught + skipped
+    // (the contractor still gets the alert below).
+    if ($e) {
+        try {
+            $q = care_db()->prepare("SELECT id FROM care_jobs WHERE client_id=? AND phone=? AND status IN ('lead','scheduled') LIMIT 1");
+            $q->execute([$clientId, $e]);
+            if (!$q->fetchColumn()) {
+                care_db()->prepare("INSERT INTO care_jobs (client_id, name, phone, status, source) VALUES (?, ?, ?, 'lead', 'web')")
+                    ->execute([$clientId, ($name ?: null), $e]);
+            }
+        } catch (Throwable $ex) { care_log('webLead job err: ' . $ex->getMessage()); }
+    }
+
+    // Alert the contractor (1 segment, no emoji → stays one ~1¢ SMS).
+    if ($fwd) {
+        $who  = ($name !== null && $name !== '') ? $name : 'New lead';
+        $body = 'New lead - ' . $who . ', ' . ($e ?: (string)$phone) . '. Call them back.';
+        care_sendSms($clientId, $careNumber, $fwd, $body, 'lead');
+    }
+    return ['care'=>true];
 }
 
 // Incoming SMS → STOP/START, or 2-way relay between customer and contractor.

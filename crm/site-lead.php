@@ -83,7 +83,20 @@ $bodyHtml = '<h2 style="font-family:sans-serif">New lead from your website</h2>'
     . ($msg !== '' ? '<p style="font-family:sans-serif;font-size:15px"><strong>Message:</strong><br>' . nl2br($h($msg)) . '</p>' : '')
     . '<hr><p style="font-family:sans-serif;color:#999;font-size:12px">Sent automatically by your Adverton website (' . $h($biz) . '). Call or email them back to win the job.</p>';
 
-if ($to !== '') {
+// Prefer Care: text the contractor on their own number + log the lead in the
+// tracker. Email is only a fallback for clients not yet provisioned on Care.
+$careHandled = false;
+$careFlows = __DIR__ . '/../care/lib/flows.php';
+if (is_file($careFlows)) {
+    try {
+        require_once $careFlows;
+        if (function_exists('care_handleWebLead')) {
+            $careHandled = !empty(care_handleWebLead($clientId, $name, $phone, $msg)['care']);
+        }
+    } catch (Throwable $e) { error_log('[site-lead] care handler: ' . $e->getMessage()); }
+}
+
+if (!$careHandled && $to !== '') {
     $apiKey = crm_config('RESEND_API_KEY');
     $from   = 'Adverton <no-reply@adverton.net>';   // lead notifications go from no-reply, never the founder's inbox
     if ($apiKey) {
@@ -111,7 +124,7 @@ if ($to !== '') {
     } else {
         error_log('[site-lead] RESEND_API_KEY not set');
     }
-} else {
+} elseif (!$careHandled) {
     error_log("[site-lead] client {$clientId} has no email on file");
 }
 
