@@ -91,9 +91,12 @@ function care_optIn(?string $phone): void {
 // Most-recent customer this client texted with (for routing a contractor reply).
 function care_lastCustomer(int $clientId, string $excludePhone): ?string {
     try {
+        // Only route to a customer we heard from in the last 3h, so a stray
+        // contractor text doesn't get relayed to an old/unrelated conversation.
         $st = care_db()->prepare(
             "SELECT counterparty FROM care_sms
              WHERE client_id = ? AND direction = 'in' AND counterparty <> ?
+               AND created_at > (NOW() - INTERVAL 3 HOUR)
              ORDER BY id DESC LIMIT 1"
         );
         $st->execute([$clientId, $excludePhone]);
@@ -137,11 +140,16 @@ function care_handleDialStatus(array $p): string {
     if (function_exists('care_upsertJobFromCall')) care_upsertJobFromCall($clientId, $caller);
 
     if (!$answered) {
+        // Don't re-text on Twilio status-callback retries for the same call.
+        $already = false;
+        if ($callSid !== '') {
+            try { $st = care_db()->prepare('SELECT textback_sent FROM care_calls WHERE call_sid = ? LIMIT 1'); $st->execute([$callSid]); $already = ((int)$st->fetchColumn() === 1); }
+            catch (Throwable $e) {}
+        }
         $callerE = care_e164($caller);
-        if ($callerE && !care_isOptedOut($callerE)) {
+        if (!$already && $callerE && !care_isOptedOut($callerE)) {
             $biz = care_clientName($clientId);
-            $msg = care_missedCallMessage($biz);
-            care_sendSms($clientId, $careNumber, $callerE, $msg, 'textback');
+            care_sendSms($clientId, $careNumber, $callerE, care_missedCallMessage($biz), 'textback');
             care_markTextback($callSid);
         }
         return care_xml('<Response><Say voice="alice">Sorry we missed you. We just sent you a text message.</Say><Hangup/></Response>');

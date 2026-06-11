@@ -29,21 +29,18 @@ function care_reviewLink(int $clientId): ?string {
         if ($raw === '') return null;
         $j = json_decode($raw, true);
         if (!is_array($j)) return null;
-        $firstUrl = null;
+        $google = null; $first = null;
         foreach ($j as $k => $v) {
-            // shapes: ["https://..."], [{"platform":"google","url":"..."}], {"google":"https://..."}
-            if (is_string($v)) {
-                if ($firstUrl === null && strpos($v, 'http') === 0) $firstUrl = $v;
-                if (stripos((string)$k, 'google') !== false && strpos($v, 'http') === 0) return $v;
-                if (stripos($v, 'google') !== false || stripos($v, 'g.page') !== false) return $v;
-            } elseif (is_array($v)) {
-                $url = (string)($v['url'] ?? '');
-                $plat = strtolower((string)($v['platform'] ?? ''));
-                if ($url !== '' && $firstUrl === null) $firstUrl = $url;
-                if ($url !== '' && ($plat === 'google' || stripos($url, 'google') !== false || stripos($url, 'g.page') !== false)) return $url;
-            }
+            $url  = is_array($v) ? (string)($v['url'] ?? '') : (is_string($v) ? $v : '');
+            $plat = is_array($v) ? strtolower((string)($v['platform'] ?? '')) : strtolower((string)$k);
+            // Only ever trust real http(s) URLs — intake JSON isn't validated
+            // elsewhere, so reject javascript:/data:/etc (it ends up in an href
+            // AND is texted to customers).
+            if ($url === '' || !preg_match('#^https?://#i', $url)) continue;
+            if ($first === null) $first = $url;
+            if ($google === null && (strpos($plat, 'google') !== false || stripos($url, 'google') !== false || stripos($url, 'g.page') !== false)) $google = $url;
         }
-        return $firstUrl;
+        return $google ?: $first;
     } catch (Throwable $e) { return null; }
 }
 

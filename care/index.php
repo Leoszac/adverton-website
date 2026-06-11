@@ -23,44 +23,51 @@ if (!$clientId) {
 
 $db  = care_db();
 $biz = care_clientName($clientId);
+header('Referrer-Policy: no-referrer');   // keep the ?t= token out of Referer
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $ok = $csrf !== '' && hash_equals($csrf, (string)($_POST['csrf'] ?? ''));
     $action = (string)($_POST['action'] ?? '');
+    $code = '';
     if ($ok && ($action === 'request_review' || $action === 'add_one')) {
         $r = care_queueReview($clientId, (string)($_POST['phone'] ?? ''), trim((string)($_POST['name'] ?? '')) ?: null, $action === 'add_one' ? 'manual' : 'call_tap');
-        $flash = $r['ok'] ? "Done — we’ll text them your review link. ⭐"
-                          : ($r['error'] === 'duplicate' ? 'Already asked them recently ✓' : ($r['error'] === 'opted_out' ? 'They opted out of texts.' : 'That number didn’t look right.'));
+        $code = $r['ok'] ? 'rq_ok' : ($r['error'] === 'duplicate' ? 'rq_dup' : ($r['error'] === 'opted_out' ? 'rq_opt' : 'rq_bad'));
     } elseif ($ok && $action === 'add_jobs') {
-        $n = 0; $skip = 0;
-        foreach (preg_split('/\r\n|\r|\n/', (string)($_POST['jobs'] ?? '')) as $line) {
+        $n = 0;
+        foreach (array_slice(preg_split('/\r\n|\r|\n/', (string)($_POST['jobs'] ?? '')), 0, 100) as $line) {
             $line = trim($line); if ($line === '') continue;
             if (preg_match('/^(.*?)[,;\t ]+(\+?[\d().\- ]{7,})$/', $line, $m) && preg_match('/\d{7,}/', $m[2])) { $name = trim($m[1]) ?: null; $phone = $m[2]; }
             elseif (preg_match('/\d{7,}/', $line)) { $name = null; $phone = $line; }
-            else { $skip++; continue; }
-            care_queueReview($clientId, $phone, $name, 'csv')['ok'] ? $n++ : $skip++;
+            else { continue; }
+            if (care_queueReview($clientId, $phone, $name, 'csv')['ok']) $n++;
         }
-        $flash = "Sent {$n} review request" . ($n === 1 ? '' : 's') . ($skip ? " ({$skip} skipped)" : '') . '. ⭐';
+        $code = 'rq_many';
     } elseif ($ok && $action === 'set_link') {
-        $flash = care_setReviewLink($clientId, (string)($_POST['review_link'] ?? '')) ? 'Saved your Google review link ✓' : 'That didn’t look like a valid link.';
+        $code = care_setReviewLink($clientId, (string)($_POST['review_link'] ?? '')) ? 'lk_ok' : 'lk_bad';
     } elseif ($ok && $action === 'add_job') {
         $r = care_addJob($clientId, trim((string)($_POST['name'] ?? '')) ?: null, (string)($_POST['phone'] ?? ''), trim((string)($_POST['address'] ?? '')) ?: null);
-        $flash = $r['ok'] ? 'Job added to your list ✓' : 'That number didn’t look right.';
+        $code = $r['ok'] ? 'jb_add' : 'jb_bad';
     } elseif ($ok && $action === 'update_job') {
         care_updateJob($clientId, (int)($_POST['job_id'] ?? 0), isset($_POST['status']) ? (string)$_POST['status'] : null, isset($_POST['name']) ? trim((string)$_POST['name']) : null);
-        $flash = (($_POST['status'] ?? '') === 'done') ? 'Marked done — we’ll text them for a review ⭐' : 'Updated ✓';
+        $code = (($_POST['status'] ?? '') === 'done') ? 'jb_done' : 'jb_upd';
     } elseif ($ok && $action === 'edit_job') {
         care_editJob($clientId, (int)($_POST['job_id'] ?? 0), trim((string)($_POST['name'] ?? '')) ?: null, (string)($_POST['phone'] ?? ''), trim((string)($_POST['address'] ?? '')) ?: null);
-        $flash = 'Job updated ✓';
+        $code = 'jb_edit';
     } elseif ($ok && $action === 'delete_job') {
-        $flash = care_deleteJob($clientId, (int)($_POST['job_id'] ?? 0)) ? 'Job deleted ✓' : 'Could not delete.';
+        $code = care_deleteJob($clientId, (int)($_POST['job_id'] ?? 0)) ? 'jb_del' : 'jb_delfail';
     }
     $rv  = in_array($action, ['add_job','update_job','edit_job','delete_job'], true) ? 'jobs' : 'reviews';
     $ret = (isset($_POST['ret']) && in_array($_POST['ret'], CARE_JOB_STATUSES, true)) ? '&tab=' . rawurlencode((string)$_POST['ret']) : '';
-    header('Location: ' . CARE_BASE_URL . '/?view=' . $rv . '&ok=' . rawurlencode($flash ?? '') . $ret);
+    header('Location: ' . CARE_BASE_URL . '/?view=' . $rv . '&ok=' . $code . $ret);
     exit;
 }
-$flash = isset($_GET['ok']) ? (string)$_GET['ok'] : '';
+// Flash messages come from a fixed code (never free text in the URL).
+$codeMap = [
+    'rq_ok'=>'Done — we’ll text them your review link. ⭐', 'rq_dup'=>'Already asked them recently ✓', 'rq_opt'=>'They opted out of texts.', 'rq_bad'=>'That number didn’t look right.',
+    'rq_many'=>'Review requests sent. ⭐', 'lk_ok'=>'Saved your Google review link ✓', 'lk_bad'=>'That didn’t look like a valid link.',
+    'jb_add'=>'Job added to your list ✓', 'jb_bad'=>'That number didn’t look right.', 'jb_done'=>'Marked done — we’ll text them for a review ⭐', 'jb_upd'=>'Updated ✓', 'jb_edit'=>'Job updated ✓', 'jb_del'=>'Job deleted ✓', 'jb_delfail'=>'Could not delete.',
+];
+$flash = $codeMap[(string)($_GET['ok'] ?? '')] ?? '';
 
 $view = (string)($_GET['view'] ?? 'home');
 if (!in_array($view, ['home','jobs','reviews','help'], true)) $view = 'home';
@@ -288,7 +295,7 @@ $icPhone = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
     <p class="lead2">Finishing a job (in <b>Jobs</b>) asks that customer automatically. You can also ask anyone directly here.</p>
     <div class="rlink <?= $reviewLink ? '' : 'warn' ?>">
       <?php if ($reviewLink): ?>
-        <div class="rlrow"><div style="min-width:0"><div class="rllabel">Your Google review link</div><a class="rlurl" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener"><?= care_h2($reviewLink) ?></a></div><a class="rltest" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener">Test ↗</a></div>
+        <div class="rlrow"><div style="min-width:0"><div class="rllabel">Your Google review link</div><a class="rlurl" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener noreferrer"><?= care_h2($reviewLink) ?></a></div><a class="rltest" href="<?= care_h2($reviewLink) ?>" target="_blank" rel="noopener noreferrer">Test ↗</a></div>
         <details class="rledit"><summary>Not the right link? Fix it</summary><form class="addform" method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="set_link"><input name="review_link" value="<?= care_h2($reviewLink) ?>"><button class="go" type="submit">Save link</button></form></details>
       <?php else: ?>
         <div class="rllabel">⚠️ Add your Google review link</div><div class="lead2" style="margin:5px 0 11px">We need it before we can ask for reviews. Find it in Google Business Profile → “Ask for reviews” and paste it here.</div>
