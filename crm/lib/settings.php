@@ -73,19 +73,30 @@ const CRM_ENCRYPTED_KEYS = [
 // CREDENTIALS_KEY degrades to today's plaintext behavior instead of breaking.
 function crm_settingEncrypt(string $key, string $value): string {
     if ($value === '' || !in_array($key, CRM_ENCRYPTED_KEYS, true)) return $value;
-    try { require_once __DIR__ . '/credentials.php'; return crm_credEncrypt($value); }
+    // base64 the binary GCM blob — the settings.value column is utf8 text and
+    // would mangle raw non-utf8 bytes. "ENCv1:" marks the wrapped format.
+    try { require_once __DIR__ . '/credentials.php'; return 'ENCv1:' . base64_encode(crm_credEncrypt($value)); }
     catch (Throwable $e) { error_log('[crm_settingEncrypt] ' . $key . ': ' . $e->getMessage()); return $value; }
 }
 
-// Decrypt a stored value if it's an AES-GCM blob ("AGCM" prefix). Plaintext
-// passes through unchanged (backward-compat with values saved before encryption
-// was enabled). On decrypt failure, returns '' so the integration fails safe
-// (e.g. Care drops to stub) rather than using a corrupt secret.
+// Decrypt a stored value. Handles the base64-wrapped "ENCv1:" format and the
+// short-lived legacy raw-"AGCM" blobs; plaintext passes through unchanged. On
+// decrypt failure returns '' so the integration fails safe (Care drops to stub)
+// rather than using a corrupt secret.
 function crm_settingDecrypt(string $key, string $value): string {
     if ($value === '' || !in_array($key, CRM_ENCRYPTED_KEYS, true)) return $value;
-    if (strncmp($value, 'AGCM', 4) !== 0) return $value;   // not encrypted → plaintext
-    try { require_once __DIR__ . '/credentials.php'; return crm_credDecrypt($value); }
-    catch (Throwable $e) { error_log('[crm_settingDecrypt] ' . $key . ': ' . $e->getMessage()); return ''; }
+    try {
+        if (strncmp($value, 'ENCv1:', 6) === 0) {
+            require_once __DIR__ . '/credentials.php';
+            $blob = base64_decode(substr($value, 6), true);
+            return $blob === false ? '' : crm_credDecrypt($blob);
+        }
+        if (strncmp($value, 'AGCM', 4) === 0) {   // legacy raw-binary blob
+            require_once __DIR__ . '/credentials.php';
+            return crm_credDecrypt($value);
+        }
+        return $value;   // plaintext passthrough
+    } catch (Throwable $e) { error_log('[crm_settingDecrypt] ' . $key . ': ' . $e->getMessage()); return ''; }
 }
 
 function crm_loadDbSettings(): array {
