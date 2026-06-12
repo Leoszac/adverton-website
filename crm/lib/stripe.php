@@ -241,7 +241,7 @@ function crm_stripeCreatePaymentLink(array $client, ?float $overrideMonthly = nu
         // recently-renamed) account-level Terms of Service Dashboard
         // setting. Stripe's Checkout custom_text supports markdown links.
         'consent_collection[terms_of_service]'                => 'required',
-        'custom_text[terms_of_service_acceptance][message]'   => 'I have read and agree to Adverton’s [Service Agreement](https://adverton.net/legal/service-agreement.html) (12-month commitment, $9,588 website asset paid monthly per Section 5).',
+        'custom_text[terms_of_service_acceptance][message]'   => 'I have read and agree to Adverton’s [Service Agreement v1.4](https://adverton.net/legal/service-agreement.html) (12-month subscription; the website is licensed during the term and transfers to me on completion per Section 5), and I am authorized to bind my business.',
     ];
     $i = 0;
     foreach ($items as $it) {
