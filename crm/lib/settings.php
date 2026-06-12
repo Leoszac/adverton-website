@@ -57,6 +57,37 @@ const CRM_DB_BACKED_KEYS = [
     // in /crm/integrations.php.
 ];
 
+// Subset of CRM_DB_BACKED_KEYS encrypted at rest (AES-256-GCM via credentials.php).
+// The Twilio Auth Token is the priority: it's both the API credential and the
+// webhook-signing key. Excludes the master key itself, URLs, flags, addresses.
+const CRM_ENCRYPTED_KEYS = [
+    'STRIPE_API_KEY', 'STRIPE_WEBHOOK_SECRET', 'PANDADOC_WEBHOOK_SECRET',
+    'OPENPHONE_WEBHOOK_SECRET', 'SMARTLEAD_WEBHOOK_SECRET', 'INSTANTLY_API_KEY',
+    'INSTANTLY_WEBHOOK_SECRET', 'CALENDLY_API_TOKEN', 'RESEND_API_KEY',
+    'ANTHROPIC_API_KEY', 'NAMECHEAP_API_KEY', 'DNCSCRUB_API_KEY',
+    'OUTSCRAPER_API_KEY', 'TWILIO_AUTH_TOKEN',
+];
+
+// Encrypt a sensitive value for storage. Returns the value UNCHANGED if it's
+// not an encrypted key, is empty, or encryption is unavailable — so a missing
+// CREDENTIALS_KEY degrades to today's plaintext behavior instead of breaking.
+function crm_settingEncrypt(string $key, string $value): string {
+    if ($value === '' || !in_array($key, CRM_ENCRYPTED_KEYS, true)) return $value;
+    try { require_once __DIR__ . '/credentials.php'; return crm_credEncrypt($value); }
+    catch (Throwable $e) { error_log('[crm_settingEncrypt] ' . $key . ': ' . $e->getMessage()); return $value; }
+}
+
+// Decrypt a stored value if it's an AES-GCM blob ("AGCM" prefix). Plaintext
+// passes through unchanged (backward-compat with values saved before encryption
+// was enabled). On decrypt failure, returns '' so the integration fails safe
+// (e.g. Care drops to stub) rather than using a corrupt secret.
+function crm_settingDecrypt(string $key, string $value): string {
+    if ($value === '' || !in_array($key, CRM_ENCRYPTED_KEYS, true)) return $value;
+    if (strncmp($value, 'AGCM', 4) !== 0) return $value;   // not encrypted → plaintext
+    try { require_once __DIR__ . '/credentials.php'; return crm_credDecrypt($value); }
+    catch (Throwable $e) { error_log('[crm_settingDecrypt] ' . $key . ': ' . $e->getMessage()); return ''; }
+}
+
 function crm_loadDbSettings(): array {
     static $cache = null;
     if ($cache !== null) return $cache;
@@ -64,7 +95,8 @@ function crm_loadDbSettings(): array {
         $stmt = crm_db()->query('SELECT `key`, `value` FROM settings');
         $cache = [];
         foreach ($stmt->fetchAll() as $r) {
-            $cache[(string)$r['key']] = (string)($r['value'] ?? '');
+            $k = (string)$r['key'];
+            $cache[$k] = crm_settingDecrypt($k, (string)($r['value'] ?? ''));
         }
     } catch (Throwable $e) {
         $cache = [];
@@ -79,7 +111,7 @@ function crm_saveSetting(string $key, string $value, ?int $userId = null): bool 
             'INSERT INTO settings (`key`, `value`, updated_by) VALUES (?, ?, ?)
              ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), updated_by = VALUES(updated_by)'
         );
-        return $stmt->execute([$key, $value, $userId]);
+        return $stmt->execute([$key, crm_settingEncrypt($key, $value), $userId]);
     } catch (Throwable $e) {
         error_log('[crm_saveSetting] ' . $e->getMessage());
         return false;
@@ -91,10 +123,11 @@ function crm_getSettingMeta(string $key): array {
         $stmt = crm_db()->prepare('SELECT `value`, updated_at FROM settings WHERE `key` = ?');
         $stmt->execute([$key]);
         $row = $stmt->fetch();
+        $raw = (string)($row['value'] ?? '');
         return [
-            'value'      => (string)($row['value'] ?? ''),
+            'value'      => crm_settingDecrypt($key, $raw),
             'updated_at' => $row['updated_at'] ?? null,
-            'set'        => !empty($row['value']),
+            'set'        => ($raw !== ''),
         ];
     } catch (Throwable $e) {
         return ['value'=>'','updated_at'=>null,'set'=>false];

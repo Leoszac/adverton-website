@@ -32,10 +32,13 @@ function care_e164(string $raw): ?string {
 }
 
 // Has this number opted out (replied STOP)? Global suppression.
-function care_isOptedOut(string $phoneE164): bool {
+// Opt-out is per-sender (per TCPA/CTIA): a STOP to one contractor must not mute
+// every Adverton client. A row with client_id = 0 is a global hard-suppress
+// (abuse) that applies everywhere.
+function care_isOptedOut(string $phoneE164, int $clientId = 0): bool {
     try {
-        $st = care_db()->prepare('SELECT 1 FROM care_optouts WHERE phone = ? LIMIT 1');
-        $st->execute([$phoneE164]);
+        $st = care_db()->prepare('SELECT 1 FROM care_optouts WHERE phone = ? AND (client_id = ? OR client_id = 0) LIMIT 1');
+        $st->execute([$phoneE164, $clientId]);
         return (bool)$st->fetchColumn();
     } catch (Throwable $e) { return false; }
 }

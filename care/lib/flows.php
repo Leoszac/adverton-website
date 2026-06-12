@@ -71,8 +71,10 @@ function care_logSms(int $clientId, string $direction, string $careNumber, strin
 
 // Send FROM the Care number + log it. Honors opt-out and the daily safety cap.
 function care_sendSms(int $clientId, string $careNumber, string $to, string $body, string $kind): array {
-    if (care_isOptedOut($to)) { care_log("suppressed (opt-out) to={$to}"); return ['ok'=>false, 'error'=>'opted_out']; }
-    if (care_dailySmsCapReached($clientId)) { care_log("suppressed (daily cap) client={$clientId} to={$to}"); return ['ok'=>false, 'error'=>'daily_cap']; }
+    if (care_isOptedOut($to, $clientId)) { care_log("suppressed (opt-out) to={$to}"); return ['ok'=>false, 'error'=>'opted_out']; }
+    // The daily cap guards AUTOMATED traffic (textback/review/lead) — it must not
+    // silently kill a live human relay conversation mid-thread.
+    if ($kind !== 'relay' && care_dailySmsCapReached($clientId)) { care_log("suppressed (daily cap) client={$clientId} to={$to}"); return ['ok'=>false, 'error'=>'daily_cap']; }
     $r = care_twilioSendSms($to, $careNumber, $body);
     care_logSms($clientId, 'out', $careNumber, $to, $body, ($r['data']['sid'] ?? null), $kind);
     return $r;
@@ -88,14 +90,15 @@ function care_dailySmsCapReached(int $clientId): bool {
     } catch (Throwable $e) { return false; }   // never block a legit send on a counter error
 }
 
-function care_optOut(?string $phone): void {
+function care_optOut(?string $phone, int $clientId = 0): void {
     if (!$phone) return;
-    try { care_db()->prepare('INSERT IGNORE INTO care_optouts (phone) VALUES (?)')->execute([$phone]); }
+    try { care_db()->prepare('INSERT IGNORE INTO care_optouts (client_id, phone) VALUES (?, ?)')->execute([$clientId, $phone]); }
     catch (Throwable $e) {}
 }
-function care_optIn(?string $phone): void {
+function care_optIn(?string $phone, int $clientId = 0): void {
     if (!$phone) return;
-    try { care_db()->prepare('DELETE FROM care_optouts WHERE phone = ?')->execute([$phone]); }
+    // Only re-enable for this client; leave any global (client_id=0) suppress intact.
+    try { care_db()->prepare('DELETE FROM care_optouts WHERE phone = ? AND client_id = ?')->execute([$phone, $clientId]); }
     catch (Throwable $e) {}
 }
 
@@ -114,6 +117,20 @@ function care_lastCustomer(int $clientId, string $excludePhone): ?string {
         $c = $st->fetchColumn();
         return $c ?: null;
     } catch (Throwable $e) { return null; }
+}
+
+// Distinct customers this client heard from in the last 3h — used to decide
+// whether a contractor's un-addressed reply can be routed unambiguously.
+function care_recentCustomers(int $clientId, string $excludePhone): array {
+    try {
+        $st = care_db()->prepare(
+            "SELECT DISTINCT counterparty FROM care_sms
+             WHERE client_id = ? AND direction = 'in' AND counterparty <> ?
+               AND created_at > (NOW() - INTERVAL 3 HOUR)"
+        );
+        $st->execute([$clientId, $excludePhone]);
+        return array_map('strval', $st->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Throwable $e) { return []; }
 }
 
 // ── Flow handlers (return TwiML strings) ─────────────────────────────────
@@ -162,7 +179,7 @@ function care_handleDialStatus(array $p): string {
             catch (Throwable $e) {}
         }
         $callerE = care_e164($caller);
-        if (!$already && $callerE && !care_isOptedOut($callerE)) {
+        if (!$already && $callerE && !care_isOptedOut($callerE, $clientId)) {
             $biz = care_clientName($clientId);
             care_sendSms($clientId, $careNumber, $callerE, care_missedCallMessage($biz), 'textback');
             care_markTextback($callSid);
@@ -226,11 +243,11 @@ function care_handleIncomingSms(array $p): string {
     // Opt-out / opt-in keywords (TCPA).
     $up = strtoupper($body);
     if (in_array($up, ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT'], true)) {
-        care_optOut($fromE);
+        care_optOut($fromE, $clientId);
         care_logSms($clientId, 'in', $careNumber, $fromE, $body, $sid, 'other');
         return care_xml("<Response><Message>You're opted out and won't get more texts. Reply START to opt back in.</Message></Response>");
     }
-    if (in_array($up, ['START', 'UNSTOP', 'YES'], true)) { care_optIn($fromE); }
+    if (in_array($up, ['START', 'UNSTOP', 'YES'], true)) { care_optIn($fromE, $clientId); }
 
     // HELP / INFO — CTIA + A2P mandatory: identify the program + support + opt-out.
     if (in_array($up, ['HELP', 'INFO'], true)) {
@@ -251,14 +268,26 @@ function care_handleIncomingSms(array $p): string {
                 return care_xml('<Response/>');
             }
         }
-        // Otherwise: relay the reply to the most-recent customer for this client.
-        $cust = care_lastCustomer($clientId, $fwd);
-        if ($cust) care_sendSms($clientId, $careNumber, $cust, $body, 'relay');
+        // Relay the contractor's reply to a customer. If the contractor explicitly
+        // addresses it ("3055551234 your message"), route there. Otherwise route to
+        // the single recent customer — but if MORE than one customer is active in
+        // the window, ask the contractor to specify instead of guessing (guessing
+        // leaks one customer's reply to another).
+        if (preg_match('/^\s*(\+?\d[\d\-\s().]{8,17})[\s:,-]+(.+)$/s', $body, $mm)) {
+            $target = care_e164($mm[1]); $msg = trim($mm[2]);
+            if ($target && $msg !== '') { care_sendSms($clientId, $careNumber, $target, $msg, 'relay'); return care_xml('<Response/>'); }
+        }
+        $custs = care_recentCustomers($clientId, $fwd);
+        if (count($custs) === 1) {
+            care_sendSms($clientId, $careNumber, $custs[0], $body, 'relay');
+        } elseif (count($custs) > 1) {
+            care_sendSms($clientId, $careNumber, $fwd, 'You\'re texting with ' . count($custs) . ' customers right now. Start your reply with their number, e.g. "3055551234 your message".', 'other');
+        }
         return care_xml('<Response/>');
     }
 
     // Customer → forward the message to the contractor's cell.
-    if (!care_isOptedOut($fromE)) {
+    if (!care_isOptedOut($fromE, $clientId)) {
         care_sendSms($clientId, $careNumber, $fwd, "New text from {$fromE}: {$body}", 'relay');
     }
     return care_xml('<Response/>');

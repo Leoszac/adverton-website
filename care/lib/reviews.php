@@ -49,7 +49,7 @@ function care_reviewLink(int $clientId): ?string {
 function care_queueReview(int $clientId, string $phone, ?string $name, string $source, int $delayHours = 0): array {
     $e164 = care_e164($phone);
     if (!$e164) return ['ok'=>false, 'error'=>'bad phone'];
-    if (care_isOptedOut($e164)) return ['ok'=>false, 'error'=>'opted_out'];
+    if (care_isOptedOut($e164, $clientId)) return ['ok'=>false, 'error'=>'opted_out'];
     try {
         $dup = care_db()->prepare(
             "SELECT id FROM care_review_requests
