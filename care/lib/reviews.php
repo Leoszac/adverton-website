@@ -97,7 +97,7 @@ function care_setReviewLink(int $clientId, string $url): bool {
 function care_reviewMessage(string $biz, ?string $name, string $link, bool $reminder): string {
     $hi = $name ? ('Hi ' . $name . '!') : 'Hi!';
     if ($reminder) {
-        return "{$hi} Just a quick reminder — if you have a sec, a short review for {$biz} would mean a lot. {$link}";
+        return "{$hi} Just a quick reminder — if you have a sec, a short review for {$biz} would mean a lot. {$link} (Reply STOP to opt out.)";
     }
     return "{$hi} Thanks for choosing {$biz}! Would you mind leaving us a quick review? It really helps us out. {$link} (Reply STOP to opt out.)";
 }

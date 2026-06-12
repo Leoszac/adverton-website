@@ -232,6 +232,13 @@ function care_handleIncomingSms(array $p): string {
     }
     if (in_array($up, ['START', 'UNSTOP', 'YES'], true)) { care_optIn($fromE); }
 
+    // HELP / INFO — CTIA + A2P mandatory: identify the program + support + opt-out.
+    if (in_array($up, ['HELP', 'INFO'], true)) {
+        care_logSms($clientId, 'in', $careNumber, $fromE, $body, $sid, 'other');
+        $biz = crm_h(care_clientName($clientId) ?: 'This business');
+        return care_xml("<Response><Message>{$biz} alerts via Adverton. Msg&amp;data rates may apply. Reply STOP to opt out. Support: help@adverton.net</Message></Response>");
+    }
+
     care_logSms($clientId, 'in', $careNumber, $fromE, $body, $sid, 'relay');
 
     if ($fromE === $fwd) {
