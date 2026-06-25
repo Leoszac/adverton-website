@@ -566,6 +566,10 @@ case 'contact':
       <div class="row2"><input type="text" name="name" placeholder="Your name" required><input type="tel" name="phone" placeholder="Phone" required></div>
       <input type="text" name="city" placeholder="City / town">
       <textarea name="message" rows="5" placeholder="How can we help?"></textarea>
+      <label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.45;margin:2px 0 12px;color:#6b7280;text-align:left">
+        <input type="checkbox" name="sms_consent" value="1" required style="margin-top:3px;flex:0 0 auto">
+        <span>By checking this box, I agree to receive text messages from <?= $h($name) ?> about my request and service (such as appointment updates, missed-call replies, and review requests). Msg &amp; data rates may apply. Message frequency varies. Reply STOP to opt out, HELP for help. See our <a href="https://adverton.net/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+      </label>
       <button class="btn btn-primary" type="submit">Request a free quote</button>
     </form>
   </div></div></section>
