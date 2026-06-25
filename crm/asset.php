@@ -33,7 +33,8 @@ if ($token !== '') {
 if (!$authed) {
     require_once __DIR__ . '/lib/auth.php';
     $user = crm_currentUser();
-    if (!$user) { http_response_code(401); exit('not authorized'); }
+    // Client assets are not visible to the leads-only role.
+    if (!$user || crm_isLeads($user)) { http_response_code(401); exit('not authorized'); }
     $authed = true;
 }
 

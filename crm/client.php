@@ -15,7 +15,7 @@ require_once __DIR__ . '/lib/photos.php';
 require_once __DIR__ . '/lib/deploy.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $id = (int)($_GET['id'] ?? 0);
 $client = $id > 0 ? crm_getClient($id) : null;

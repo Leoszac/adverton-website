@@ -9,7 +9,7 @@ require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/ui.php';
 require_once __DIR__ . '/lib/instantly.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $apiKey  = crm_instantlyApiKey();
 $test    = $apiKey ? crm_instantlyTestConnection() : null;

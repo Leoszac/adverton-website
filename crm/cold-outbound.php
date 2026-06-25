@@ -8,7 +8,7 @@ require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $action = (string)($_POST['action'] ?? '');
 $flash = (string)($_GET['msg'] ?? '');

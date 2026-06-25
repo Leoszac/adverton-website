@@ -8,7 +8,7 @@ require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/stripe.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $leadId = (int)($_GET['lead_id'] ?? 0);
 $lead = $leadId > 0 ? crm_getLead($leadId) : null;

@@ -46,6 +46,17 @@ function crm_requireRole(array $roles): array {
     return $user;
 }
 
+// Leads-only role. The users.role ENUM ships with an unused 'operator' value
+// (schema-v5); we reuse it as the restricted "leads only" role so no DB
+// migration is needed. Such a user can ONLY see/edit leads — no clients, cold
+// outbound, sequences, reports, settings, etc. Enforced per-page (founder/sales
+// guards already exclude it) and at the update.php write chokepoint.
+const CRM_ROLE_LEADS = 'operator';
+
+function crm_isLeads(?array $user): bool {
+    return ($user['role'] ?? '') === CRM_ROLE_LEADS;
+}
+
 function crm_requireLogin(): array {
     $user = crm_currentUser();
     if (!$user) {

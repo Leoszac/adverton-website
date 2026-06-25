@@ -7,7 +7,7 @@ require_once __DIR__ . '/lib/leads.php';
 require_once __DIR__ . '/lib/tasks.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 $scope = ($_GET['scope'] ?? 'mine') === 'all' ? 'all' : 'mine';
 $forUser = $scope === 'all' ? null : (int)$user['id'];
 

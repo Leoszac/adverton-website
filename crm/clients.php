@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $filters = [
     'status'         => $_GET['status']         ?? '',

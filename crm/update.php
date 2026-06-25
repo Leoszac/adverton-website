@@ -32,6 +32,23 @@ if (!crm_csrfCheck($_POST['csrf'] ?? null)) {
 
 $mode = (string)($_POST['mode'] ?? 'pipeline');
 
+// Role gate: a leads-only user may run ONLY lead-scoped actions. Everything
+// else (clients, credentials, cold email, sequences, billing, settings, user
+// management, deletes) is forbidden. This is the write-side security boundary.
+if (crm_isLeads($user)) {
+    $leadsAllowed = [
+        'pipeline', 'pipeline_status', 'activity',
+        'task_create', 'task_complete', 'task_uncomplete',
+        'tag_add', 'tag_remove', 'lead_create',
+        'file_upload', 'file_delete',
+    ];
+    if (!in_array($mode, $leadsAllowed, true)) {
+        http_response_code(403);
+        crm_log("role_block uid={$user['id']} role=leads mode={$mode}");
+        exit('Forbidden — your role does not permit this action.');
+    }
+}
+
 switch ($mode) {
 
 case 'pipeline': {
@@ -1648,6 +1665,80 @@ case 'routing_delete': {
     $id = (int)($_POST['id'] ?? 0);
     if ($id > 0) crm_deleteRoutingRule($id);
     header('Location: /crm/routing.php');
+    exit;
+}
+
+// ===== Team / user management (founder only) =====
+case 'user_create': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $username = strtolower(trim((string)($_POST['username'] ?? '')));
+    $display  = trim((string)($_POST['display_name'] ?? ''));
+    $pwd      = (string)($_POST['password'] ?? '');
+    $role     = (string)($_POST['role'] ?? CRM_ROLE_LEADS);
+    $validRoles = ['founder', 'sales', CRM_ROLE_LEADS];
+    $err = '';
+    if (!preg_match('/^[a-z0-9._-]{3,60}$/', $username)) {
+        $err = 'Username must be 3-60 chars: lowercase letters/numbers/dots/dashes/underscores.';
+    } elseif ($display === '' || mb_strlen($display) > 120) {
+        $err = 'Display name is required (≤120 chars).';
+    } elseif (mb_strlen($pwd) < 10) {
+        $err = 'Password must be at least 10 characters.';
+    } elseif (!in_array($role, $validRoles, true)) {
+        $err = 'Invalid role.';
+    } else {
+        $db = crm_db();
+        $stmt = $db->prepare('SELECT id FROM users WHERE username = ?');
+        $stmt->execute([$username]);
+        if ($stmt->fetch()) {
+            $err = 'That username is already taken.';
+        } else {
+            $hash = password_hash($pwd, PASSWORD_BCRYPT);
+            $stmt = $db->prepare('INSERT INTO users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$username, $hash, $display, $role]);
+            crm_log("user_create by={$user['id']} username={$username} role={$role}");
+            header('Location: /crm/team.php?msg=' . urlencode("User “{$username}” created."));
+            exit;
+        }
+    }
+    header('Location: /crm/team.php?err=' . urlencode($err));
+    exit;
+}
+
+case 'user_role_set': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $uid  = (int)($_POST['user_id'] ?? 0);
+    $role = (string)($_POST['role'] ?? '');
+    $validRoles = ['founder', 'sales', CRM_ROLE_LEADS];
+    if ($uid === (int)$user['id']) {
+        header('Location: /crm/team.php?err=' . urlencode('You cannot change your own role.'));
+        exit;
+    }
+    if ($uid <= 0 || !in_array($role, $validRoles, true)) {
+        header('Location: /crm/team.php?err=' . urlencode('Invalid user or role.'));
+        exit;
+    }
+    $db = crm_db();
+    $stmt = $db->prepare('UPDATE users SET role = ? WHERE id = ?');
+    $stmt->execute([$role, $uid]);
+    crm_log("user_role_set by={$user['id']} target={$uid} role={$role}");
+    header('Location: /crm/team.php?msg=' . urlencode('Role updated.'));
+    exit;
+}
+
+case 'user_password_reset': {
+    if (($user['role'] ?? '') !== 'founder') { http_response_code(403); exit; }
+    $uid = (int)($_POST['user_id'] ?? 0);
+    $pwd = (string)($_POST['password'] ?? '');
+    if ($uid <= 0 || mb_strlen($pwd) < 10) {
+        header('Location: /crm/team.php?err=' . urlencode('Password must be at least 10 characters.'));
+        exit;
+    }
+    $hash = password_hash($pwd, PASSWORD_BCRYPT);
+    $db = crm_db();
+    $stmt = $db->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+    $stmt->execute([$hash, $uid]);
+    crm_log("user_password_reset by={$user['id']} target={$uid}");
+    header('Location: /crm/team.php?msg=' . urlencode('Password reset.'));
     exit;
 }
 

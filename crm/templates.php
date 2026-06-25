@@ -6,7 +6,7 @@ require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/templates.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 $editingId = (int)($_GET['edit'] ?? 0);
 $editing = $editingId > 0 ? crm_getTemplate($editingId) : null;

@@ -8,7 +8,7 @@ require_once __DIR__ . '/lib/clients.php';
 require_once __DIR__ . '/lib/stripe.php';
 require_once __DIR__ . '/lib/ui.php';
 
-$user = crm_requireLogin();
+$user = crm_requireRole(['founder','sales']); // leads role excluded
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); header('Location: /crm/'); exit; }
 if (!crm_csrfCheck($_POST['csrf'] ?? null)) { http_response_code(403); exit('CSRF'); }

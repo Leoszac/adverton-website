@@ -6,6 +6,7 @@ declare(strict_types=1);
 if (!defined('CRM_ENTRY')) { http_response_code(404); exit; }
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';   // crm_isLeads() used in the header nav
 require_once __DIR__ . '/tasks.php';
 require_once __DIR__ . '/leads.php';
 require_once __DIR__ . '/cron_dispatcher.php';
@@ -75,6 +76,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
   <div class="brand">Adverton CRM</div>
   <?php
     $isFounder = (($user['role'] ?? '') === 'founder');
+    $isLeads   = crm_isLeads($user);  // leads-only role: see Leads nav only
     $inLeadsGroup    = in_array($current, ['leads','pipeline'], true);
     $inColdGroup     = in_array($current, ['cold','cold-import','cold-blocked','cold-outbound'], true);
     $inNurtureGroup  = in_array($current, ['nurture','templates','sequences'], true);
@@ -89,6 +91,7 @@ function crm_renderHeader(array $user, string $current = ''): void {
         <a href="/crm/pipeline.php" class="<?= $current==='pipeline'?'cur':'' ?>">Pipeline (kanban)</a>
       </div>
     </div>
+    <?php if (!$isLeads): // leads-only role sees the Leads group only ?>
     <!-- Cold outbound (separate from inbound leads). Parent click goes to the
          ACTIVE channel — cold email via Instantly. The paused dialer lives in
          the dropdown. -->
@@ -121,12 +124,14 @@ function crm_renderHeader(array $user, string $current = ''): void {
         <?php endif; ?>
       </div>
     </div>
+    <?php endif; // !$isLeads ?>
     <?php if ($isFounder): ?>
       <!-- Settings group (founder only): config-like items -->
       <div class="dd">
         <a href="/crm/account.php" class="<?= $inSettingsGroup?'cur':'' ?>">⚙️ Settings</a>
         <div class="dd-menu">
           <a href="/crm/account.php" class="<?= $current==='account'?'cur':'' ?>">Account · 2FA</a>
+          <a href="/crm/team.php" class="<?= $current==='team'?'cur':'' ?>">Team · users</a>
           <a href="/crm/routing.php" class="<?= $current==='routing'?'cur':'' ?>">Lead routing</a>
           <a href="/crm/integrations.php" class="<?= $current==='integrations'?'cur':'' ?>">Integrations · API keys</a>
         </div>
