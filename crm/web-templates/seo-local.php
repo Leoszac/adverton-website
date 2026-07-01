@@ -363,7 +363,8 @@ $renderServiceCards = static function (array $list, $limit = 0) use ($serviceSlu
     echo '<div class="svc-grid">';
     foreach ($slugs as $sg => $sName) {
         $svc = isset($svcByName[$sName]) ? $svcByName[$sName] : [];
-        $icon = (string)($svc['icon_emoji'] ?? '&#128295;');
+        $icon = (string)($svc['icon_emoji'] ?? '🔧');
+        if (trim($icon) === '' || $icon === '&#128295;') $icon = '🔧';
         $desc = (string)($svc['description_html'] ?? '');
         echo '<a class="svc-card" href="' . $h($svcHref($sg)) . '">';
         echo '<div class="ic">' . $h($icon) . '</div>';
