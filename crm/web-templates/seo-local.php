@@ -199,8 +199,8 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
   header.site{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:12px 0;box-shadow:0 1px 3px rgba(16,24,40,.04)}
   header.site .row{display:flex;justify-content:space-between;align-items:center;gap:14px}
   header.site .brand{font-weight:800;font-size:19px;letter-spacing:-0.01em;color:var(--primary)}
-  header.site .brand-logo{height:58px;width:auto;max-width:300px;display:block;object-fit:contain}
-  @media(max-width:600px){ header.site .brand-logo{height:46px;max-width:200px} }
+  header.site .brand-logo{height:80px;width:auto;max-width:360px;display:block;object-fit:contain}
+  @media(max-width:600px){ header.site .brand-logo{height:62px;max-width:240px} }
   header.site nav{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
   header.site nav a{padding:9px 14px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-2)}
   header.site nav a:hover,header.site nav a.active{background:var(--navy-soft);color:var(--primary)}
