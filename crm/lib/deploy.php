@@ -187,6 +187,12 @@ function crm_deployTwoPhaseFtp(string $host, string $user, string $pass,
         // we just don't require the cert to match the domain we dialed.
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => 0,
+        // Shared hosts sit behind NAT: their PASV (227) reply hands back an
+        // internal IP the client can't reach, so the DATA connection (uploads)
+        // fails even though the control connection (test) works. Ignore the
+        // PASV IP and reuse the control host for data; force classic PASV.
+        CURLOPT_FTP_SKIP_PASV_IP => true,
+        CURLOPT_FTP_USE_EPSV     => false,
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT        => 120,
     ];
