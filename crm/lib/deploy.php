@@ -185,7 +185,6 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
 
     $installer = 'adv-deploy-' . substr($token, 0, 12) . '.php';
     $pubHost   = preg_replace('/^(?:s?ftp\.)/i', '', $host);
-    error_log('[advdeploy] start: ' . count($pages) . ' pages, installer ' . strlen($php) . ' bytes -> ' . $installer);
 
     // 1) Upload the installer over SCP (streams the file — libssh2's SFTP write
     // is ack-per-packet slow and hangs on a ~800KB file; SCP is fast).
@@ -215,7 +214,6 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
     fclose($tmp);
     curl_close($ch);
     if ($keyfile) @unlink($keyfile);
-    error_log('[advdeploy] sftp upload done: errno=' . $upErrno . ' err=' . $upErr);
     if ($up === false || $upErrno !== 0) {
         return ['ok' => false, 'url' => null, 'error' => 'SFTP installer upload failed: SFTP ' . $upErrno . ': ' . ($upErr ?: 'unknown')];
     }
@@ -233,7 +231,6 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
     $resp = curl_exec($t);
     $code = (int)curl_getinfo($t, CURLINFO_HTTP_CODE);
     curl_close($t);
-    error_log('[advdeploy] trigger http=' . $code . ' resp=' . substr(trim((string)$resp), 0, 150));
     $json = json_decode((string)$resp, true);
     if ($code === 200 && is_array($json) && !empty($json['ok'])) {
         return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
