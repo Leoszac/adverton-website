@@ -181,6 +181,12 @@ function crm_deployTwoPhaseFtp(string $host, string $user, string $pass,
         CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_USE_SSL        => CURLUSESSL_ALL,
         CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        // Shared hosts (HostGator etc.) present an FTPS cert for the SERVER
+        // hostname (e.g. *.hostgator.com), not the client's own domain — strict
+        // hostname verification always fails. Connection stays TLS-encrypted;
+        // we just don't require the cert to match the domain we dialed.
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_TIMEOUT        => 120,
     ];
@@ -536,6 +542,8 @@ function crm_deployFtpDelete(string $host, string $user, string $pass, string $r
         CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_USE_SSL        => CURLUSESSL_ALL,
         CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        CURLOPT_SSL_VERIFYPEER => false,   // shared-host FTPS cert won't match client domain
+        CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_NOBODY         => true,
         CURLOPT_POSTQUOTE      => ['DELE ' . $base],
         CURLOPT_TIMEOUT        => 30,
@@ -563,6 +571,8 @@ function crm_deployFtpRename(string $host, string $user, string $pass,
         CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_USE_SSL        => CURLUSESSL_ALL,
         CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        CURLOPT_SSL_VERIFYPEER => false,   // shared-host FTPS cert won't match client domain
+        CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_NOBODY         => true,
         CURLOPT_POSTQUOTE      => ['RNFR ' . $fromPath, 'RNTO ' . $toPath],
         CURLOPT_TIMEOUT        => 30,
@@ -761,6 +771,8 @@ function crm_deployFtpProbe(string $host, string $user, string $pass, string $re
         CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_USE_SSL        => CURLUSESSL_ALL,
         CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        CURLOPT_SSL_VERIFYPEER => false,   // shared-host FTPS cert won't match client domain
+        CURLOPT_SSL_VERIFYHOST => 0,
         CURLOPT_NOBODY         => true,    // list, don't download
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_CONNECTTIMEOUT => 8,
