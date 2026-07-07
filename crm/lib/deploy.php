@@ -145,8 +145,9 @@ function crm_deployAdapterCpanel(array $pages, array $cred, array $client): arra
     return crm_deployTwoPhaseFtp($host, $user, $pass, '/public_html', $pages, $client);
 }
 
-// Generic SFTP adapter — same two-phase pattern as cPanel. The notes
-// field on the credential row carries the remote dir prefix (default '/').
+// SFTP adapter — REAL SFTP over SSH (curl sftp://), used when a host firewalls
+// FTP passive data connections (HostGator etc.). SSH auth uses the system/cPanel
+// user (NOT an FTP sub-account); docroot is public_html under the login home.
 function crm_deployAdapterSftp(array $pages, array $cred, array $client): array {
     $host = trim((string)($cred['row']['url'] ?? ''));
     if ($host === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing host'];
@@ -156,10 +157,125 @@ function crm_deployAdapterSftp(array $pages, array $cred, array $client): array 
     $pass = (string)($cred['value'] ?? '');
     if ($user === '' || $pass === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing username/password'];
 
-    $prefix = rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/');
-    if ($prefix === '') $prefix = '/';
+    return crm_deployTwoPhaseSftp($host, $user, $pass, '/public_html', $pages, $client);
+}
 
-    return crm_deployTwoPhaseFtp($host, $user, $pass, $prefix, $pages, $client);
+// Real SFTP (SSH) two-phase deploy over curl's sftp://. ONE reused SSH
+// connection for every op; paths are home-relative (login lands in the account
+// home, docroot is public_html under it). SSH host-key verification is left off
+// — this tool connects to arbitrary client hosts we can't pre-trust; the whole
+// session (creds + data) is encrypted by SSH regardless.
+function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
+                               string $remoteDir, array $pages, array $client): array {
+    @set_time_limit(0);
+    @ignore_user_abort(true);
+    $base  = trim($remoteDir, '/');                 // 'public_html'
+    $names = array_keys($pages);
+    $rp    = static function (string $p) use ($base) { return ($base !== '' ? $base . '/' : '') . $p; };
+
+    $ch = curl_init();
+    $baseOpts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_CONNECTTIMEOUT => 12,
+        CURLOPT_TIMEOUT        => 120,
+    ];
+    $dirUrl = 'sftp://' . $host . '/' . $base . '/';
+
+    // SFTP protocol command(s) over the reused connection. '*' prefix = ignore
+    // failure (best-effort). SFTP verbs: rename <a> <b>, rm <p>, mkdir <p>.
+    $quote = function (array $cmds) use ($ch, $baseOpts, $dirUrl) {
+        curl_setopt_array($ch, $baseOpts + [
+            CURLOPT_URL       => $dirUrl,
+            CURLOPT_UPLOAD    => false,
+            CURLOPT_NOBODY    => true,
+            CURLOPT_QUOTE     => $cmds,
+            CURLOPT_POSTQUOTE => [],
+        ]);
+        curl_exec($ch);
+        $errno = curl_errno($ch);
+        return ['ok' => ($errno === 0), 'error' => 'SFTP ' . $errno . ': ' . (curl_error($ch) ?: 'command failed')];
+    };
+    $upload = function (string $path, string $html) use ($ch, $baseOpts, $host) {
+        $tmp = tmpfile();
+        if (!$tmp) return ['ok' => false, 'error' => 'tmpfile() failed'];
+        fwrite($tmp, $html); rewind($tmp);
+        curl_setopt_array($ch, $baseOpts + [
+            CURLOPT_URL        => 'sftp://' . $host . '/' . $path,
+            CURLOPT_NOBODY     => false,
+            CURLOPT_QUOTE      => [],
+            CURLOPT_UPLOAD     => true,
+            CURLOPT_INFILE     => $tmp,
+            CURLOPT_INFILESIZE => strlen($html),
+            CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
+        ]);
+        $resp  = curl_exec($ch);
+        $errno = curl_errno($ch);
+        $err   = curl_error($ch);
+        fclose($tmp);
+        return ['ok' => ($resp !== false && $errno === 0), 'error' => 'SFTP ' . $errno . ': ' . ($err ?: 'upload failed')];
+    };
+    $swapRename = function (string $from, string $to) use ($quote) { return $quote(['rename ' . $from . ' ' . $to]); };
+    $softRename = function (string $from, string $to) use ($quote) { return $quote(['*rename ' . $from . ' ' . $to]); };
+    $del        = function (string $path)             use ($quote) { return $quote(['*rm ' . $path]); };
+
+    // sweep stale .adv-bak (best-effort, batched)
+    $bak = [];
+    foreach ($names as $fn) $bak[] = '*rm ' . $rp($fn . '.adv-bak');
+    if ($bak) $quote($bak);
+
+    // PHASE 1 — upload each page to .adv-new
+    $uploadedNew = [];
+    foreach ($pages as $filename => $html) {
+        $r = $upload($rp($filename . '.adv-new'), $html);
+        if (!$r['ok']) {
+            foreach ($uploadedNew as $c) $del($rp($c . '.adv-new'));
+            curl_close($ch);
+            return ['ok' => false, 'url' => null,
+                    'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"];
+        }
+        $uploadedNew[] = $filename;
+    }
+
+    // PHASE 2 — swap: back up live .html → .adv-bak, then .adv-new → .html
+    $swapped = [];
+    foreach ($names as $filename) {
+        $softRename($rp($filename), $rp($filename . '.adv-bak'));
+        $r = $swapRename($rp($filename . '.adv-new'), $rp($filename));
+        if (!$r['ok']) {
+            foreach ($swapped as $restored) {
+                $del($rp($restored));
+                $softRename($rp($restored . '.adv-bak'), $rp($restored));
+            }
+            foreach ($names as $rem) $del($rp($rem . '.adv-new'));
+            curl_close($ch);
+            return ['ok' => false, 'url' => null,
+                    'error' => "Swap failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — restored " . count($swapped) . " pages from backup"];
+        }
+        $swapped[] = $filename;
+    }
+
+    curl_close($ch);
+    return ['ok' => true, 'url' => 'https://' . preg_replace('/^(?:s?ftp\.)/i', '', $host) . '/', 'error' => null];
+}
+
+// SFTP connection probe (Test connection) — connect, auth, list the dir.
+function crm_deploySftpProbe(string $host, string $user, string $pass, string $remoteDir): array {
+    $base = trim($remoteDir, '/');
+    $ch = curl_init('sftp://' . $host . '/' . $base . '/');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_NOBODY         => true,
+        CURLOPT_CONNECTTIMEOUT => 12,
+        CURLOPT_TIMEOUT        => 25,
+    ]);
+    $ok    = curl_exec($ch) !== false && curl_errno($ch) === 0;
+    $errno = curl_errno($ch);
+    $err   = curl_error($ch);
+    curl_close($ch);
+    return $ok ? ['ok' => true, 'error' => null]
+               : ['ok' => false, 'error' => 'SFTP ' . $errno . ': ' . ($err ?: 'connect/auth failed')];
 }
 
 // Shared two-phase FTP/FTPS deploy. Both cPanel and SFTP adapters call
@@ -615,10 +731,10 @@ function crm_deployRunPreflight(string $kindUsed, array $cred): array {
             }
             $host = preg_replace('#^[a-z]+://#i', '', $host);
             $host = rtrim($host, '/');
-            $prefix = $kindUsed === 'cpanel'
-                ? '/public_html'
-                : (rtrim('/' . ltrim((string)($cred['row']['notes'] ?? '/'), '/'), '/') ?: '/');
-            return crm_deployFtpProbe($host, $user, $pass, $prefix);
+            // sftp = real SSH/SFTP probe; cpanel = FTPS probe. Both target public_html.
+            return $kindUsed === 'sftp'
+                ? crm_deploySftpProbe($host, $user, $pass, '/public_html')
+                : crm_deployFtpProbe($host, $user, $pass, '/public_html');
 
         case 'wordpress':
             $base = rtrim((string)($cred['row']['url'] ?? ''), '/');
