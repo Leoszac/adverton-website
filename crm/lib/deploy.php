@@ -425,15 +425,16 @@ function crm_postDeployProgress(int $clientId, ?int $leadId): array {
     return $out;
 }
 
-// FTP/FTPS upload helper. We use curl's ftps:// scheme so credentials are
-// sent over TLS. Compatible with both FTP-explicit-TLS (FTPES) and
-// FTPS-implicit on port 990; cPanel uses FTPES which curl picks via flags.
+// FTP/FTPS upload helper. We use curl's ftp:// scheme + CURLUSESSL_ALL so
+// credentials are sent over EXPLICIT TLS (FTPES) on port 21 — the mode cPanel
+// hosts (HostGator etc.) support. The ftps:// scheme would force IMPLICIT FTPS
+// on port 990, which most cPanel hosts don't listen on (connect refused).
 function crm_deployFtpUpload(string $host, string $user, string $pass,
                              string $remotePath, string $content, array $client): array {
     // PHP 7.4-safe (strpos === 0) — deploy.php loaded by update.php (web on
     // PHP 8) today but keep CLI-safe for any future cron use.
     if (strpos($remotePath, '/') !== 0) $remotePath = '/' . $remotePath;
-    $url = 'ftps://' . $host . $remotePath;
+    $url = 'ftp://' . $host . $remotePath;
 
     $tmp = tmpfile();
     if (!$tmp) return ['ok' => false, 'url' => null, 'error' => 'tmpfile() failed'];
@@ -477,7 +478,7 @@ function crm_deployFtpDelete(string $host, string $user, string $pass, string $r
     if ($dir === '.' || $dir === '') $dir = '/';
     $base = basename($remotePath);
 
-    $ch = curl_init('ftps://' . $host . $dir . '/');
+    $ch = curl_init('ftp://' . $host . $dir . '/');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_USERPWD        => $user . ':' . $pass,
@@ -504,7 +505,7 @@ function crm_deployFtpRename(string $host, string $user, string $pass,
     $dir = dirname($fromPath);
     if ($dir === '.' || $dir === '') $dir = '/';
 
-    $ch = curl_init('ftps://' . $host . $dir . '/');
+    $ch = curl_init('ftp://' . $host . $dir . '/');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_USERPWD        => $user . ':' . $pass,
@@ -702,7 +703,7 @@ function crm_deployRollbackLast(int $clientId, ?int $actorUserId): array {
 function crm_deployFtpProbe(string $host, string $user, string $pass, string $remoteDir): array {
     $remoteDir = rtrim($remoteDir, '/');
     if ($remoteDir === '') $remoteDir = '/';
-    $ch = curl_init('ftps://' . $host . $remoteDir . '/');
+    $ch = curl_init('ftp://' . $host . $remoteDir . '/');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_USERPWD        => $user . ':' . $pass,
