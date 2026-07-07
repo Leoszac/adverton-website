@@ -41,7 +41,9 @@ function crm_deployToClient(int $clientId, ?int $actorUserId): array {
     if (!$client) return ['ok' => false, 'url' => null, 'adapter' => null, 'error' => 'Client not found'];
 
     $intake = crm_getIntake($clientId);
-    if (!$intake || ($intake['status'] ?? '') !== 'approved') {
+    // 'approved' = first deploy; 'deployed' = re-deploy of a live site (e.g. after
+    // a content or template change). Both are valid; only block un-reviewed drafts.
+    if (!$intake || !in_array($intake['status'] ?? '', ['approved', 'deployed'], true)) {
         return ['ok' => false, 'url' => null, 'adapter' => null,
                 'error' => 'Client intake must be approved before deploying'];
     }
