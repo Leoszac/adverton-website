@@ -157,7 +157,81 @@ function crm_deployAdapterSftp(array $pages, array $cred, array $client): array 
     $pass = (string)($cred['value'] ?? '');
     if ($user === '' || $pass === '') return ['ok' => false, 'url' => null, 'error' => 'Cred missing username/password'];
 
-    return crm_deployTwoPhaseSftp($host, $user, $pass, '/public_html', $pages, $client);
+    return crm_deploySftpInstaller($host, $user, $pass, $pages);
+}
+
+// SFTP deploy via a single-file installer. curl+libssh2 won't reuse the SSH
+// connection across curl_exec calls, so uploading 30 files = 30 slow SSH
+// handshakes that overrun LiteSpeed. Instead: upload ONE token-gated,
+// self-deleting PHP installer (all pages embedded) over SFTP, then trigger it
+// over HTTPS — it writes every page locally on the client host (two-phase:
+// .adv-new then rename) in one fast pass, and unlinks itself.
+function crm_deploySftpInstaller(string $host, string $user, string $pass, array $pages): array {
+    @set_time_limit(0);
+    @ignore_user_abort(true);
+
+    $token = bin2hex(random_bytes(16));
+    $enc = [];
+    foreach ($pages as $fn => $html) $enc[$fn] = base64_encode((string)$html);
+
+    $php  = "<?php\n";
+    $php .= "if ((\$_GET['t'] ?? '') !== " . var_export($token, true) . ") { http_response_code(403); exit('forbidden'); }\n";
+    $php .= "\$P = " . var_export($enc, true) . ";\n";
+    $php .= '$d = __DIR__; $errs = [];' . "\n";
+    $php .= 'foreach ($P as $fn => $b64) { $t = $d . "/" . $fn; $sub = dirname($t); if (!is_dir($sub)) @mkdir($sub, 0755, true); if (@file_put_contents($t . ".adv-new", base64_decode($b64)) === false) $errs[] = $fn; }' . "\n";
+    $php .= 'if (!$errs) { foreach ($P as $fn => $x) { $t = $d . "/" . $fn; if (is_file($t)) @rename($t, $t . ".adv-bak"); @rename($t . ".adv-new", $t); } }' . "\n";
+    $php .= 'header("Content-Type: application/json"); echo json_encode(["ok" => empty($errs), "errors" => $errs, "count" => count($P)]);' . "\n";
+    $php .= '@unlink(__FILE__);' . "\n";
+
+    $installer = 'adv-deploy-' . substr($token, 0, 12) . '.php';
+    $pubHost   = preg_replace('/^(?:s?ftp\.)/i', '', $host);
+
+    // 1) Upload the installer over SFTP (single file → single SSH handshake).
+    $keyfile = null;
+    $authOpts = crm_sftpAuthOpts($user, $pass, $keyfile);
+    $ch  = curl_init();
+    $tmp = tmpfile();
+    if (!$tmp) { curl_close($ch); if ($keyfile) @unlink($keyfile); return ['ok' => false, 'url' => null, 'error' => 'tmpfile() failed']; }
+    fwrite($tmp, $php); rewind($tmp);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_URL            => 'sftp://' . $host . '/public_html/' . $installer,
+        CURLOPT_UPLOAD         => true,
+        CURLOPT_INFILE         => $tmp,
+        CURLOPT_INFILESIZE     => strlen($php),
+        CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
+        CURLOPT_CONNECTTIMEOUT => 12,
+        CURLOPT_TIMEOUT        => 90,
+    ] + $authOpts);
+    $up      = curl_exec($ch);
+    $upErrno = curl_errno($ch);
+    $upErr   = curl_error($ch);
+    fclose($tmp);
+    curl_close($ch);
+    if ($keyfile) @unlink($keyfile);
+    if ($up === false || $upErrno !== 0) {
+        return ['ok' => false, 'url' => null, 'error' => 'SFTP installer upload failed: SFTP ' . $upErrno . ': ' . ($upErr ?: 'unknown')];
+    }
+
+    // 2) Trigger it over HTTPS → it writes all pages locally + self-deletes.
+    $t = curl_init('https://' . $pubHost . '/' . $installer . '?t=' . $token);
+    curl_setopt_array($t, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_CONNECTTIMEOUT => 12,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+    ]);
+    $resp = curl_exec($t);
+    $code = (int)curl_getinfo($t, CURLINFO_HTTP_CODE);
+    curl_close($t);
+    $json = json_decode((string)$resp, true);
+    if ($code === 200 && is_array($json) && !empty($json['ok'])) {
+        return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
+    }
+    return ['ok' => false, 'url' => null,
+            'error' => 'Installer run failed (HTTP ' . $code . '): ' . substr(trim((string)$resp), 0, 200)];
 }
 
 // Build curl auth opts for SFTP: if the stored secret is a PEM private key,
