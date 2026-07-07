@@ -30,6 +30,13 @@ const CRM_DEPLOY_PRIORITIES = ['cpanel', 'sftp', 'wordpress', 'custom'];
 // Preflight: validates credentials BEFORE rendering / uploading so we fail
 // fast on bad credentials instead of mid-deploy with partial state.
 function crm_deployToClient(int $clientId, ?int $actorUserId): array {
+    // A seo_local deploy can be 30+ files over explicit FTPS (one TLS handshake
+    // each) — well past PHP's default max_execution_time (~30s), which fatals
+    // as a 500 mid-upload. Lift the limit and keep running even if the
+    // operator's browser gives up on the long request.
+    @set_time_limit(0);
+    @ignore_user_abort(true);
+
     $client = crm_getClient($clientId);
     if (!$client) return ['ok' => false, 'url' => null, 'adapter' => null, 'error' => 'Client not found'];
 
