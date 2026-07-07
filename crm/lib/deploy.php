@@ -179,8 +179,12 @@ function crm_deployTwoPhaseFtp(string $host, string $user, string $pass,
     $baseOpts = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_USERPWD        => $user . ':' . $pass,
-        CURLOPT_USE_SSL        => CURLUSESSL_ALL,
-        CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        // Encrypt the CONTROL channel only (protects login creds over TLS), but
+        // leave the DATA channel clear. A full TLS handshake per file on the
+        // data channel makes a 30-file deploy take minutes and get killed by
+        // LiteSpeed; the payload is public website HTML, so clear data is fine.
+        CURLOPT_USE_SSL        => CURLUSESSL_CONTROL,
+        CURLOPT_FTP_SSL        => CURLFTPSSL_CONTROL,
         // Shared hosts (HostGator etc.) present an FTPS cert for the SERVER
         // hostname (e.g. *.hostgator.com), not the client's own domain — strict
         // hostname verification always fails. Connection stays TLS-encrypted;
