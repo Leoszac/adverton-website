@@ -160,11 +160,26 @@ function crm_deployAdapterSftp(array $pages, array $cred, array $client): array 
     return crm_deployTwoPhaseSftp($host, $user, $pass, '/public_html', $pages, $client);
 }
 
+// Build curl auth opts for SFTP: if the stored secret is a PEM private key,
+// use key auth (write to a 0600 temp file for libssh2); otherwise password.
+// Sets $keyfile to the temp path to unlink afterwards (null for password auth).
+function crm_sftpAuthOpts(string $user, string $secret, &$keyfile): array {
+    $keyfile = null;
+    if (strpos($secret, 'PRIVATE KEY') !== false) {
+        $keyfile = tempnam(sys_get_temp_dir(), 'advkey');
+        file_put_contents($keyfile, $secret);
+        @chmod($keyfile, 0600);
+        return [CURLOPT_USERNAME => $user, CURLOPT_SSH_PRIVATE_KEYFILE => $keyfile];
+    }
+    return [CURLOPT_USERPWD => $user . ':' . $secret];
+}
+
 // Real SFTP (SSH) two-phase deploy over curl's sftp://. ONE reused SSH
 // connection for every op; paths are home-relative (login lands in the account
 // home, docroot is public_html under it). SSH host-key verification is left off
 // — this tool connects to arbitrary client hosts we can't pre-trust; the whole
-// session (creds + data) is encrypted by SSH regardless.
+// session (creds + data) is encrypted by SSH regardless. Auth = SSH key if the
+// credential value is a private key, else password.
 function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
                                string $remoteDir, array $pages, array $client): array {
     @set_time_limit(0);
@@ -173,13 +188,14 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
     $names = array_keys($pages);
     $rp    = static function (string $p) use ($base) { return ($base !== '' ? $base . '/' : '') . $p; };
 
+    $keyfile = null;
+    $authOpts = crm_sftpAuthOpts($user, $pass, $keyfile);
     $ch = curl_init();
     $baseOpts = [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_TIMEOUT        => 120,
-    ];
+    ] + $authOpts;
     $dirUrl = 'sftp://' . $host . '/' . $base . '/';
 
     // SFTP protocol command(s) over the reused connection. '*' prefix = ignore
@@ -230,6 +246,7 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
         $r = $upload($rp($filename . '.adv-new'), $html);
         if (!$r['ok']) {
             foreach ($uploadedNew as $c) $del($rp($c . '.adv-new'));
+            if ($keyfile) @unlink($keyfile);
             curl_close($ch);
             return ['ok' => false, 'url' => null,
                     'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"];
@@ -248,6 +265,7 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
                 $softRename($rp($restored . '.adv-bak'), $rp($restored));
             }
             foreach ($names as $rem) $del($rp($rem . '.adv-new'));
+            if ($keyfile) @unlink($keyfile);
             curl_close($ch);
             return ['ok' => false, 'url' => null,
                     'error' => "Swap failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — restored " . count($swapped) . " pages from backup"];
@@ -255,6 +273,7 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
         $swapped[] = $filename;
     }
 
+    if ($keyfile) @unlink($keyfile);
     curl_close($ch);
     return ['ok' => true, 'url' => 'https://' . preg_replace('/^(?:s?ftp\.)/i', '', $host) . '/', 'error' => null];
 }
@@ -262,17 +281,19 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
 // SFTP connection probe (Test connection) — connect, auth, list the dir.
 function crm_deploySftpProbe(string $host, string $user, string $pass, string $remoteDir): array {
     $base = trim($remoteDir, '/');
+    $keyfile = null;
+    $authOpts = crm_sftpAuthOpts($user, $pass, $keyfile);
     $ch = curl_init('sftp://' . $host . '/' . $base . '/');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERPWD        => $user . ':' . $pass,
         CURLOPT_NOBODY         => true,
         CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_TIMEOUT        => 25,
-    ]);
+    ] + $authOpts);
     $ok    = curl_exec($ch) !== false && curl_errno($ch) === 0;
     $errno = curl_errno($ch);
     $err   = curl_error($ch);
+    if ($keyfile) @unlink($keyfile);
     curl_close($ch);
     return $ok ? ['ok' => true, 'error' => null]
                : ['ok' => false, 'error' => 'SFTP ' . $errno . ': ' . ($err ?: 'connect/auth failed')];
