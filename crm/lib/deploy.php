@@ -164,66 +164,111 @@ function crm_deployAdapterSftp(array $pages, array $cred, array $client): array 
 
 // Shared two-phase FTP/FTPS deploy. Both cPanel and SFTP adapters call
 // this; difference is just the remote dir.
+//
+// Uses ONE reused FTPS connection for every op. A seo_local site is 30+ files
+// and this does ~4 ops/file (bak-sweep + upload + backup-rename + swap-rename);
+// opening a fresh TLS connection each time = 100+ handshakes = >2 min, which
+// LiteSpeed kills mid-request (its LSAPI timeout, separate from PHP's) as a
+// bare 500. Keeping the curl handle alive collapses it to seconds.
 function crm_deployTwoPhaseFtp(string $host, string $user, string $pass,
                                 string $remoteDir, array $pages, array $client): array {
     $remoteDir = rtrim($remoteDir, '/');
     $names     = array_keys($pages);
 
-    // Sweep stale .adv-bak from a prior deploy. Best-effort — not fatal.
-    foreach ($names as $fn) {
-        crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $fn . '.adv-bak');
-    }
+    $ch = curl_init();
+    $baseOpts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $user . ':' . $pass,
+        CURLOPT_USE_SSL        => CURLUSESSL_ALL,
+        CURLOPT_FTP_SSL        => CURLFTPSSL_ALL,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT        => 120,
+    ];
+    $dirUrl = 'ftp://' . $host . $remoteDir . '/';
+
+    // FTP command(s) over the shared connection (RNFR/RNTO/DELE). Prefix a
+    // command with '*' to ignore its failure (best-effort). Returns ok/err.
+    $ftpQuote = function (array $cmds) use ($ch, $baseOpts, $dirUrl) {
+        curl_setopt_array($ch, $baseOpts + [
+            CURLOPT_URL       => $dirUrl,
+            CURLOPT_UPLOAD    => false,
+            CURLOPT_NOBODY    => true,
+            CURLOPT_POSTQUOTE => $cmds,
+        ]);
+        curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        return ['ok' => ($code === 0 || $code < 400), 'error' => "FTP {$code}: " . (curl_error($ch) ?: 'failed')];
+    };
+    $upload = function (string $path, string $html) use ($ch, $baseOpts, $host) {
+        $tmp = tmpfile();
+        if (!$tmp) return ['ok' => false, 'error' => 'tmpfile() failed'];
+        fwrite($tmp, $html); rewind($tmp);
+        curl_setopt_array($ch, $baseOpts + [
+            CURLOPT_URL        => 'ftp://' . $host . $path,
+            CURLOPT_NOBODY     => false,
+            CURLOPT_POSTQUOTE  => [],
+            CURLOPT_UPLOAD     => true,
+            CURLOPT_INFILE     => $tmp,
+            CURLOPT_INFILESIZE => strlen($html),
+            CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        fclose($tmp);
+        return ['ok' => ($resp !== false && ($code === 0 || $code < 400)), 'error' => "FTP {$code}: " . ($err ?: 'upload failed')];
+    };
+    $swapRename = function (string $from, string $to) use ($ftpQuote) {
+        return $ftpQuote(['RNFR ' . $from, 'RNTO ' . $to]);
+    };
+    $softRename = function (string $from, string $to) use ($ftpQuote) {
+        return $ftpQuote(['*RNFR ' . $from, '*RNTO ' . $to]);   // best-effort
+    };
+    $del = function (string $path) use ($ftpQuote) {
+        return $ftpQuote(['*DELE ' . $path]);                   // best-effort
+    };
+
+    // Sweep stale .adv-bak from a prior deploy (best-effort, one batch).
+    $bakCmds = [];
+    foreach ($names as $fn) $bakCmds[] = '*DELE ' . $remoteDir . '/' . $fn . '.adv-bak';
+    if ($bakCmds) $ftpQuote($bakCmds);
 
     // PHASE 1 — upload each page to filename.adv-new
-    $uploadedNew = [];   // filenames that landed as .adv-new
+    $uploadedNew = [];
     foreach ($pages as $filename => $html) {
-        $target = $remoteDir . '/' . $filename . '.adv-new';
-        $r = crm_deployFtpUpload($host, $user, $pass, $target, $html, $client);
+        $r = $upload($remoteDir . '/' . $filename . '.adv-new', $html);
         if (!$r['ok']) {
-            // Rollback Phase 1: delete any .adv-new files we created. Site
-            // (the live .html files) was never touched.
-            foreach ($uploadedNew as $cleanup) {
-                crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $cleanup . '.adv-new');
-            }
+            // Rollback Phase 1: delete any .adv-new we created. Live .html untouched.
+            foreach ($uploadedNew as $cleanup) $del($remoteDir . '/' . $cleanup . '.adv-new');
+            curl_close($ch);
             return ['ok' => false, 'url' => null,
                     'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"];
         }
         $uploadedNew[] = $filename;
     }
 
-    // PHASE 2 — swap. For each page:
-    //   1) Rename existing .html → .adv-bak  (skip silently if no current file)
-    //   2) Rename .adv-new → .html
-    $swapped = [];   // filenames we successfully swapped (for rollback)
+    // PHASE 2 — swap: back up live .html → .adv-bak, then .adv-new → .html
+    $swapped = [];
     foreach ($names as $filename) {
         $live = $remoteDir . '/' . $filename;
-        $bak  = $live . '.adv-bak';
-        $new  = $live . '.adv-new';
-
-        // Best-effort backup of the existing live file. May fail if no
-        // previous file existed — that's fine, just means first deploy.
-        crm_deployFtpRename($host, $user, $pass, $live, $bak);
-
-        // Atomic swap: rename .adv-new → .html
-        $r = crm_deployFtpRename($host, $user, $pass, $new, $live);
+        $softRename($live, $live . '.adv-bak');       // best-effort backup (no-op on first deploy)
+        $r = $swapRename($live . '.adv-new', $live);  // atomic swap (must succeed)
         if (!$r['ok']) {
-            // Phase 2 failure: try to restore what we swapped so far.
+            // Restore what we swapped so far, then clean remaining .adv-new.
             foreach ($swapped as $restored) {
                 $rl = $remoteDir . '/' . $restored;
-                crm_deployFtpDelete($host, $user, $pass, $rl);                  // remove the new .html we just put there
-                crm_deployFtpRename($host, $user, $pass, $rl . '.adv-bak', $rl); // put the old one back
+                $del($rl);
+                $softRename($rl . '.adv-bak', $rl);
             }
-            // Also clean any remaining .adv-new files for pages we hadn't
-            // gotten to yet, plus the failing one.
-            foreach ($names as $remaining) {
-                crm_deployFtpDelete($host, $user, $pass, $remoteDir . '/' . $remaining . '.adv-new');
-            }
+            foreach ($names as $remaining) $del($remoteDir . '/' . $remaining . '.adv-new');
+            curl_close($ch);
             return ['ok' => false, 'url' => null,
                     'error' => "Swap failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — restored " . count($swapped) . " pages from backup"];
         }
         $swapped[] = $filename;
     }
 
+    curl_close($ch);
     $pubHost = preg_replace('/^(?:s?ftp\.|ftps\.)/i', '', $host);
     return ['ok' => true, 'url' => 'https://' . $pubHost . '/', 'error' => null];
 }
