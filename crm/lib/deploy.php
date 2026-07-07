@@ -187,7 +187,8 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
     $pubHost   = preg_replace('/^(?:s?ftp\.)/i', '', $host);
     error_log('[advdeploy] start: ' . count($pages) . ' pages, installer ' . strlen($php) . ' bytes -> ' . $installer);
 
-    // 1) Upload the installer over SFTP (single file → single SSH handshake).
+    // 1) Upload the installer over SCP (streams the file — libssh2's SFTP write
+    // is ack-per-packet slow and hangs on a ~800KB file; SCP is fast).
     $keyfile = null;
     $authOpts = crm_sftpAuthOpts($user, $pass, $keyfile);
     $ch  = curl_init();
@@ -196,11 +197,10 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
     fwrite($tmp, $php); rewind($tmp);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_URL            => 'sftp://' . $host . '/public_html/' . $installer,
+        CURLOPT_URL            => 'scp://' . $host . '/public_html/' . $installer,
         CURLOPT_UPLOAD         => true,
         CURLOPT_INFILE         => $tmp,
         CURLOPT_INFILESIZE     => strlen($php),
-        CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
         CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_TIMEOUT        => 90,
     ] + $authOpts);
