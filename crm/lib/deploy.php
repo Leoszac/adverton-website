@@ -197,7 +197,11 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
     fwrite($tmp, $php); rewind($tmp);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_URL            => 'scp://' . $host . '/public_html/' . $installer,
+        // SCP treats a single-slash path as ABSOLUTE from root (unlike SFTP,
+        // which is home-relative), so we give the full docroot path. cPanel home
+        // is /homeN/<user> (HostGator shared = home2); double slash after host
+        // makes the path absolute.
+        CURLOPT_URL            => 'scp://' . $host . '//home2/' . $user . '/public_html/' . $installer,
         CURLOPT_UPLOAD         => true,
         CURLOPT_INFILE         => $tmp,
         CURLOPT_INFILESIZE     => strlen($php),
