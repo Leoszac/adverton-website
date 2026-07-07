@@ -191,91 +191,89 @@ function crm_deployTwoPhaseSftp(string $host, string $user, string $pass,
     $keyfile = null;
     $authOpts = crm_sftpAuthOpts($user, $pass, $keyfile);
     $ch = curl_init();
-    $baseOpts = [
+    // Connection + auth are set ONCE so libcurl keeps the SSH connection alive
+    // across every op. Re-setting auth per call forced a fresh SSH handshake
+    // each time — ~90 handshakes overran LiteSpeed's request limit (500).
+    curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_TIMEOUT        => 120,
-    ] + $authOpts;
+    ] + $authOpts);
     $dirUrl = 'sftp://' . $host . '/' . $base . '/';
 
     // SFTP protocol command(s) over the reused connection. '*' prefix = ignore
     // failure (best-effort). SFTP verbs: rename <a> <b>, rm <p>, mkdir <p>.
-    $quote = function (array $cmds) use ($ch, $baseOpts, $dirUrl) {
-        curl_setopt_array($ch, $baseOpts + [
-            CURLOPT_URL       => $dirUrl,
-            CURLOPT_UPLOAD    => false,
-            CURLOPT_NOBODY    => true,
-            CURLOPT_QUOTE     => $cmds,
-            CURLOPT_POSTQUOTE => [],
-        ]);
+    $quote = function (array $cmds) use ($ch, $dirUrl) {
+        curl_setopt($ch, CURLOPT_UPLOAD, false);
+        curl_setopt($ch, CURLOPT_NOBODY, true);
+        curl_setopt($ch, CURLOPT_QUOTE, $cmds);
+        curl_setopt($ch, CURLOPT_URL, $dirUrl);
         curl_exec($ch);
         $errno = curl_errno($ch);
         return ['ok' => ($errno === 0), 'error' => 'SFTP ' . $errno . ': ' . (curl_error($ch) ?: 'command failed')];
     };
-    $upload = function (string $path, string $html) use ($ch, $baseOpts, $host) {
+    $upload = function (string $path, string $html) use ($ch, $host) {
         $tmp = tmpfile();
         if (!$tmp) return ['ok' => false, 'error' => 'tmpfile() failed'];
         fwrite($tmp, $html); rewind($tmp);
-        curl_setopt_array($ch, $baseOpts + [
-            CURLOPT_URL        => 'sftp://' . $host . '/' . $path,
-            CURLOPT_NOBODY     => false,
-            CURLOPT_QUOTE      => [],
-            CURLOPT_UPLOAD     => true,
-            CURLOPT_INFILE     => $tmp,
-            CURLOPT_INFILESIZE => strlen($html),
-            CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
-        ]);
+        curl_setopt($ch, CURLOPT_QUOTE, []);
+        curl_setopt($ch, CURLOPT_NOBODY, false);
+        curl_setopt($ch, CURLOPT_UPLOAD, true);
+        curl_setopt($ch, CURLOPT_INFILE, $tmp);
+        curl_setopt($ch, CURLOPT_INFILESIZE, strlen($html));
+        curl_setopt($ch, CURLOPT_FTP_CREATE_MISSING_DIRS, CURLFTP_CREATE_DIR);
+        curl_setopt($ch, CURLOPT_URL, 'sftp://' . $host . '/' . $path);
         $resp  = curl_exec($ch);
         $errno = curl_errno($ch);
         $err   = curl_error($ch);
         fclose($tmp);
         return ['ok' => ($resp !== false && $errno === 0), 'error' => 'SFTP ' . $errno . ': ' . ($err ?: 'upload failed')];
     };
-    $swapRename = function (string $from, string $to) use ($quote) { return $quote(['rename ' . $from . ' ' . $to]); };
-    $softRename = function (string $from, string $to) use ($quote) { return $quote(['*rename ' . $from . ' ' . $to]); };
-    $del        = function (string $path)             use ($quote) { return $quote(['*rm ' . $path]); };
+    $finish = function (array $ret) use ($ch, &$keyfile) {
+        curl_close($ch);
+        if ($keyfile) @unlink($keyfile);
+        return $ret;
+    };
 
-    // sweep stale .adv-bak (best-effort, batched)
-    $bak = [];
-    foreach ($names as $fn) $bak[] = '*rm ' . $rp($fn . '.adv-bak');
-    if ($bak) $quote($bak);
+    // Phase 0: batch-remove stale .adv-bak (best-effort, one command set).
+    $rm = [];
+    foreach ($names as $fn) $rm[] = '*rm ' . $rp($fn . '.adv-bak');
+    if ($rm) $quote($rm);
 
-    // PHASE 1 — upload each page to .adv-new
+    // Phase 1: upload every page to .adv-new over the reused SSH connection.
     $uploadedNew = [];
     foreach ($pages as $filename => $html) {
         $r = $upload($rp($filename . '.adv-new'), $html);
         if (!$r['ok']) {
-            foreach ($uploadedNew as $c) $del($rp($c . '.adv-new'));
-            if ($keyfile) @unlink($keyfile);
-            curl_close($ch);
-            return ['ok' => false, 'url' => null,
-                    'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"];
+            $cl = [];
+            foreach ($uploadedNew as $c) $cl[] = '*rm ' . $rp($c . '.adv-new');
+            if ($cl) $quote($cl);
+            return $finish(['ok' => false, 'url' => null,
+                'error' => "Upload failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — original site untouched"]);
         }
         $uploadedNew[] = $filename;
     }
 
-    // PHASE 2 — swap: back up live .html → .adv-bak, then .adv-new → .html
-    $swapped = [];
-    foreach ($names as $filename) {
-        $softRename($rp($filename), $rp($filename . '.adv-bak'));
-        $r = $swapRename($rp($filename . '.adv-new'), $rp($filename));
-        if (!$r['ok']) {
-            foreach ($swapped as $restored) {
-                $del($rp($restored));
-                $softRename($rp($restored . '.adv-bak'), $rp($restored));
-            }
-            foreach ($names as $rem) $del($rp($rem . '.adv-new'));
-            if ($keyfile) @unlink($keyfile);
-            curl_close($ch);
-            return ['ok' => false, 'url' => null,
-                    'error' => "Swap failed on {$filename}: " . ($r['error'] ?? 'unknown') . " — restored " . count($swapped) . " pages from backup"];
-        }
-        $swapped[] = $filename;
+    // Phase 2: batch backup (live → .adv-bak), then batch swap (.adv-new → live).
+    $bk = [];
+    foreach ($names as $fn) $bk[] = '*rename ' . $rp($fn) . ' ' . $rp($fn . '.adv-bak');
+    $quote($bk);
+    $sw = [];
+    foreach ($names as $fn) $sw[] = 'rename ' . $rp($fn . '.adv-new') . ' ' . $rp($fn);
+    $r = $quote($sw);
+    if (!$r['ok']) {
+        // Best-effort restore: put backups back, drop leftover .adv-new.
+        $rb = [];
+        foreach ($names as $fn) $rb[] = '*rename ' . $rp($fn . '.adv-bak') . ' ' . $rp($fn);
+        $quote($rb);
+        $cl = [];
+        foreach ($names as $fn) $cl[] = '*rm ' . $rp($fn . '.adv-new');
+        $quote($cl);
+        return $finish(['ok' => false, 'url' => null,
+            'error' => "Swap failed: " . ($r['error'] ?? 'unknown') . " — restored from backup"]);
     }
 
-    if ($keyfile) @unlink($keyfile);
-    curl_close($ch);
-    return ['ok' => true, 'url' => 'https://' . preg_replace('/^(?:s?ftp\.)/i', '', $host) . '/', 'error' => null];
+    return $finish(['ok' => true, 'url' => 'https://' . preg_replace('/^(?:s?ftp\.)/i', '', $host) . '/', 'error' => null]);
 }
 
 // SFTP connection probe (Test connection) — connect, auth, list the dir.
