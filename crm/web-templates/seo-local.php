@@ -180,6 +180,13 @@ function crm_renderTemplate_seo_local(array $client, array $intake, array $copy,
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title><?= $h($metaTitle) ?></title>
 <meta name="description" content="<?= $h($metaDesc) ?>">
+<?php
+// Inline SVG favicon (business initial on the brand color) so we override any
+// leftover host default (e.g. HostGator's) without shipping an .ico file.
+$_favInitial = strtoupper(mb_substr(trim((string)$name), 0, 1) ?: 'A');
+$_favSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="' . $primary . '"/><text x="16" y="23" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="bold" fill="#ffffff" text-anchor="middle">' . htmlspecialchars($_favInitial, ENT_QUOTES) . '</text></svg>';
+?>
+<link rel="icon" href="data:image/svg+xml,<?= rawurlencode($_favSvg) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
