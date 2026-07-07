@@ -172,13 +172,13 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
 
     $token = bin2hex(random_bytes(16));
     $enc = [];
-    foreach ($pages as $fn => $html) $enc[$fn] = base64_encode((string)$html);
+    foreach ($pages as $fn => $html) $enc[$fn] = base64_encode(gzencode((string)$html, 6));
 
     $php  = "<?php\n";
     $php .= "if ((\$_GET['t'] ?? '') !== " . var_export($token, true) . ") { http_response_code(403); exit('forbidden'); }\n";
     $php .= "\$P = " . var_export($enc, true) . ";\n";
     $php .= '$d = __DIR__; $errs = [];' . "\n";
-    $php .= 'foreach ($P as $fn => $b64) { $t = $d . "/" . $fn; $sub = dirname($t); if (!is_dir($sub)) @mkdir($sub, 0755, true); if (@file_put_contents($t . ".adv-new", base64_decode($b64)) === false) $errs[] = $fn; }' . "\n";
+    $php .= 'foreach ($P as $fn => $b64) { $t = $d . "/" . $fn; $sub = dirname($t); if (!is_dir($sub)) @mkdir($sub, 0755, true); if (@file_put_contents($t . ".adv-new", gzdecode(base64_decode($b64))) === false) $errs[] = $fn; }' . "\n";
     $php .= 'if (!$errs) { foreach ($P as $fn => $x) { $t = $d . "/" . $fn; if (is_file($t)) @rename($t, $t . ".adv-bak"); @rename($t . ".adv-new", $t); } }' . "\n";
     $php .= 'header("Content-Type: application/json"); echo json_encode(["ok" => empty($errs), "errors" => $errs, "count" => count($P)]);' . "\n";
     $php .= '@unlink(__FILE__);' . "\n";
@@ -201,6 +201,7 @@ function crm_deploySftpInstaller(string $host, string $user, string $pass, array
         CURLOPT_UPLOAD         => true,
         CURLOPT_INFILE         => $tmp,
         CURLOPT_INFILESIZE     => strlen($php),
+        CURLOPT_UPLOAD_BUFFERSIZE => 262144,   // bigger writes → far fewer SSH round-trips
         CURLOPT_CONNECTTIMEOUT => 12,
         CURLOPT_TIMEOUT        => 90,
     ] + $authOpts);
