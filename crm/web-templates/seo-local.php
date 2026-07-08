@@ -598,8 +598,12 @@ default:
       <h1><?= $h((string)($hero['headline'] ?? $name)) ?></h1>
       <p class="sub"><?= $h((string)($hero['subheadline'] ?? '')) ?></p>
       <div class="ctas">
-        <a class="btn btn-call" href="/contact.html"><?= $h((string)($hero['cta_primary'] ?? 'Get a free quote')) ?></a>
-        <?php if ($phone): ?><a class="btn btn-ghost" href="tel:<?= $h($phoneTel) ?>">&#9742; <?= $h((string)($hero['cta_secondary'] ?? 'Call us now')) ?></a><?php endif; ?>
+        <?php if ($phone): ?>
+        <a class="btn btn-call" href="tel:<?= $h($phoneTel) ?>">&#9742; Call <?= $h($phone) ?></a>
+        <a class="btn btn-ghost" href="/contact.html">Get a free quote</a>
+        <?php else: ?>
+        <a class="btn btn-call" href="/contact.html">Get a free quote</a>
+        <?php endif; ?>
       </div>
   <?php if ($heroImage): ?>
     </div></div></div>
