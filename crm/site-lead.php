@@ -83,20 +83,20 @@ $bodyHtml = '<h2 style="font-family:sans-serif">New lead from your website</h2>'
     . ($msg !== '' ? '<p style="font-family:sans-serif;font-size:15px"><strong>Message:</strong><br>' . nl2br($h($msg)) . '</p>' : '')
     . '<hr><p style="font-family:sans-serif;color:#999;font-size:12px">Sent automatically by your Adverton website (' . $h($biz) . '). Call or email them back to win the job.</p>';
 
-// Prefer Care: text the contractor on their own number + log the lead in the
-// tracker. Email is only a fallback for clients not yet provisioned on Care.
-$careHandled = false;
+// Care texts the contractor on their own number + logs the lead. We ALSO
+// always email the client (below) so the lead reaches them even when SMS isn't
+// live yet (e.g. A2P pending) — a web lead must never be silently dropped.
 $careFlows = __DIR__ . '/../care/lib/flows.php';
 if (is_file($careFlows)) {
     try {
         require_once $careFlows;
         if (function_exists('care_handleWebLead')) {
-            $careHandled = !empty(care_handleWebLead($clientId, $name, $phone, $msg)['care']);
+            care_handleWebLead($clientId, $name, $phone, $msg);
         }
     } catch (Throwable $e) { error_log('[site-lead] care handler: ' . $e->getMessage()); }
 }
 
-if (!$careHandled && $to !== '') {
+if ($to !== '') {
     $apiKey = crm_config('RESEND_API_KEY');
     $from   = 'Adverton <no-reply@adverton.net>';   // lead notifications go from no-reply, never the founder's inbox
     if ($apiKey) {
@@ -124,7 +124,7 @@ if (!$careHandled && $to !== '') {
     } else {
         error_log('[site-lead] RESEND_API_KEY not set');
     }
-} elseif (!$careHandled) {
+} else {
     error_log("[site-lead] client {$clientId} has no email on file");
 }
 
